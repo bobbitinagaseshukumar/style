@@ -6,10 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "prestart": "npx prisma generate",
     "dev": "nodemon server.js",
     "build": "npx prisma generate",
-    "postinstall": "npx prisma generate",
     "prisma:generate": "npx prisma generate",
     "prisma:migrate": "npx prisma migrate dev",
     "prisma:studio": "npx prisma studio"
