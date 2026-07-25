@@ -1,0 +1,565 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                  String        @id @default(uuid())
+  email               String        @unique
+  password            String
+  fullName            String
+  phone               String?
+  whatsappNumber      String?
+  gender              String?
+  dob                 DateTime?
+  role                String        @default("CUSTOMER")
+  isVerified          Boolean       @default(false)
+  avatar              String?
+  preferredLanguage   String        @default("en")
+  emailNotifications  Boolean       @default(true)
+  smsNotifications    Boolean       @default(true)
+  status              String        @default("ACTIVE")
+  lastLoginAt         DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  addresses           Address[]
+  orders              Order[]
+  cart                Cart?
+  wishlist            Wishlist?
+  reviews             Review[]
+  activityLogs        ActivityLog[]
+  otps                EmailOTP[]
+  notifications       Notification[]
+  supportTickets      SupportTicket[]
+}
+
+model EmailOTP {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  otp       String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id          String        @id @default(uuid())
+  name        String        @unique
+  slug        String        @unique
+  description String?
+  image       String?
+  banner      String?
+  isVisible   Boolean       @default(true)
+  sortOrder   Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  subcategories SubCategory[]
+  products      Product[]
+}
+
+model SubCategory {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  image       String?
+  isVisible   Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+}
+
+model Brand {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  logo        String?
+  description String?
+  website     String?
+  isVisible   Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  products    Product[]
+}
+
+model Product {
+  id              String      @id @default(uuid())
+  name            String
+  slug            String      @unique
+  sku             String      @unique
+  barcode         String?
+  price           Float
+  discountPercent Float       @default(0)
+  discountPrice   Float       @default(0)
+  gstPercent      Float       @default(0)
+  stock           Int         @default(0)
+
+  categoryId      String
+  category        Category    @relation(fields: [categoryId], references: [id])
+  subCategoryId   String?
+  subCategory     SubCategory?@relation(fields: [subCategoryId], references: [id])
+  brandId         String?
+  brand           Brand?      @relation(fields: [brandId], references: [id])
+
+  sizes           String      @default("[]")
+  colors          String      @default("[]")
+  material        String?
+  occasion        String?
+  gender          String?
+  weight          Float?
+
+  shortDesc       String      @default("")
+  description     String      @default("")
+  specifications  String?
+  careInstruction String?
+  tags            String      @default("[]")
+
+  featured        Boolean     @default(false)
+  trending        Boolean     @default(false)
+  todaysDeal      Boolean     @default(false)
+  flashSale       Boolean     @default(false)
+  newArrival      Boolean     @default(false)
+  bestSeller      Boolean     @default(false)
+  isVisible       Boolean     @default(true)
+
+  images          ProductImage[]
+  videoUrl        String?
+  threeSixtyImages String     @default("[]")
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  cartItems       CartItem[]
+  wishlistItems   WishlistItem[]
+  orderItems      OrderItem[]
+  reviews         Review[]
+  stockAlerts     BackInStockSubscription[]
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  isPrimary Boolean  @default(false)
+}
+
+model Address {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName     String
+  phone        String
+  street       String
+  city         String
+  state        String
+  postalCode   String
+  country      String   @default("India")
+  addressType  String   @default("HOME")
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  orders       Order[]
+}
+
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  size      String?
+  color     String?
+  quantity  Int      @default(1)
+}
+
+model Wishlist {
+  id        String         @id @default(uuid())
+  userId    String         @unique
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     WishlistItem[]
+  updatedAt DateTime       @updatedAt
+}
+
+model WishlistItem {
+  id         String   @id @default(uuid())
+  wishlistId String
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+}
+
+model Order {
+  id             String    @id @default(uuid())
+  orderNumber    String    @unique
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  addressId      String?   // Optional: WhatsApp orders may not have an addressId
+  address        Address?  @relation(fields: [addressId], references: [id])
+
+  subtotal       Float
+  discountAmount Float     @default(0)
+  shippingFee    Float     @default(0)
+  taxAmount      Float     @default(0)
+  totalAmount    Float
+
+  orderStatus    String    @default("PENDING")
+  paymentStatus  String    @default("PENDING")
+  paymentMethod  String    @default("COD")
+  paymentTxnId   String?
+
+  couponCode     String?
+  notes          String?   // Customer order notes / WhatsApp order flag
+  courierName    String?   // Courier company name when shipped
+  trackingNumber String?   // Shipment tracking number
+  trackingUrl    String?   // Direct tracking URL
+  cancelReason   String?   // Reason for cancellation
+  deliveredAt    DateTime? // Actual delivery timestamp
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  items          OrderItem[]
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  price     Float
+  quantity  Int
+  size      String?
+  color     String?
+}
+
+model Coupon {
+  id             String    @id @default(uuid())
+  code           String    @unique
+  discountPercent Float?
+  discountAmount  Float?
+  minOrderAmount  Float     @default(0)
+  maxDiscount     Float?
+  expiresAt      DateTime
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  rating    Int
+  title     String?
+  comment   String
+  isApproved Boolean @default(true)
+  createdAt DateTime @default(now())
+}
+
+model StoreSettings {
+  id             String   @id @default("default")
+  storeName      String   @default("StyleVerse")
+  logoUrl        String?
+  faviconUrl     String?
+  contactEmail   String   @default("support@styleverse.com")
+  contactPhone   String   @default("+91 98765 43210")
+  address        String   @default("123 Fashion Street, Cyber City, Hyderabad, India")
+  currencySymbol String   @default("₹")
+  primaryColor   String   @default("#D4AF37")
+  secondaryColor String   @default("#1A1A1A")
+  shippingFee    Float    @default(0)
+  freeShippingThreshold Float @default(999)
+  maintenanceMode Boolean @default(false)
+  // WhatsApp
+  whatsappNumber  String   @default("")
+  whatsappEnabled Boolean  @default(true)
+  whatsappBusinessName String @default("KVLR Styles")
+  whatsappWorkingHours String @default("Mon-Sat 9AM-7PM")
+  whatsappAutoReply String @default("Thank you for contacting us! We will respond within 24 hours.")
+  updatedAt      DateTime @updatedAt
+}
+
+model Announcement {
+  id              String    @id @default(uuid())
+  title           String
+  message         String
+  link            String?
+  buttonText      String?
+  textColor       String    @default("#FFFFFF")
+  backgroundColor String    @default("#D4AF37")
+  isActive        Boolean   @default(true)
+  priority        Int       @default(0)
+  startDate       DateTime?
+  endDate         DateTime?
+  createdAt       DateTime  @default(now())
+}
+
+model Banner {
+  id          String   @id @default(uuid())
+  title       String?
+  subtitle    String?
+  imageUrl    String
+  linkUrl     String?
+  type        String   @default("HERO_SLIDER")
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model FlashSale {
+  id              String   @id @default(uuid())
+  title           String
+  description     String?
+  endTime         DateTime
+  discountPercent Float    @default(30)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+}
+
+model BrandShowcase {
+  id        String   @id @default(uuid())
+  name      String
+  logoUrl   String
+  website   String?
+  sortOrder Int      @default(0)
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Testimonial {
+  id          String   @id @default(uuid())
+  name        String
+  avatarUrl   String?
+  location    String?
+  rating      Int      @default(5)
+  comment     String
+  isApproved  Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model InstagramPost {
+  id         String   @id @default(uuid())
+  imageUrl   String
+  caption    String?
+  productUrl String?
+  sortOrder  Int      @default(0)
+  isVisible  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+}
+
+model HomepageSection {
+  id          String   @id @default(uuid())
+  title       String
+  sectionType String
+  config      String   @default("{}")
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+}
+
+model CMSPage {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  title     String
+  content   String
+  updatedAt DateTime @updatedAt
+}
+
+model FAQ {
+  id        String   @id @default(uuid())
+  question  String
+  answer    String
+  category  String   @default("General")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(uuid())
+  fullName  String
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("ORDER")
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model PaymentGatewaySetting {
+  id             String   @id @default("default")
+  codEnabled     Boolean  @default(true)
+  razorpayKey    String?
+  razorpaySecret String?
+  stripeKey      String?
+  stripeSecret   String?
+  isLiveMode     Boolean  @default(false)
+  updatedAt      DateTime @updatedAt
+}
+
+model BackupHistory {
+  id        String   @id @default(uuid())
+  filename  String
+  fileSize  String
+  status    String   @default("COMPLETED")
+  createdBy String   @default("Super Admin")
+  createdAt DateTime @default(now())
+}
+
+model SEOSetting {
+  id              String   @id @default(uuid())
+  pageSlug        String   @unique
+  metaTitle       String
+  metaDescription String
+  keywords        String?
+  ogImage         String?
+  canonicalUrl    String?
+  isIndexed       Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
+}
+
+model SearchLog {
+  id           String   @id @default(uuid())
+  query        String
+  userId       String?
+  resultsCount Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+model BackInStockSubscription {
+  id         String   @id @default(uuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  email      String
+  isNotified Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model Store {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?
+  address   String?
+  phone     String?
+  gstin     String?
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+}
+
+model Vendor {
+  id             String   @id @default(uuid())
+  storeName      String
+  ownerName      String
+  email          String   @unique
+  phone          String
+  gstin          String
+  commissionRate Float    @default(10)
+  status         String   @default("PENDING")
+  createdAt      DateTime @default(now())
+}
+
+model Branch {
+  id        String   @id @default(uuid())
+  name      String
+  city      String
+  address   String
+  manager   String?
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+}
+
+model PayoutRequest {
+  id        String   @id @default(uuid())
+  vendorId  String
+  amount    Float
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+}
+
+model BlogPost {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  excerpt     String?
+  content     String
+  coverImage  String?
+  author      String   @default("StyleVerse Editorial")
+  category    String   @default("Fashion Trends")
+  tags        String   @default("[]")
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SupportTicket {
+  id          String          @id @default(uuid())
+  ticketNo    String          @unique
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject     String
+  category    String          @default("General")
+  priority    String          @default("MEDIUM")
+  status      String          @default("OPEN")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  messages    TicketMessage[]
+}
+
+model TicketMessage {
+  id         String        @id @default(uuid())
+  ticketId   String
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderRole String        @default("CUSTOMER")
+  senderName String
+  message    String
+  createdAt  DateTime      @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+}

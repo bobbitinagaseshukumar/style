@@ -1,0 +1,351 @@
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Autoplay, Pagination, EffectFade } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/pagination';
+import 'swiper/css/effect-fade';
+
+import { FiArrowRight, FiHeart, FiShoppingBag, FiTruck, FiShield, FiRefreshCw, FiHeadphones, FiClock, FiStar, FiZap } from 'react-icons/fi';
+import api from '../../config/api';
+import { formatCurrency } from '../../utils/formatCurrency';
+
+import AnnouncementBar from '../../components/home/AnnouncementBar';
+import FlashSaleSection from '../../components/home/FlashSaleSection';
+import CollectionShowcase from '../../components/home/CollectionShowcase';
+import BrandShowcase from '../../components/home/BrandShowcase';
+import TestimonialsSection from '../../components/home/TestimonialsSection';
+import InstagramGallery from '../../components/home/InstagramGallery';
+import FAQPreview from '../../components/home/FAQPreview';
+
+const fadeInUp = { initial: { opacity: 0, y: 30 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true } };
+const stagger = { initial: {}, whileInView: { transition: { staggerChildren: 0.08 } }, viewport: { once: true } };
+
+// Reusable Product Card
+const HomeProductCard = ({ product }) => {
+  const primaryImage = product.images?.[0]?.url || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&size=400&background=D4AF37&color=fff&format=svg`;
+
+  return (
+    <motion.div variants={fadeInUp} whileHover={{ y: -6 }} transition={{ duration: 0.3 }}
+      className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-gray-100 transition-all duration-300">
+      <div className="relative aspect-[3/4] overflow-hidden bg-gray-50">
+        <img src={primaryImage} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+          {product.newArrival && <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">NEW</span>}
+          {product.trending && <span className="bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">TRENDING</span>}
+          {product.discountPercent > 0 && <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">-{product.discountPercent}%</span>}
+        </div>
+        <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <button className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-gray-600 hover:text-red-500 hover:bg-white shadow-md transition-all">
+            <FiHeart className="w-4 h-4" />
+          </button>
+          <button className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-gray-600 hover:text-gold-500 hover:bg-white shadow-md transition-all">
+            <FiShoppingBag className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+      <div className="p-4">
+        <p className="text-xs text-gold-600 font-medium mb-1 uppercase tracking-wide">{product.category?.name || 'StyleVerse'}</p>
+        <Link to={`/product/${product.slug}`}>
+          <h3 className="text-sm font-semibold text-charcoal-900 line-clamp-1 hover:text-gold-600 transition-colors mb-2">{product.name}</h3>
+        </Link>
+        <div className="flex items-center gap-2">
+          <span className="text-base font-bold text-charcoal-900">{formatCurrency(product.discountPrice || product.price)}</span>
+          {product.discountPercent > 0 && (
+            <span className="text-xs text-gray-400 line-through">{formatCurrency(product.price)}</span>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const Home = () => {
+  const [banners, setBanners] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState({ featured: [], trending: [], newArrivals: [], todaysDeals: [] });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHomeData = async () => {
+      try {
+        const [bannersRes, categoriesRes, featuredRes, trendingRes, newRes, dealsRes] = await Promise.allSettled([
+          api.get('/cms/banners'),
+          api.get('/categories'),
+          api.get('/products?featured=true&limit=4'),
+          api.get('/products?trending=true&limit=4'),
+          api.get('/products?newArrival=true&limit=4'),
+          api.get('/products?todaysDeal=true&limit=4'),
+        ]);
+
+        if (bannersRes.status === 'fulfilled') setBanners(bannersRes.value.data?.data || []);
+        if (categoriesRes.status === 'fulfilled') setCategories(categoriesRes.value.data?.data || []);
+        
+        setProducts({
+          featured: featuredRes.status === 'fulfilled' ? (featuredRes.value.data?.data?.products || []) : [],
+          trending: trendingRes.status === 'fulfilled' ? (trendingRes.value.data?.data?.products || []) : [],
+          newArrivals: newRes.status === 'fulfilled' ? (newRes.value.data?.data?.products || []) : [],
+          todaysDeals: dealsRes.status === 'fulfilled' ? (dealsRes.value.data?.data?.products || []) : [],
+        });
+      } catch (err) {
+        console.error('Home page data fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHomeData();
+  }, []);
+
+  const heroSliders = banners.filter(b => b.type === 'HERO_SLIDER' && b.isActive);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen">
+        <div className="w-full h-[500px] bg-gray-200 animate-pulse" />
+        <div className="max-w-7xl mx-auto px-4 py-12">
+          <div className="h-8 w-64 bg-gray-200 rounded animate-pulse mb-8" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="aspect-[3/4] bg-gray-200 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white">
+      {/* 1. ANNOUNCEMENT BAR */}
+      <AnnouncementBar />
+
+      {/* 4. HERO BANNER SLIDER */}
+      {heroSliders.length > 0 && (
+        <section className="relative">
+          <Swiper modules={[Autoplay, Pagination, EffectFade]} effect="fade" autoplay={{ delay: 5000, disableOnInteraction: false }}
+            pagination={{ clickable: true }} loop className="w-full h-[350px] sm:h-[450px] lg:h-[550px]">
+            {heroSliders.map((banner) => (
+              <SwiperSlide key={banner.id}>
+                <div className="relative w-full h-full">
+                  <img src={banner.imageUrl} alt={banner.title || ''} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8 w-full">
+                      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                        {banner.title && <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-bold text-white mb-3 max-w-lg">{banner.title}</h2>}
+                        {banner.subtitle && <p className="text-lg text-white/80 mb-6 max-w-md">{banner.subtitle}</p>}
+                        {banner.linkUrl && (
+                          <Link to={banner.linkUrl} className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-full font-semibold transition-colors shadow-lg">
+                            Shop Collection <FiArrowRight />
+                          </Link>
+                        )}
+                      </motion.div>
+                    </div>
+                  </div>
+                </div>
+              </SwiperSlide>
+            ))}
+          </Swiper>
+        </section>
+      )}
+
+      {/* 20. STORE FEATURES / BADGES */}
+      <section className="border-b border-gray-100 bg-white">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { icon: FiTruck, label: 'Free Shipping', desc: 'On orders above ₹999' },
+              { icon: FiShield, label: '100% Authentic', desc: 'Certified purity & quality' },
+              { icon: FiRefreshCw, label: '7-Day Easy Returns', desc: 'Hassle-free refunds' },
+              { icon: FiHeadphones, label: '24/7 Support', desc: 'Dedicated helpline' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-gold-50 flex items-center justify-center shrink-0">
+                  <item.icon className="w-5 h-5 text-gold-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-charcoal-900">{item.label}</p>
+                  <p className="text-xs text-gray-500">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 5. FEATURED CATEGORIES GRID */}
+      {categories.length > 0 && (
+        <section className="py-12 lg:py-16 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4">
+            <motion.div {...fadeInUp} className="text-center mb-10">
+              <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900 mb-2">Shop by Category</h2>
+              <p className="text-gray-500">Explore our handcrafted luxury collections</p>
+            </motion.div>
+            <motion.div {...stagger} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+              {categories.map((cat) => (
+                <motion.div key={cat.id} variants={fadeInUp}>
+                  <Link to={`/categories/${cat.slug}`}
+                    className="group relative block aspect-[4/5] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
+                    <img src={cat.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(cat.name)}&size=400&background=D4AF37&color=fff`}
+                      alt={cat.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                      <h3 className="text-lg font-serif font-bold text-white mb-1">{cat.name}</h3>
+                      <span className="inline-flex items-center gap-1 text-gold-400 text-xs font-semibold group-hover:gap-2 transition-all">
+                        Explore <FiArrowRight className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* 6. FLASH SALE */}
+      <FlashSaleSection />
+
+      {/* 7. FEATURED PRODUCTS */}
+      {products.featured.length > 0 && (
+        <section className="py-12 lg:py-16">
+          <div className="max-w-7xl mx-auto px-4">
+            <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">Featured Products</h2>
+                <p className="text-gray-500 mt-1">Handpicked for timeless elegance</p>
+              </div>
+              <Link to="/categories" className="hidden sm:inline-flex items-center gap-1 text-gold-600 hover:text-gold-700 font-medium text-sm">
+                View All <FiArrowRight className="w-4 h-4" />
+              </Link>
+            </motion.div>
+            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+              {products.featured.map((product) => (
+                <HomeProductCard key={product.id} product={product} />
+              ))}
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* 10. JEWELLERY COLLECTION SHOWCASE */}
+      <CollectionShowcase
+        title="Royal Jewellery Collection 💎"
+        subtitle="Exquisite Kundan, Gold-Plated & Temple Jewellery"
+        categorySlug="jewellery"
+        bgLight={true}
+      />
+
+      {/* 11. SAREE COLLECTION SHOWCASE */}
+      <CollectionShowcase
+        title="Banarasi & Silk Sarees 🥻"
+        subtitle="Handwoven pure silk sarees with gold zari"
+        categorySlug="womens-sarees"
+        bgLight={false}
+      />
+
+      {/* 15. TODAY'S DEAL */}
+      {products.todaysDeals.length > 0 && (
+        <section className="py-12 bg-amber-50/50 border-y border-amber-100">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="flex items-center gap-2 mb-6">
+              <FiZap className="w-6 h-6 text-amber-600 fill-amber-600" />
+              <h2 className="text-2xl font-serif font-bold text-charcoal-900">Today&apos;s Special Deals</h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {products.todaysDeals.map((p) => (
+                <HomeProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 12. MEN'S COLLECTION */}
+      <CollectionShowcase
+        title="Men's Royal Heritage"
+        subtitle="Smart casuals, festive shirts & kurtas"
+        categorySlug="mens-wear"
+        bgLight={true}
+      />
+
+      {/* 13. KIDS COLLECTION */}
+      <CollectionShowcase
+        title="Kids Wear & Festive Suits"
+        subtitle="Charming ethnic and casual wear for kids"
+        categorySlug="kids-wear"
+        bgLight={false}
+      />
+
+      {/* 8. TRENDING PRODUCTS */}
+      {products.trending.length > 0 && (
+        <section className="py-12 lg:py-16 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4">
+            <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">Trending Now 🔥</h2>
+                <p className="text-gray-500 mt-1">Most loved by our fashion community</p>
+              </div>
+            </motion.div>
+            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+              {products.trending.map((product) => (
+                <HomeProductCard key={product.id} product={product} />
+              ))}
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* 9. NEW ARRIVALS */}
+      {products.newArrivals.length > 0 && (
+        <section className="py-12 lg:py-16">
+          <div className="max-w-7xl mx-auto px-4">
+            <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">New Arrivals ✨</h2>
+                <p className="text-gray-500 mt-1">Just arrived in our catalogue</p>
+              </div>
+            </motion.div>
+            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+              {products.newArrivals.map((product) => (
+                <HomeProductCard key={product.id} product={product} />
+              ))}
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* 16. BRAND SHOWCASE */}
+      <BrandShowcase />
+
+      {/* 17. CUSTOMER TESTIMONIALS */}
+      <TestimonialsSection />
+
+      {/* 18. INSTAGRAM GALLERY */}
+      <InstagramGallery />
+
+      {/* 21. FAQ PREVIEW */}
+      <FAQPreview />
+
+      {/* 19. NEWSLETTER SECTION */}
+      <section className="py-12 lg:py-16 bg-charcoal-900">
+        <div className="max-w-2xl mx-auto px-4 text-center">
+          <motion.div {...fadeInUp}>
+            <h2 className="text-2xl lg:text-3xl font-serif font-bold text-white mb-3">Stay in Style</h2>
+            <p className="text-gray-400 mb-6">Subscribe for exclusive festive offers, new arrival alerts, and style updates.</p>
+            <div className="flex gap-2 max-w-md mx-auto">
+              <input type="email" placeholder="Enter your email"
+                className="flex-1 px-4 py-3 rounded-full bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-gold-500 transition-colors" />
+              <button className="px-6 py-3 rounded-full bg-gold-500 hover:bg-gold-600 text-white font-semibold transition-colors shrink-0">
+                Subscribe
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default Home;

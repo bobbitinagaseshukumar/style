@@ -1,0 +1,45 @@
+# Node dependencies
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+*.env
+.env.local
+.env.development.local
+.env.production.local
+
+# Build output
+dist/
+**/dist/
+build/
+.output/
+
+# Logs & Temp
+logs/
+*.log
+*.tmp
+uploads/*
+!uploads/.gitkeep
+*.db
+*.db-journal
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Prisma
+/server/prisma/migrations
+
