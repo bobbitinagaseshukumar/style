@@ -4,12 +4,15 @@
   "description": "StyleVerse - Enterprise Clothing & Jewellery E-Commerce Platform",
   "private": true,
   "scripts": {
+    "postinstall": "cd client && npm install --legacy-peer-deps && cd ../server && npm install",
     "dev:client": "cd client && npm run dev",
     "dev:server": "cd server && npm run dev",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "install:all": "npm install && cd client && npm install --legacy-peer-deps && cd ../server && npm install",
     "build": "cd client && npm run build",
     "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm install && npx prisma generate",
+    "start": "cd server && node server.js",
     "prisma:generate": "cd server && npx prisma generate",
     "prisma:migrate": "cd server && npx prisma migrate dev"
   },
