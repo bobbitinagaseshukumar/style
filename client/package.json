@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.6.1",
+    "@react-three/drei": "^9.102.0",
+    "@react-three/fiber": "^8.16.0",
     "@reduxjs/toolkit": "^2.2.1",
     "axios": "^1.6.7",
     "clsx": "^2.1.0",
