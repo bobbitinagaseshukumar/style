@@ -32,9 +32,24 @@ const { apiLimiter } = require('./middleware/rateLimiter');
 const app = express();
 
 // Security & Core Middlewares
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP headers for cross-domain API & 3D canvas textures
+}));
+
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'https://styelverse-4wrnr9s70-seshu-kumar-s-projects.vercel.app',
+  'http://localhost:3000',
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.includes('localhost')) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
   credentials: true,
 }));
 app.use(morgan('dev'));
