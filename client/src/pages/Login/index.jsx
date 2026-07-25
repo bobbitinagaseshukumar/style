@@ -1,9 +1,9 @@
 import React, { useState, useRef, useCallback, Suspense, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight,
-  FiCheck, FiAlertCircle, FiSmartphone
+  FiCheck, FiAlertCircle, FiSmartphone, FiUser, FiPhone
 } from 'react-icons/fi';
 import { useDispatch } from 'react-redux';
 import api from '../../config/api';
@@ -13,7 +13,7 @@ import { toast } from 'react-toastify';
 const LoginScene = React.lazy(() => import('./LoginScene'));
 
 /* ─── Floating Label Input ───────────────────────────────────── */
-const FloatingInput = ({ id, type, value, onChange, label, icon: Icon, rightIcon, disabled }) => {
+const FloatingInput = ({ id, name, type, value, onChange, label, icon: Icon, rightIcon, disabled, required }) => {
   const [focused, setFocused] = useState(false);
   const isActive = focused || value;
   return (
@@ -27,12 +27,14 @@ const FloatingInput = ({ id, type, value, onChange, label, icon: Icon, rightIcon
         <Icon className={`absolute left-4 text-sm transition-colors duration-300 ${focused ? 'text-yellow-400' : 'text-white/40'}`} />
         <input
           id={id}
+          name={name || id}
           type={type}
           value={value}
           onChange={onChange}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           disabled={disabled}
+          required={required}
           placeholder=" "
           className="w-full pl-11 pr-11 pt-5 pb-2 bg-transparent text-white text-sm outline-none placeholder-transparent disabled:opacity-50"
           aria-label={label}
@@ -72,7 +74,6 @@ const LuxuryButton = ({ loading, success, children, ...props }) => {
         hover:shadow-[0_8px_32px_rgba(212,175,55,0.6)]
       `}
     >
-      {/* Light sweep */}
       {!loading && !success && (
         <motion.div
           className="absolute inset-0 bg-white/20 skew-x-12"
@@ -88,12 +89,12 @@ const LuxuryButton = ({ loading, success, children, ...props }) => {
             animate={{ rotate: 360 }}
             transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
           />
-          <span>Authenticating...</span>
+          <span>Processing...</span>
         </>
       ) : success ? (
         <>
           <FiCheck className="text-white" />
-          <span className="text-white">Welcome Back!</span>
+          <span className="text-white">Success!</span>
         </>
       ) : children}
     </motion.button>
@@ -124,20 +125,45 @@ const AuroraBackground = () => (
   </div>
 );
 
-/* ─── Main Login Page ────────────────────────────────────────── */
-const Login = () => {
-  const [loginMode, setLoginMode] = useState('password');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState('');
-  const [isMobile, setIsMobile] = useState(false);
-
-  const dispatch = useDispatch();
+/* ─── 3D Auth Portal Page ────────────────────────────────────── */
+const Login = ({ initialMode = 'login' }) => {
+  const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  // Mode: 'login' | 'register'
+  const isRegisterPage = location.pathname === '/register' || initialMode === 'register';
+  const [isRegistering, setIsRegistering] = useState(isRegisterPage);
+
+  useEffect(() => {
+    setIsRegistering(location.pathname === '/register' || initialMode === 'register');
+  }, [location.pathname, initialMode]);
+
+  // LOGIN STATE
+  const [loginMode, setLoginMode] = useState('password');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
+  const [loginError, setLoginError] = useState('');
+
+  // REGISTER STATE
+  const [regData, setRegData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    terms: true
+  });
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [regLoading, setRegLoading] = useState(false);
+  const [regSuccess, setRegSuccess] = useState(false);
+  const [regError, setRegError] = useState('');
+
+  const [isMobile, setIsMobile] = useState(false);
   const mouse = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -152,35 +178,90 @@ const Login = () => {
     mouse.current.y = -(e.clientY / window.innerHeight - 0.5) * 2;
   }, []);
 
-  const handleSubmit = async (e) => {
+  // Password rules validation for Register
+  const hasLength = regData.password.length >= 8;
+  const hasUpper = /[A-Z]/.test(regData.password);
+  const hasLower = /[a-z]/.test(regData.password);
+  const hasNumber = /[0-9]/.test(regData.password);
+  const hasSpecial = /[@$!%*?&]/.test(regData.password);
+  const regPasswordValid = hasLength && hasUpper && hasLower && hasNumber && hasSpecial;
+
+  // Toggle Mode & Update Route
+  const toggleMode = (targetIsRegister) => {
+    setIsRegistering(targetIsRegister);
+    if (targetIsRegister) {
+      navigate('/register', { replace: true });
+    } else {
+      navigate('/login', { replace: true });
+    }
+  };
+
+  // LOGIN SUBMIT
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    if (!email) { setError('Please enter your email address'); return; }
+    setLoginError('');
+    if (!loginEmail) { setLoginError('Please enter your email address'); return; }
     try {
-      setLoading(true);
+      setLoginLoading(true);
       if (loginMode === 'otp') {
-        const { data } = await api.post('/auth/login', { email, loginType: 'OTP' });
+        const { data } = await api.post('/auth/login', { email: loginEmail, loginType: 'OTP' });
         toast.info(data.message || 'OTP sent to your email!');
-        navigate('/verify-otp', { state: { email, userId: data.data?.userId } });
+        navigate('/verify-otp', { state: { email: loginEmail, userId: data.data?.userId } });
       } else {
-        if (!password) { setError('Please enter your password'); setLoading(false); return; }
-        const { data } = await api.post('/auth/login', { email, password });
+        if (!loginPassword) { setLoginError('Please enter your password'); setLoginLoading(false); return; }
+        const { data } = await api.post('/auth/login', { email: loginEmail, password: loginPassword });
         dispatch(setCredentials(data.data));
-        setSuccess(true);
+        setLoginSuccess(true);
         toast.success(`Welcome back, ${data.data?.user?.fullName || 'Customer'}!`);
         setTimeout(() => navigate('/'), 1000);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please check credentials.');
+      setLoginError(err.response?.data?.message || 'Login failed. Please check credentials.');
     } finally {
-      setLoading(false);
+      setLoginLoading(false);
     }
   };
 
-  // Card shake on error
-  const cardVariants = {
-    idle: { x: 0 },
-    shake: { x: [0, -8, 8, -6, 6, 0], transition: { duration: 0.5 } },
+  // REGISTER SUBMIT
+  const handleRegChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setRegData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    setRegError('');
+
+    if (!regData.fullName || !regData.email || !regData.password) {
+      setRegError('Please fill in all required fields');
+      return;
+    }
+    if (!regPasswordValid) {
+      setRegError('Password does not meet all security requirements');
+      return;
+    }
+    if (regData.password !== regData.confirmPassword) {
+      setRegError('Passwords do not match');
+      return;
+    }
+    if (!regData.terms) {
+      setRegError('Please accept the Terms & Conditions');
+      return;
+    }
+
+    try {
+      setRegLoading(true);
+      const { data } = await api.post('/auth/register', regData);
+      setRegSuccess(true);
+      toast.success(data.message || 'Registration successful! Verification OTP sent.');
+      setTimeout(() => {
+        navigate('/verify-otp', { state: { email: regData.email, userId: data.data?.userId } });
+      }, 1000);
+    } catch (err) {
+      setRegError(err.response?.data?.message || 'Registration failed. Try again.');
+    } finally {
+      setRegLoading(false);
+    }
   };
 
   return (
@@ -194,7 +275,7 @@ const Login = () => {
 
       {/* LEFT PANEL — 3D Scene */}
       {!isMobile && (
-        <div className="hidden md:flex flex-col w-[60%] relative overflow-hidden">
+        <div className="hidden md:flex flex-col w-[55%] relative overflow-hidden">
           {/* Overlay gradient */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/20 via-transparent to-[#0A0A0A]/60 z-10 pointer-events-none" />
 
@@ -221,13 +302,13 @@ const Login = () => {
               transition={{ delay: 0.8, duration: 0.8 }}
             >
               <h1 className="text-5xl font-bold text-white mb-3 leading-tight">
-                Welcome to<br />
+                {isRegistering ? 'Join the World of' : 'Welcome to'}<br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600">
                   StyleVerse
                 </span>
               </h1>
               <p className="text-white/60 text-lg font-light">
-                Luxury Fashion & Fine Jewellery
+                {isRegistering ? 'Unlock exclusive luxury perks & custom collections' : 'Luxury Fashion & Fine Jewellery'}
               </p>
             </motion.div>
           </div>
@@ -241,280 +322,273 @@ const Login = () => {
               className="flex items-center gap-2"
             >
               <div className="w-8 h-[2px] bg-yellow-400" />
-              <span className="text-yellow-400/80 text-xs font-semibold tracking-widest uppercase">Premium Collection</span>
+              <span className="text-yellow-400/80 text-xs font-semibold tracking-widest uppercase">
+                {isRegistering ? 'Exclusive Membership' : 'Premium Collection'}
+              </span>
             </motion.div>
           </div>
         </div>
       )}
 
-      {/* RIGHT PANEL — Login Card */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12 relative z-20">
-        <motion.div
-          variants={cardVariants}
-          animate={error ? 'shake' : 'idle'}
-          key={error}
-          className="w-full max-w-md"
-        >
+      {/* RIGHT PANEL — 3D Card Flip Container */}
+      <div className="flex-1 flex items-center justify-center p-4 md:p-10 relative z-20 my-auto">
+        <div className="w-full max-w-md" style={{ perspective: '1200px' }}>
           <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
+            animate={{ rotateY: isRegistering ? 180 : 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-[0_20px_80px_rgba(0,0,0,0.6)]"
+            style={{ transformStyle: 'preserve-3d' }}
+            className="relative w-full"
           >
-            {/* Logo */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-center mb-8"
+
+            {/* ─── FRONT FACE: SIGN IN ───────────────────────────────────── */}
+            <div
+              style={{ backfaceVisibility: 'hidden' }}
+              className={`w-full bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-[0_20px_80px_rgba(0,0,0,0.6)] ${isRegistering ? 'pointer-events-none' : ''}`}
             >
-              <motion.div
-                animate={{ y: [0, -4, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                <span className="text-4xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500">
-                  StyleVerse
-                </span>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-              >
-                <p className="text-white/40 text-xs tracking-widest uppercase mt-1">Luxury Fashion & Jewellery</p>
-              </motion.div>
-            </motion.div>
+              {/* Logo */}
+              <div className="text-center mb-6">
+                <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}>
+                  <span className="text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500">
+                    StyleVerse
+                  </span>
+                </motion.div>
+                <p className="text-white/40 text-[10px] tracking-widest uppercase mt-1">Luxury Fashion & Jewellery</p>
+              </div>
 
-            {/* Welcome Text */}
-            <div className="mb-8">
-              <motion.h2
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 }}
-                className="text-2xl font-bold text-white mb-1"
-              >
-                Welcome Back
-              </motion.h2>
-              <motion.p
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.5 }}
-                className="text-white/50 text-sm"
-              >
-                Sign in to continue shopping.
-              </motion.p>
-            </div>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-white mb-1">Welcome Back</h2>
+                <p className="text-white/50 text-xs">Sign in to continue shopping.</p>
+              </div>
 
-            {/* Login Mode Toggle */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.55 }}
-              className="flex bg-white/5 p-1 rounded-xl mb-6 border border-white/10"
-            >
-              {['password', 'otp'].map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => setLoginMode(mode)}
-                  className={`
-                    flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all duration-300
-                    ${loginMode === mode
-                      ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-black shadow-lg'
-                      : 'text-white/50 hover:text-white/80'}
-                  `}
-                >
-                  {mode === 'password' ? '🔐 Password' : '📱 Email OTP'}
-                </button>
-              ))}
-            </motion.div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
-                <FloatingInput
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  label="Email Address"
-                  icon={FiMail}
-                  disabled={loading || success}
-                />
-              </motion.div>
-
-              <AnimatePresence mode="wait">
-                {loginMode === 'password' && (
-                  <motion.div
-                    key="password-field"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <FloatingInput
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      label="Password"
-                      icon={FiLock}
-                      disabled={loading || success}
-                      rightIcon={
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="text-white/40 hover:text-yellow-400 transition-colors p-1"
-                          aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        >
-                          <motion.div
-                            key={showPassword ? 'eye-off' : 'eye'}
-                            initial={{ scale: 0.7, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            {showPassword ? <FiEyeOff size={14} /> : <FiEye size={14} />}
-                          </motion.div>
-                        </button>
-                      }
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Remember + Forgot */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.7 }}
-                className="flex items-center justify-between"
-              >
-                <label className="flex items-center gap-2.5 cursor-pointer group">
-                  <div
-                    onClick={() => setRememberMe(!rememberMe)}
+              {/* Login Mode Toggle */}
+              <div className="flex bg-white/5 p-1 rounded-xl mb-5 border border-white/10">
+                {['password', 'otp'].map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setLoginMode(mode)}
                     className={`
-                      w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-200 flex-shrink-0
-                      ${rememberMe
-                        ? 'bg-yellow-400 border-yellow-400'
-                        : 'border-white/30 group-hover:border-yellow-400/50'}
+                      flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-300
+                      ${loginMode === mode
+                        ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-black shadow-lg'
+                        : 'text-white/50 hover:text-white/80'}
                     `}
                   >
-                    <AnimatePresence>
-                      {rememberMe && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          exit={{ scale: 0 }}
-                        >
-                          <FiCheck size={10} className="text-black font-bold" />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                  <span className="text-white/50 text-xs select-none">Remember me</span>
-                </label>
+                    {mode === 'password' ? '🔐 Password' : '📱 Email OTP'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Login Form */}
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
+                <FloatingInput
+                  id="login-email"
+                  type="email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  label="Email Address"
+                  icon={FiMail}
+                  disabled={loginLoading || loginSuccess}
+                />
 
                 {loginMode === 'password' && (
-                  <Link to="/forgot-password" className="group flex items-center gap-1 text-xs text-yellow-400/70 hover:text-yellow-400 transition-colors">
-                    Forgot Password?
-                    <motion.span
-                      initial={{ x: 0 }}
-                      whileHover={{ x: 3 }}
-                      className="inline-block"
-                    >
-                      <FiArrowRight size={11} />
-                    </motion.span>
-                  </Link>
+                  <FloatingInput
+                    id="login-password"
+                    type={showLoginPassword ? 'text' : 'password'}
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    label="Password"
+                    icon={FiLock}
+                    disabled={loginLoading || loginSuccess}
+                    rightIcon={
+                      <button
+                        type="button"
+                        onClick={() => setShowLoginPassword(!showLoginPassword)}
+                        className="text-white/40 hover:text-yellow-400 transition-colors p-1"
+                      >
+                        {showLoginPassword ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                      </button>
+                    }
+                  />
                 )}
-              </motion.div>
 
-              {/* Error Message */}
-              <AnimatePresence>
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -8, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: 'auto' }}
-                    exit={{ opacity: 0, y: -8, height: 0 }}
-                    className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3"
-                  >
-                    <FiAlertCircle className="text-red-400 flex-shrink-0" size={14} />
-                    <p className="text-red-400 text-xs">{error}</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="rounded border-white/30 text-yellow-400 focus:ring-yellow-400"
+                    />
+                    <span className="text-white/50 text-xs select-none">Remember me</span>
+                  </label>
 
-              {/* Submit Button */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 }}
-              >
-                <LuxuryButton
-                  type="submit"
-                  disabled={loading || success}
-                  loading={loading}
-                  success={success}
-                >
-                  {loginMode === 'otp' ? (
-                    <>
-                      <FiSmartphone /> Send Verification OTP
-                    </>
-                  ) : (
-                    <>
-                      Sign In <FiArrowRight />
-                    </>
+                  {loginMode === 'password' && (
+                    <Link to="/forgot-password" className="text-xs text-yellow-400/70 hover:text-yellow-400 transition-colors">
+                      Forgot Password?
+                    </Link>
                   )}
+                </div>
+
+                {loginError && (
+                  <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-2.5">
+                    <FiAlertCircle className="text-red-400 flex-shrink-0" size={14} />
+                    <p className="text-red-400 text-xs">{loginError}</p>
+                  </div>
+                )}
+
+                <LuxuryButton type="submit" disabled={loginLoading || loginSuccess} loading={loginLoading} success={loginSuccess}>
+                  {loginMode === 'otp' ? <> <FiSmartphone /> Send Verification OTP </> : <> Sign In <FiArrowRight /> </>}
                 </LuxuryButton>
-              </motion.div>
-            </form>
+              </form>
 
-            {/* Divider */}
-            <div className="flex items-center my-6 gap-3">
-              <div className="flex-1 h-px bg-white/10" />
-              <span className="text-white/30 text-xs font-medium">OR</span>
-              <div className="flex-1 h-px bg-white/10" />
-            </div>
-
-            {/* Social Buttons (Future Ready) */}
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'Google', icon: '🇬', color: '#4285F4' },
-                { label: 'Apple', icon: '🍎', color: '#ffffff' },
-              ].map((s) => (
-                <motion.button
-                  key={s.label}
-                  whileHover={{ y: -2, backgroundColor: 'rgba(255,255,255,0.08)' }}
-                  whileTap={{ scale: 0.97 }}
-                  disabled
-                  className="flex items-center justify-center gap-2 py-3 rounded-xl border border-white/10 text-white/40 text-xs font-medium bg-white/3 cursor-not-allowed opacity-50 transition-colors"
+              {/* 3D Flip Link to Register */}
+              <p className="text-center mt-6 text-xs text-white/40">
+                Don&apos;t have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => toggleMode(true)}
+                  className="text-yellow-400 font-bold hover:text-yellow-300 transition-colors underline underline-offset-4 cursor-pointer"
                 >
-                  <span>{s.icon}</span> Continue with {s.label}
-                </motion.button>
-              ))}
+                  Create Account 🔄
+                </button>
+              </p>
             </div>
 
-            {/* Register Link */}
-            <p className="text-center mt-8 text-xs text-white/40">
-              Don&apos;t have an account?{' '}
-              <Link to="/register" className="text-yellow-400 font-bold hover:text-yellow-300 transition-colors underline underline-offset-4">
-                Create Account
-              </Link>
-            </p>
+            {/* ─── BACK FACE: CREATE ACCOUNT ────────────────────────────── */}
+            <div
+              style={{
+                backfaceVisibility: 'hidden',
+                transform: 'rotateY(180deg)',
+              }}
+              className={`absolute inset-0 w-full bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-[0_20px_80px_rgba(0,0,0,0.6)] ${!isRegistering ? 'pointer-events-none' : ''}`}
+            >
+              {/* Logo */}
+              <div className="text-center mb-5">
+                <span className="text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500">
+                  StyleVerse
+                </span>
+                <h2 className="text-xl font-bold text-white mt-1">Create Your Account</h2>
+                <p className="text-white/40 text-xs">Join StyleVerse for luxury shopping perks</p>
+              </div>
 
-            {/* Footer Links */}
-            <div className="flex items-center justify-center gap-4 mt-6">
-              {['Privacy Policy', 'Terms', 'Help'].map((item, i) => (
-                <Link
-                  key={item}
-                  to={`/${item.toLowerCase().replace(' ', '-')}`}
-                  className="text-[10px] text-white/25 hover:text-white/50 transition-colors"
+              {/* Register Form */}
+              <form onSubmit={handleRegisterSubmit} className="space-y-3">
+                <FloatingInput
+                  id="reg-fullName"
+                  name="fullName"
+                  type="text"
+                  value={regData.fullName}
+                  onChange={handleRegChange}
+                  label="Full Name *"
+                  icon={FiUser}
+                  disabled={regLoading || regSuccess}
+                />
+
+                <FloatingInput
+                  id="reg-email"
+                  name="email"
+                  type="email"
+                  value={regData.email}
+                  onChange={handleRegChange}
+                  label="Email Address *"
+                  icon={FiMail}
+                  disabled={regLoading || regSuccess}
+                />
+
+                <FloatingInput
+                  id="reg-phone"
+                  name="phone"
+                  type="tel"
+                  value={regData.phone}
+                  onChange={handleRegChange}
+                  label="Phone Number"
+                  icon={FiPhone}
+                  disabled={regLoading || regSuccess}
+                />
+
+                <div>
+                  <FloatingInput
+                    id="reg-password"
+                    name="password"
+                    type={showRegPassword ? 'text' : 'password'}
+                    value={regData.password}
+                    onChange={handleRegChange}
+                    label="Password *"
+                    icon={FiLock}
+                    disabled={regLoading || regSuccess}
+                    rightIcon={
+                      <button
+                        type="button"
+                        onClick={() => setShowRegPassword(!showRegPassword)}
+                        className="text-white/40 hover:text-yellow-400 transition-colors p-1"
+                      >
+                        {showRegPassword ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                      </button>
+                    }
+                  />
+
+                  {/* Password rules */}
+                  {regData.password.length > 0 && (
+                    <div className="mt-1.5 grid grid-cols-2 gap-1 text-[10px] text-white/40 px-1">
+                      <span className={hasLength ? 'text-emerald-400 font-bold' : ''}>• Min 8 chars</span>
+                      <span className={hasUpper ? 'text-emerald-400 font-bold' : ''}>• Uppercase</span>
+                      <span className={hasLower ? 'text-emerald-400 font-bold' : ''}>• Lowercase</span>
+                      <span className={hasNumber ? 'text-emerald-400 font-bold' : ''}>• Number</span>
+                      <span className={hasSpecial ? 'text-emerald-400 font-bold' : ''}>• Special (@$!%*?&)</span>
+                    </div>
+                  )}
+                </div>
+
+                <FloatingInput
+                  id="reg-confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  value={regData.confirmPassword}
+                  onChange={handleRegChange}
+                  label="Confirm Password *"
+                  icon={FiLock}
+                  disabled={regLoading || regSuccess}
+                />
+
+                <label className="flex items-center gap-2 text-xs text-white/50 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    name="terms"
+                    checked={regData.terms}
+                    onChange={handleRegChange}
+                    className="rounded border-white/30 text-yellow-400 focus:ring-yellow-400"
+                  />
+                  I agree to the <Link to="/terms" className="text-yellow-400 font-semibold hover:underline">Terms</Link> and <Link to="/privacy-policy" className="text-yellow-400 font-semibold hover:underline">Privacy Policy</Link>
+                </label>
+
+                {regError && (
+                  <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-2">
+                    <FiAlertCircle className="text-red-400 flex-shrink-0" size={13} />
+                    <p className="text-red-400 text-xs">{regError}</p>
+                  </div>
+                )}
+
+                <LuxuryButton type="submit" disabled={regLoading || regSuccess} loading={regLoading} success={regSuccess}>
+                  Create Account <FiArrowRight />
+                </LuxuryButton>
+              </form>
+
+              {/* 3D Flip Link to Sign In */}
+              <p className="text-center mt-4 text-xs text-white/40">
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => toggleMode(false)}
+                  className="text-yellow-400 font-bold hover:text-yellow-300 transition-colors underline underline-offset-4 cursor-pointer"
                 >
-                  {item}
-                </Link>
-              ))}
+                  Sign In 🔄
+                </button>
+              </p>
             </div>
+
           </motion.div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );
