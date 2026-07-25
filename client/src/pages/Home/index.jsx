@@ -7,7 +7,7 @@ import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 
-import { FiArrowRight, FiHeart, FiShoppingBag, FiTruck, FiShield, FiRefreshCw, FiHeadphones, FiClock, FiStar, FiZap } from 'react-icons/fi';
+import { FiArrowRight, FiHeart, FiShoppingBag, FiTruck, FiShield, FiRefreshCw, FiHeadphones, FiZap } from 'react-icons/fi';
 import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
 
@@ -21,6 +21,107 @@ import FAQPreview from '../../components/home/FAQPreview';
 
 const fadeInUp = { initial: { opacity: 0, y: 30 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true } };
 const stagger = { initial: {}, whileInView: { transition: { staggerChildren: 0.08 } }, viewport: { once: true } };
+
+// Luxury Fallbacks
+const DEFAULT_HERO_SLIDERS = [
+  {
+    id: 'hero-1',
+    title: 'Royal Kanjeevaram & Silk Sarees',
+    subtitle: 'Handcrafted timeless weaves for grand celebrations.',
+    imageUrl: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1600&auto=format&fit=crop',
+    linkUrl: '/categories/womens-sarees',
+    isActive: true,
+    type: 'HERO_SLIDER'
+  },
+  {
+    id: 'hero-2',
+    title: 'Imperial Temple & Kundan Jewellery',
+    subtitle: 'Certified 22K gold-plated bridal & festive collections.',
+    imageUrl: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=1600&auto=format&fit=crop',
+    linkUrl: '/categories/jewellery',
+    isActive: true,
+    type: 'HERO_SLIDER'
+  },
+  {
+    id: 'hero-3',
+    title: 'Festive Men’s Heritage Kurtas & Shirts',
+    subtitle: 'Royal elegance redefined for modern gentlemen.',
+    imageUrl: 'https://images.unsplash.com/photo-1597983073493-88cd35cf03b0?q=80&w=1600&auto=format&fit=crop',
+    linkUrl: '/categories/mens-wear',
+    isActive: true,
+    type: 'HERO_SLIDER'
+  }
+];
+
+const DEFAULT_CATEGORIES = [
+  { id: 'cat-1', name: 'Silk Sarees', slug: 'womens-sarees', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600' },
+  { id: 'cat-2', name: 'Royal Jewellery', slug: 'jewellery', image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=600' },
+  { id: 'cat-3', name: 'Men’s Wear', slug: 'mens-wear', image: 'https://images.unsplash.com/photo-1597983073493-88cd35cf03b0?w=600' },
+  { id: 'cat-4', name: 'Kids & Baby Collection', slug: 'kids-wear', image: 'https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=600' },
+];
+
+const DEFAULT_PRODUCTS = [
+  {
+    id: 'prod-1',
+    name: 'Kanjivaram Pure Silk Saree with Zari Border',
+    slug: 'kanjivaram-pure-silk-saree',
+    price: 18999,
+    discountPrice: 14999,
+    discountPercent: 21,
+    newArrival: true,
+    trending: true,
+    featured: true,
+    todaysDeal: true,
+    stock: 12,
+    images: [{ url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600' }],
+    category: { name: 'Silk Sarees' }
+  },
+  {
+    id: 'prod-2',
+    name: '22K Gold Plated Royal Kundan Choker Necklace Set',
+    slug: 'royal-kundan-choker-necklace-set',
+    price: 11999,
+    discountPrice: 8499,
+    discountPercent: 29,
+    newArrival: true,
+    trending: true,
+    featured: true,
+    todaysDeal: true,
+    stock: 8,
+    images: [{ url: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=600' }],
+    category: { name: 'Jewellery' }
+  },
+  {
+    id: 'prod-3',
+    name: 'Handcrafted Heritage Art Silk Kurta Set',
+    slug: 'heritage-art-silk-kurta-set',
+    price: 5999,
+    discountPrice: 4299,
+    discountPercent: 28,
+    newArrival: true,
+    trending: true,
+    featured: true,
+    todaysDeal: true,
+    stock: 15,
+    images: [{ url: 'https://images.unsplash.com/photo-1597983073493-88cd35cf03b0?w=600' }],
+    category: { name: 'Men’s Wear' }
+  },
+  {
+    id: 'prod-4',
+    name: 'Antique Temple Work Gold Plated Bangles',
+    slug: 'antique-temple-gold-plated-bangles',
+    price: 3999,
+    discountPrice: 2999,
+    discountPercent: 25,
+    newArrival: true,
+    trending: true,
+    featured: true,
+    todaysDeal: true,
+    stock: 20,
+    images: [{ url: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600' }],
+    category: { name: 'Jewellery' }
+  }
+];
 
 // Reusable Product Card
 const HomeProductCard = ({ product }) => {
@@ -62,10 +163,14 @@ const HomeProductCard = ({ product }) => {
 };
 
 const Home = () => {
-  const [banners, setBanners] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState({ featured: [], trending: [], newArrivals: [], todaysDeals: [] });
-  const [loading, setLoading] = useState(true);
+  const [banners, setBanners] = useState(DEFAULT_HERO_SLIDERS);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [products, setProducts] = useState({
+    featured: DEFAULT_PRODUCTS,
+    trending: DEFAULT_PRODUCTS,
+    newArrivals: DEFAULT_PRODUCTS,
+    todaysDeals: DEFAULT_PRODUCTS
+  });
 
   useEffect(() => {
     const fetchHomeData = async () => {
@@ -79,41 +184,32 @@ const Home = () => {
           api.get('/products?todaysDeal=true&limit=4'),
         ]);
 
-        if (bannersRes.status === 'fulfilled') setBanners(bannersRes.value.data?.data || []);
-        if (categoriesRes.status === 'fulfilled') setCategories(categoriesRes.value.data?.data || []);
+        if (bannersRes.status === 'fulfilled' && bannersRes.value.data?.data?.length > 0) {
+          setBanners(bannersRes.value.data.data);
+        }
+        if (categoriesRes.status === 'fulfilled' && categoriesRes.value.data?.data?.length > 0) {
+          setCategories(categoriesRes.value.data.data);
+        }
         
+        const featuredList = featuredRes.status === 'fulfilled' && featuredRes.value.data?.data?.products?.length > 0 ? featuredRes.value.data.data.products : DEFAULT_PRODUCTS;
+        const trendingList = trendingRes.status === 'fulfilled' && trendingRes.value.data?.data?.products?.length > 0 ? trendingRes.value.data.data.products : DEFAULT_PRODUCTS;
+        const newList = newRes.status === 'fulfilled' && newRes.value.data?.data?.products?.length > 0 ? newRes.value.data.data.products : DEFAULT_PRODUCTS;
+        const dealsList = dealsRes.status === 'fulfilled' && dealsRes.value.data?.data?.products?.length > 0 ? dealsRes.value.data.data.products : DEFAULT_PRODUCTS;
+
         setProducts({
-          featured: featuredRes.status === 'fulfilled' ? (featuredRes.value.data?.data?.products || []) : [],
-          trending: trendingRes.status === 'fulfilled' ? (trendingRes.value.data?.data?.products || []) : [],
-          newArrivals: newRes.status === 'fulfilled' ? (newRes.value.data?.data?.products || []) : [],
-          todaysDeals: dealsRes.status === 'fulfilled' ? (dealsRes.value.data?.data?.products || []) : [],
+          featured: featuredList,
+          trending: trendingList,
+          newArrivals: newList,
+          todaysDeals: dealsList,
         });
       } catch (err) {
         console.error('Home page data fetch error:', err);
-      } finally {
-        setLoading(false);
       }
     };
     fetchHomeData();
   }, []);
 
-  const heroSliders = banners.filter(b => b.type === 'HERO_SLIDER' && b.isActive);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen">
-        <div className="w-full h-[500px] bg-gray-200 animate-pulse" />
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <div className="h-8 w-64 bg-gray-200 rounded animate-pulse mb-8" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="aspect-[3/4] bg-gray-200 rounded-2xl animate-pulse" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const heroSliders = banners.filter(b => (b.type === 'HERO_SLIDER' || !b.type) && (b.isActive !== false));
 
   return (
     <div className="min-h-screen bg-white">

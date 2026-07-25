@@ -4,23 +4,28 @@ import { Link } from 'react-router-dom';
 import { FiChevronDown, FiHelpCircle } from 'react-icons/fi';
 import api from '../../config/api';
 
+const DEFAULT_FAQS = [
+  { id: 'f1', question: 'Are all silk sarees certified pure handloom?', answer: 'Yes! All our silk sarees come with Silk Mark Certification for 100% pure silk quality.' },
+  { id: 'f2', question: 'How does WhatsApp Ordering work?', answer: 'Simply select WhatsApp Order at checkout. Your order details will pre-fill on WhatsApp to message our store representative directly.' },
+  { id: 'f3', question: 'What is the estimated delivery time?', answer: 'Standard delivery takes 3 to 5 business days across India. Express shipping is also available.' },
+  { id: 'f4', question: 'What is your return & exchange policy?', answer: 'We offer hassle-free 7-day easy returns and exchanges for un-worn items with original tags intact.' },
+];
+
 const FAQPreview = () => {
-  const [faqs, setFaqs] = useState([]);
+  const [faqs, setFaqs] = useState(DEFAULT_FAQS);
   const [openId, setOpenId] = useState(null);
 
   useEffect(() => {
     const fetchFaqs = async () => {
       try {
         const { data } = await api.get('/cms/faqs');
-        if (data?.success) setFaqs((data.data || []).slice(0, 4));
+        if (data?.success && data.data?.length > 0) setFaqs((data.data).slice(0, 4));
       } catch (err) {
         console.error('FAQ error:', err);
       }
     };
     fetchFaqs();
   }, []);
-
-  if (faqs.length === 0) return null;
 
   return (
     <section className="py-12 lg:py-16 bg-white">

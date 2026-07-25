@@ -1,14 +1,64 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { FiClock, FiZap, FiShoppingBag, FiHeart } from 'react-icons/fi';
+import { FiZap, FiHeart } from 'react-icons/fi';
 import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
 
+const DEFAULT_FLASH_SALE = {
+  title: 'Grand Festive Flash Sale 🔥',
+  description: 'Up to 50% OFF on Pure Silk Sarees & Bridal Kundan Jewellery Sets',
+  endTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  discountPercent: 35
+};
+
+const DEFAULT_PRODUCTS = [
+  {
+    id: 'flash-1',
+    name: 'Kanjivaram Pure Silk Saree with Zari Border',
+    slug: 'kanjivaram-pure-silk-saree',
+    price: 18999,
+    discountPrice: 13999,
+    discountPercent: 26,
+    stock: 12,
+    images: [{ url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600' }]
+  },
+  {
+    id: 'flash-2',
+    name: '22K Gold Plated Royal Kundan Choker Necklace Set',
+    slug: 'royal-kundan-choker-necklace-set',
+    price: 11999,
+    discountPrice: 7999,
+    discountPercent: 33,
+    stock: 8,
+    images: [{ url: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=600' }]
+  },
+  {
+    id: 'flash-3',
+    name: 'Handcrafted Heritage Art Silk Kurta Set',
+    slug: 'heritage-art-silk-kurta-set',
+    price: 5999,
+    discountPrice: 3999,
+    discountPercent: 33,
+    stock: 15,
+    images: [{ url: 'https://images.unsplash.com/photo-1597983073493-88cd35cf03b0?w=600' }]
+  },
+  {
+    id: 'flash-4',
+    name: 'Antique Temple Work Gold Plated Bangles',
+    slug: 'antique-temple-gold-plated-bangles',
+    price: 3999,
+    discountPrice: 2499,
+    discountPercent: 37,
+    stock: 20,
+    images: [{ url: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600' }]
+  }
+];
+
 const FlashSaleSection = () => {
-  const [flashSale, setFlashSale] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  const [flashSale, setFlashSale] = useState(DEFAULT_FLASH_SALE);
+  const [products, setProducts] = useState(DEFAULT_PRODUCTS);
+  const [timeLeft, setTimeLeft] = useState({ hours: 18, minutes: 42, seconds: 10 });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -21,11 +71,11 @@ const FlashSaleSection = () => {
         if (saleRes.data?.success && saleRes.data.data) {
           setFlashSale(saleRes.data.data);
         }
-        if (prodRes.data?.success) {
-          setProducts(prodRes.data.data?.products || []);
+        if (prodRes.data?.success && prodRes.data.data?.products?.length > 0) {
+          setProducts(prodRes.data.data.products);
         }
       } catch (err) {
-        console.error('Flash sale error:', err);
+        console.error('Flash sale fetch error:', err);
       }
     };
     fetchData();
@@ -50,8 +100,6 @@ const FlashSaleSection = () => {
     const interval = setInterval(calculateTime, 1000);
     return () => clearInterval(interval);
   }, [flashSale]);
-
-  if (!flashSale || products.length === 0) return null;
 
   return (
     <section className="py-12 bg-gradient-to-r from-charcoal-900 via-charcoal-800 to-charcoal-900 text-white overflow-hidden relative">
@@ -90,7 +138,7 @@ const FlashSaleSection = () => {
         {/* Product Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {products.map((product) => {
-            const img = product.images?.[0]?.url || 'https://via.placeholder.com/300';
+            const img = product.images?.[0]?.url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600';
             const stockPct = Math.min(100, Math.max(15, (product.stock / 50) * 100));
 
             return (

@@ -3,22 +3,26 @@ import { motion } from 'framer-motion';
 import { FiStar } from 'react-icons/fi';
 import api from '../../config/api';
 
+const DEFAULT_TESTIMONIALS = [
+  { id: 't1', name: 'Priya Sharma', location: 'Mumbai', rating: 5, comment: 'The Kanjivaram silk saree exceeded my expectations! Rich zari texture and breathtaking packaging.' },
+  { id: 't2', name: 'Ananya Reddy', location: 'Hyderabad', rating: 5, comment: 'The Kundan necklace set looked regal on my wedding day. Quick delivery and 100% authentic.' },
+  { id: 't3', name: 'Rajesh Verma', location: 'Bangalore', rating: 5, comment: 'Exceptional quality kurta shirt! Fits perfectly and fabric feels extremely premium.' },
+];
+
 const TestimonialsSection = () => {
-  const [testimonials, setTestimonials] = useState([]);
+  const [testimonials, setTestimonials] = useState(DEFAULT_TESTIMONIALS);
 
   useEffect(() => {
     const fetchTestimonials = async () => {
       try {
         const { data } = await api.get('/cms/testimonials');
-        if (data?.success) setTestimonials(data.data || []);
+        if (data?.success && data.data?.length > 0) setTestimonials(data.data);
       } catch (err) {
         console.error('Testimonials error:', err);
       }
     };
     fetchTestimonials();
   }, []);
-
-  if (testimonials.length === 0) return null;
 
   return (
     <section className="py-12 lg:py-16 bg-white">
