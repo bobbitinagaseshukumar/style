@@ -7,9 +7,9 @@
     "dev:client": "cd client && npm run dev",
     "dev:server": "cd server && npm run dev",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "build": "cd server && npm install && npx prisma generate && cd ../client && npm install --include=dev --legacy-peer-deps && npm run build",
+    "build": "cd server && npm install && ./node_modules/.bin/prisma generate && cd ../client && npm install --include=dev --legacy-peer-deps && npm run build",
     "build:client": "cd client && npm install --include=dev --legacy-peer-deps && npm run build",
-    "build:server": "cd server && npm install && npx prisma generate",
+    "build:server": "cd server && npm install && ./node_modules/.bin/prisma generate",
     "start": "cd server && node server.js",
     "prisma:generate": "cd server && npx prisma generate",
     "prisma:migrate": "cd server && npx prisma migrate dev"
