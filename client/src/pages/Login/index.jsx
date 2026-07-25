@@ -24,7 +24,7 @@ const FloatingInput = ({ id, name, type, value, onChange, label, icon: Icon, rig
           ? 'border-yellow-400 shadow-[0_0_15px_rgba(212,175,55,0.3)] bg-white/10'
           : 'border-white/20 bg-white/5 hover:border-white/40'}
       `}>
-        <Icon className={`absolute left-4 text-sm transition-colors duration-300 ${focused ? 'text-yellow-400' : 'text-white/40'}`} />
+        <Icon className={`absolute left-3.5 text-xs sm:text-sm transition-colors duration-300 ${focused ? 'text-yellow-400' : 'text-white/40'}`} />
         <input
           id={id}
           name={name || id}
@@ -36,14 +36,14 @@ const FloatingInput = ({ id, name, type, value, onChange, label, icon: Icon, rig
           disabled={disabled}
           required={required}
           placeholder=" "
-          className="w-full pl-11 pr-11 pt-5 pb-2 bg-transparent text-white text-sm outline-none placeholder-transparent disabled:opacity-50"
+          className="w-full pl-10 pr-10 pt-4 pb-1.5 bg-transparent text-white text-xs sm:text-sm outline-none placeholder-transparent disabled:opacity-50"
           aria-label={label}
         />
         <label
           htmlFor={id}
           className={`
-            absolute left-11 pointer-events-none transition-all duration-200 font-medium
-            ${isActive ? 'top-1.5 text-[10px] text-yellow-400' : 'top-1/2 -translate-y-1/2 text-sm text-white/50'}
+            absolute left-10 pointer-events-none transition-all duration-200 font-medium
+            ${isActive ? 'top-1 text-[9px] text-yellow-400' : 'top-1/2 -translate-y-1/2 text-xs text-white/50'}
           `}
         >
           {label}
@@ -60,11 +60,11 @@ const FloatingInput = ({ id, name, type, value, onChange, label, icon: Icon, rig
 const LuxuryButton = ({ loading, success, children, ...props }) => {
   return (
     <motion.button
-      whileHover={{ scale: loading ? 1 : 1.02, y: loading ? 0 : -2 }}
-      whileTap={{ scale: 0.97 }}
+      whileHover={{ scale: loading ? 1 : 1.01, y: loading ? 0 : -1 }}
+      whileTap={{ scale: 0.98 }}
       {...props}
       className={`
-        relative w-full py-4 rounded-xl font-bold text-sm overflow-hidden
+        relative w-full py-3 sm:py-3.5 rounded-xl font-bold text-xs sm:text-sm overflow-hidden
         flex items-center justify-center gap-2
         transition-all duration-300 disabled:cursor-not-allowed
         ${success
@@ -85,7 +85,7 @@ const LuxuryButton = ({ loading, success, children, ...props }) => {
       {loading ? (
         <>
           <motion.div
-            className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full"
+            className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full"
             animate={{ rotate: 360 }}
             transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
           />
@@ -103,7 +103,7 @@ const LuxuryButton = ({ loading, success, children, ...props }) => {
 
 /* ─── Aurora Background ──────────────────────────────────────── */
 const AuroraBackground = () => (
-  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+  <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
     <motion.div
       className="absolute w-[600px] h-[600px] rounded-full opacity-20 blur-3xl"
       style={{ background: 'radial-gradient(circle, #D4AF37, transparent)', top: '-20%', left: '-10%' }}
@@ -116,22 +116,15 @@ const AuroraBackground = () => (
       animate={{ x: [0, -60, 0], y: [0, -50, 0] }}
       transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut', delay: 5 }}
     />
-    <motion.div
-      className="absolute w-[400px] h-[400px] rounded-full opacity-10 blur-3xl"
-      style={{ background: 'radial-gradient(circle, #8B6914, transparent)', top: '50%', left: '50%', transform: 'translate(-50%,-50%)' }}
-      animate={{ scale: [1, 1.3, 1] }}
-      transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
-    />
   </div>
 );
 
-/* ─── 3D Auth Portal Page ────────────────────────────────────── */
+/* ─── Main 3D Auth Component ─────────────────────────────────── */
 const Login = ({ initialMode = 'login' }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // Mode: 'login' | 'register'
   const isRegisterPage = location.pathname === '/register' || initialMode === 'register';
   const [isRegistering, setIsRegistering] = useState(isRegisterPage);
 
@@ -266,25 +259,22 @@ const Login = ({ initialMode = 'login' }) => {
 
   return (
     <div
-      className="min-h-screen w-full flex overflow-hidden bg-[#0A0A0A] relative"
+      className="min-h-screen w-full flex overflow-x-hidden bg-[#0A0A0A] relative"
       onMouseMove={handleMouseMove}
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
-      {/* Aurora Background */}
       <AuroraBackground />
 
       {/* LEFT PANEL — 3D Scene */}
       {!isMobile && (
-        <div className="hidden md:flex flex-col w-[55%] relative overflow-hidden">
-          {/* Overlay gradient */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/20 via-transparent to-[#0A0A0A]/60 z-10 pointer-events-none" />
+        <div className="hidden md:flex flex-col w-[50%] lg:w-[55%] relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/20 via-transparent to-[#0A0A0A]/70 z-10 pointer-events-none" />
 
-          {/* Three.js Canvas */}
           <div className="absolute inset-0">
             <Suspense fallback={
               <div className="w-full h-full flex items-center justify-center">
                 <motion.div
-                  className="w-16 h-16 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full"
+                  className="w-12 h-12 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full"
                   animate={{ rotate: 360 }}
                   transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
                 />
@@ -294,31 +284,29 @@ const Login = ({ initialMode = 'login' }) => {
             </Suspense>
           </div>
 
-          {/* Left Panel Text */}
-          <div className="absolute bottom-16 left-16 z-20">
+          <div className="absolute bottom-12 left-12 z-20">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8, duration: 0.8 }}
+              transition={{ delay: 0.5, duration: 0.8 }}
             >
-              <h1 className="text-5xl font-bold text-white mb-3 leading-tight">
+              <h1 className="text-4xl lg:text-5xl font-bold text-white mb-2 leading-tight">
                 {isRegistering ? 'Join the World of' : 'Welcome to'}<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-600">
                   StyleVerse
                 </span>
               </h1>
-              <p className="text-white/60 text-lg font-light">
+              <p className="text-white/60 text-base font-light">
                 {isRegistering ? 'Unlock exclusive luxury perks & custom collections' : 'Luxury Fashion & Fine Jewellery'}
               </p>
             </motion.div>
           </div>
 
-          {/* Corner decoration */}
           <div className="absolute top-8 left-8 z-20">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 1.2 }}
+              transition={{ delay: 0.8 }}
               className="flex items-center gap-2"
             >
               <div className="w-8 h-[2px] bg-yellow-400" />
@@ -330,9 +318,9 @@ const Login = ({ initialMode = 'login' }) => {
         </div>
       )}
 
-      {/* RIGHT PANEL — 3D Card Flip Container */}
-      <div className="flex-1 flex items-center justify-center p-4 md:p-10 relative z-20 my-auto">
-        <div className="w-full max-w-md" style={{ perspective: '1200px' }}>
+      {/* RIGHT PANEL — 3D Card Container */}
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-10 relative z-20 min-h-screen my-auto">
+        <div className="w-full max-w-md my-auto py-6" style={{ perspective: '1200px' }}>
           <motion.div
             animate={{ rotateY: isRegistering ? 180 : 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -343,34 +331,34 @@ const Login = ({ initialMode = 'login' }) => {
             {/* ─── FRONT FACE: SIGN IN ───────────────────────────────────── */}
             <div
               style={{ backfaceVisibility: 'hidden' }}
-              className={`w-full bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-[0_20px_80px_rgba(0,0,0,0.6)] ${isRegistering ? 'pointer-events-none' : ''}`}
+              className={`w-full bg-[#121212]/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-6 sm:p-8 shadow-[0_20px_80px_rgba(0,0,0,0.8)] ${isRegistering ? 'hidden' : 'block'}`}
             >
               {/* Logo */}
-              <div className="text-center mb-6">
-                <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}>
-                  <span className="text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500">
+              <div className="text-center mb-5">
+                <motion.div animate={{ y: [0, -3, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}>
+                  <span className="text-2xl sm:text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500">
                     StyleVerse
                   </span>
                 </motion.div>
-                <p className="text-white/40 text-[10px] tracking-widest uppercase mt-1">Luxury Fashion & Jewellery</p>
+                <p className="text-white/40 text-[9px] tracking-widest uppercase mt-0.5">Luxury Fashion & Jewellery</p>
               </div>
 
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-white mb-1">Welcome Back</h2>
+              <div className="mb-5">
+                <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">Welcome Back</h2>
                 <p className="text-white/50 text-xs">Sign in to continue shopping.</p>
               </div>
 
               {/* Login Mode Toggle */}
-              <div className="flex bg-white/5 p-1 rounded-xl mb-5 border border-white/10">
+              <div className="flex bg-white/5 p-1 rounded-xl mb-4 border border-white/10">
                 {['password', 'otp'].map((mode) => (
                   <button
                     key={mode}
                     type="button"
                     onClick={() => setLoginMode(mode)}
                     className={`
-                      flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-300
+                      flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300
                       ${loginMode === mode
-                        ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-black shadow-lg'
+                        ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-black shadow-md'
                         : 'text-white/50 hover:text-white/80'}
                     `}
                   >
@@ -380,7 +368,7 @@ const Login = ({ initialMode = 'login' }) => {
               </div>
 
               {/* Login Form */}
-              <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <form onSubmit={handleLoginSubmit} className="space-y-3.5">
                 <FloatingInput
                   id="login-email"
                   type="email"
@@ -406,7 +394,7 @@ const Login = ({ initialMode = 'login' }) => {
                         onClick={() => setShowLoginPassword(!showLoginPassword)}
                         className="text-white/40 hover:text-yellow-400 transition-colors p-1"
                       >
-                        {showLoginPassword ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                        {showLoginPassword ? <FiEyeOff size={13} /> : <FiEye size={13} />}
                       </button>
                     }
                   />
@@ -424,15 +412,15 @@ const Login = ({ initialMode = 'login' }) => {
                   </label>
 
                   {loginMode === 'password' && (
-                    <Link to="/forgot-password" className="text-xs text-yellow-400/70 hover:text-yellow-400 transition-colors">
+                    <Link to="/forgot-password" className="text-xs text-yellow-400/80 hover:text-yellow-400 transition-colors">
                       Forgot Password?
                     </Link>
                   )}
                 </div>
 
                 {loginError && (
-                  <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-2.5">
-                    <FiAlertCircle className="text-red-400 flex-shrink-0" size={14} />
+                  <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-3.5 py-2">
+                    <FiAlertCircle className="text-red-400 flex-shrink-0" size={13} />
                     <p className="text-red-400 text-xs">{loginError}</p>
                   </div>
                 )}
@@ -443,7 +431,7 @@ const Login = ({ initialMode = 'login' }) => {
               </form>
 
               {/* 3D Flip Link to Register */}
-              <p className="text-center mt-6 text-xs text-white/40">
+              <p className="text-center mt-5 text-xs text-white/40">
                 Don&apos;t have an account?{' '}
                 <button
                   type="button"
@@ -461,19 +449,19 @@ const Login = ({ initialMode = 'login' }) => {
                 backfaceVisibility: 'hidden',
                 transform: 'rotateY(180deg)',
               }}
-              className={`absolute inset-0 w-full bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-[0_20px_80px_rgba(0,0,0,0.6)] ${!isRegistering ? 'pointer-events-none' : ''}`}
+              className={`w-full bg-[#121212]/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-5 sm:p-7 shadow-[0_20px_80px_rgba(0,0,0,0.8)] max-h-[88vh] overflow-y-auto ${!isRegistering ? 'hidden' : 'block'}`}
             >
               {/* Logo */}
-              <div className="text-center mb-5">
-                <span className="text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500">
+              <div className="text-center mb-4">
+                <span className="text-2xl sm:text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500">
                   StyleVerse
                 </span>
-                <h2 className="text-xl font-bold text-white mt-1">Create Your Account</h2>
-                <p className="text-white/40 text-xs">Join StyleVerse for luxury shopping perks</p>
+                <h2 className="text-lg sm:text-xl font-bold text-white mt-0.5">Create Your Account</h2>
+                <p className="text-white/40 text-[11px]">Join StyleVerse for luxury shopping perks</p>
               </div>
 
               {/* Register Form */}
-              <form onSubmit={handleRegisterSubmit} className="space-y-3">
+              <form onSubmit={handleRegisterSubmit} className="space-y-2.5">
                 <FloatingInput
                   id="reg-fullName"
                   name="fullName"
@@ -523,14 +511,13 @@ const Login = ({ initialMode = 'login' }) => {
                         onClick={() => setShowRegPassword(!showRegPassword)}
                         className="text-white/40 hover:text-yellow-400 transition-colors p-1"
                       >
-                        {showRegPassword ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                        {showRegPassword ? <FiEyeOff size={13} /> : <FiEye size={13} />}
                       </button>
                     }
                   />
 
-                  {/* Password rules */}
                   {regData.password.length > 0 && (
-                    <div className="mt-1.5 grid grid-cols-2 gap-1 text-[10px] text-white/40 px-1">
+                    <div className="mt-1 grid grid-cols-2 gap-0.5 text-[9px] text-white/40 px-1">
                       <span className={hasLength ? 'text-emerald-400 font-bold' : ''}>• Min 8 chars</span>
                       <span className={hasUpper ? 'text-emerald-400 font-bold' : ''}>• Uppercase</span>
                       <span className={hasLower ? 'text-emerald-400 font-bold' : ''}>• Lowercase</span>
@@ -551,21 +538,23 @@ const Login = ({ initialMode = 'login' }) => {
                   disabled={regLoading || regSuccess}
                 />
 
-                <label className="flex items-center gap-2 text-xs text-white/50 cursor-pointer pt-1">
+                <label className="flex items-start gap-2 text-[11px] text-white/50 cursor-pointer pt-0.5">
                   <input
                     type="checkbox"
                     name="terms"
                     checked={regData.terms}
                     onChange={handleRegChange}
-                    className="rounded border-white/30 text-yellow-400 focus:ring-yellow-400"
+                    className="mt-0.5 rounded border-white/30 text-yellow-400 focus:ring-yellow-400 shrink-0"
                   />
-                  I agree to the <Link to="/terms" className="text-yellow-400 font-semibold hover:underline">Terms</Link> and <Link to="/privacy-policy" className="text-yellow-400 font-semibold hover:underline">Privacy Policy</Link>
+                  <span>
+                    I agree to the <Link to="/terms" className="text-yellow-400 font-semibold hover:underline">Terms</Link> and <Link to="/privacy-policy" className="text-yellow-400 font-semibold hover:underline">Privacy Policy</Link>
+                  </span>
                 </label>
 
                 {regError && (
-                  <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-2">
-                    <FiAlertCircle className="text-red-400 flex-shrink-0" size={13} />
-                    <p className="text-red-400 text-xs">{regError}</p>
+                  <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-1.5">
+                    <FiAlertCircle className="text-red-400 flex-shrink-0" size={12} />
+                    <p className="text-red-400 text-[11px]">{regError}</p>
                   </div>
                 )}
 
@@ -575,7 +564,7 @@ const Login = ({ initialMode = 'login' }) => {
               </form>
 
               {/* 3D Flip Link to Sign In */}
-              <p className="text-center mt-4 text-xs text-white/40">
+              <p className="text-center mt-3 text-xs text-white/40">
                 Already have an account?{' '}
                 <button
                   type="button"
