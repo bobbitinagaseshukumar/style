@@ -16,6 +16,7 @@ import { formatCurrency } from '../../utils/formatCurrency';
 
 /* ─── Status metadata ─────────────────────────────────────── */
 const STATUS_CONFIG = {
+  PENDING_APPROVAL: { label: 'Pending Approval', color: 'bg-amber-100 text-amber-800 border border-amber-300', dot: 'bg-amber-500' },
   PENDING:          { label: 'Pending',          color: 'bg-yellow-100 text-yellow-700', dot: 'bg-yellow-400' },
   WHATSAPP_PENDING: { label: 'WhatsApp Pending',  color: 'bg-green-100 text-green-700',   dot: 'bg-green-500' },
   CONFIRMED:        { label: 'Confirmed',         color: 'bg-blue-100 text-blue-700',     dot: 'bg-blue-500' },
@@ -24,6 +25,7 @@ const STATUS_CONFIG = {
   OUT_FOR_DELIVERY: { label: 'Out for Delivery',  color: 'bg-indigo-100 text-indigo-700', dot: 'bg-indigo-500' },
   DELIVERED:        { label: 'Delivered',         color: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
   CANCELLED:        { label: 'Cancelled',         color: 'bg-red-100 text-red-700',       dot: 'bg-red-500' },
+  REJECTED:         { label: 'Rejected',          color: 'bg-rose-100 text-rose-700',      dot: 'bg-rose-500' },
 };
 
 const ALL_STATUSES = Object.keys(STATUS_CONFIG);
@@ -309,13 +311,159 @@ const OrderDetail = ({ order, onClose, onStatusUpdate }) => {
   );
 };
 
+/* ─── Admin Order Approval & Cancellation Config Modal ───── */
+const ApproveOrderModal = ({ order, onClose, onApproved }) => {
+  const [deliveryDate, setDeliveryDate] = useState('15 August 2026');
+  const [deliveryTime, setDeliveryTime] = useState('10:00 AM – 1:00 PM');
+  const [deliveryNotes, setDeliveryNotes] = useState('');
+  const [cancellationAllowed, setCancellationAllowed] = useState(true);
+  const [durationMinutes, setDurationMinutes] = useState(60);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleApprove = async (e) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      const res = await api.put(`/orders/admin/${order.id}/approve`, {
+        deliveryDate,
+        deliveryTime,
+        deliveryNotes,
+        cancellationAllowed,
+        cancellationDurationMinutes: durationMinutes,
+      });
+
+      toast.success('Order Approved & Cancellation Window Configured!');
+      onApproved(order.id, res.data?.data);
+      onClose();
+    } catch (err) {
+      console.error('Approve order error:', err);
+      toast.error(err.response?.data?.message || 'Failed to approve order');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white max-w-lg w-full rounded-3xl shadow-2xl overflow-hidden border border-gray-100"
+      >
+        <div className="bg-charcoal-900 p-5 text-white flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gold-400">Order Approval</span>
+            <h3 className="font-serif font-bold text-lg">Approve Order #{order.orderNumber}</h3>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
+        </div>
+
+        <form onSubmit={handleApprove} className="p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Estimated Delivery Date</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. 15 August 2026"
+                value={deliveryDate}
+                onChange={(e) => setDeliveryDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Delivery Time Slot</label>
+              <input
+                type="text"
+                placeholder="e.g. 10:00 AM – 1:00 PM"
+                value={deliveryTime}
+                onChange={(e) => setDeliveryTime(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="p-4 bg-gold-50 border border-gold-200 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-charcoal-900">Allow Customer Cancellation Window</p>
+                <p className="text-[10px] text-gray-500">If enabled, customer can cancel during allowed time limit.</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={cancellationAllowed}
+                onChange={(e) => setCancellationAllowed(e.target.checked)}
+                className="w-5 h-5 rounded text-gold-500 cursor-pointer"
+              />
+            </div>
+
+            {cancellationAllowed && (
+              <div className="space-y-2 pt-2 border-t border-gold-200">
+                <label className="block text-[10px] font-bold text-gray-700 uppercase">Preset Cancellation Window Duration</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { label: '30 Mins', value: 30 },
+                    { label: '1 Hour', value: 60 },
+                    { label: '2 Hours', value: 120 },
+                    { label: '6 Hours', value: 360 },
+                    { label: '12 Hours', value: 720 },
+                    { label: '24 Hours', value: 1440 },
+                    { label: '48 Hours', value: 2880 },
+                    { label: '72 Hours', value: 4320 },
+                  ].map((p) => (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => setDurationMinutes(p.value)}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                        durationMinutes === p.value ? 'bg-gold-500 text-charcoal-900 border-gold-600' : 'bg-white text-gray-700 border-gray-200'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-3 flex justify-end gap-3 border-t">
+            <button type="button" onClick={onClose} className="px-5 py-2 rounded-xl border text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-6 py-2 rounded-xl bg-gold-500 text-charcoal-900 font-extrabold text-xs hover:bg-gold-400 transition cursor-pointer"
+            >
+              {submitting ? 'Approving...' : 'Confirm Approval & Open Window'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
+
 /* ─── Main Admin Orders Page ─────────────────────────────────── */
 const AdminOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [approvalModalOrder, setApprovalModalOrder] = useState(null);
+
+  const handleRejectOrder = async (orderId) => {
+    if (!window.confirm('Are you sure you want to reject this order? Stock will be restored.')) return;
+    try {
+      await api.put(`/orders/admin/${orderId}/reject`, { reason: 'Rejected by Admin' });
+      toast.success('Order rejected');
+      fetchOrders();
+    } catch (err) {
+      toast.error('Failed to reject order');
+    }
+  };
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -481,12 +629,30 @@ const AdminOrders = () => {
                         {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}
                       </td>
                       <td className="px-4 py-4">
-                        <button
-                          onClick={e => { e.stopPropagation(); setSelectedOrder(order); }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-50 text-yellow-700 text-xs font-bold hover:bg-yellow-100 transition"
-                        >
-                          <FiEye size={12} /> View
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          {order.orderStatus === 'PENDING_APPROVAL' && (
+                            <>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setApprovalModalOrder(order); }}
+                                className="px-2.5 py-1 rounded-xl bg-gold-500 text-charcoal-900 text-xs font-extrabold hover:bg-gold-400 transition cursor-pointer"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleRejectOrder(order.id); }}
+                                className="px-2.5 py-1 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-bold hover:bg-red-100 transition cursor-pointer"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={e => { e.stopPropagation(); setSelectedOrder(order); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition cursor-pointer"
+                          >
+                            <FiEye size={12} /> View
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -504,6 +670,13 @@ const AdminOrders = () => {
             order={selectedOrder}
             onClose={() => setSelectedOrder(null)}
             onStatusUpdate={handleStatusUpdate}
+          />
+        )}
+        {approvalModalOrder && (
+          <ApproveOrderModal
+            order={approvalModalOrder}
+            onClose={() => setApprovalModalOrder(null)}
+            onApproved={handleStatusUpdate}
           />
         )}
       </AnimatePresence>

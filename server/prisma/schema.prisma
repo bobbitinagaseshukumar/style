@@ -242,23 +242,36 @@ model Order {
   taxAmount      Float     @default(0)
   totalAmount    Float
 
-  orderStatus    String    @default("PENDING")
-  paymentStatus  String    @default("PENDING")
-  paymentMethod  String    @default("COD")
-  paymentTxnId   String?
+  orderStatus          String    @default("PENDING_APPROVAL") // PENDING_APPROVAL | CONFIRMED | PACKED | SHIPPED | OUT_FOR_DELIVERY | DELIVERED | CANCELLED | REJECTED
+  paymentStatus        String    @default("PENDING")
+  paymentMethod        String    @default("COD")
+  paymentTxnId         String?
 
-  couponCode     String?
-  notes          String?   // Customer order notes / WhatsApp order flag
-  courierName    String?   // Courier company name when shipped
-  trackingNumber String?   // Shipment tracking number
-  trackingUrl    String?   // Direct tracking URL
-  cancelReason   String?   // Reason for cancellation
-  deliveredAt    DateTime? // Actual delivery timestamp
+  approvalStatus       String    @default("PENDING_APPROVAL") // PENDING_APPROVAL | APPROVED | REJECTED
+  approvedAt           DateTime?
+  approvedBy           String?
+  deliveryDate         String?
+  deliveryTime         String?
+  deliveryNotes        String?
 
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  cancellationAllowed  Boolean   @default(false)
+  cancellationStart    DateTime?
+  cancellationEnd      DateTime?
+  cancelledAt          DateTime?
+  cancelledBy          String?   // CUSTOMER | ADMIN
+  cancellationReason   String?
 
-  items          OrderItem[]
+  couponCode           String?
+  notes                String?   // Customer order notes / WhatsApp order flag
+  courierName          String?   // Courier company name when shipped
+  trackingNumber       String?   // Shipment tracking number
+  trackingUrl          String?   // Direct tracking URL
+  deliveredAt          DateTime? // Actual delivery timestamp
+
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  items                OrderItem[]
 }
 
 model OrderItem {

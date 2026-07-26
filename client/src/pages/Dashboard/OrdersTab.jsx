@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiPackage, FiClock, FiCheck, FiTruck, FiX,
-  FiChevronRight, FiRefreshCw, FiMapPin, FiCalendar
+  FiChevronRight, FiRefreshCw, FiMapPin, FiCalendar, FiAlertCircle
 } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import api from '../../config/api';
 
 const STAGES = [
-  { key: 'PENDING', label: 'Order Placed' },
+  { key: 'PENDING_APPROVAL', label: 'Pending Approval' },
   { key: 'CONFIRMED', label: 'Confirmed' },
   { key: 'PACKED', label: 'Packed' },
   { key: 'SHIPPED', label: 'Shipped' },
@@ -17,13 +18,15 @@ const STAGES = [
 ];
 
 const STATUS_CONFIG = {
-  PENDING: { color: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-400/20', icon: FiClock, label: 'Order Placed' },
-  CONFIRMED: { color: 'text-blue-400', bg: 'bg-blue-400/10 border-blue-400/20', icon: FiCheck, label: 'Confirmed' },
+  PENDING_APPROVAL: { color: 'text-amber-400', bg: 'bg-amber-400/10 border-amber-400/20', icon: FiClock, label: 'Pending Approval' },
+  PENDING: { color: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-400/20', icon: FiClock, label: 'Pending' },
+  CONFIRMED: { color: 'text-blue-400', bg: 'bg-blue-400/10 border-blue-400/20', icon: FiCheck, label: 'Approved' },
   PACKED: { color: 'text-purple-400', bg: 'bg-purple-400/10 border-purple-400/20', icon: FiPackage, label: 'Packed' },
   SHIPPED: { color: 'text-orange-400', bg: 'bg-orange-400/10 border-orange-400/20', icon: FiTruck, label: 'Shipped' },
   OUT_FOR_DELIVERY: { color: 'text-indigo-400', bg: 'bg-indigo-400/10 border-indigo-400/20', icon: FiTruck, label: 'Out for Delivery' },
   DELIVERED: { color: 'text-emerald-400', bg: 'bg-emerald-400/10 border-emerald-400/20', icon: FiCheck, label: 'Delivered' },
   CANCELLED: { color: 'text-red-400', bg: 'bg-red-400/10 border-red-400/20', icon: FiX, label: 'Cancelled' },
+  REJECTED: { color: 'text-rose-400', bg: 'bg-rose-400/10 border-rose-400/20', icon: FiX, label: 'Rejected by Admin' },
 };
 
 const getStageIndex = (status) => {
@@ -31,15 +34,134 @@ const getStageIndex = (status) => {
   return idx >= 0 ? idx : 0;
 };
 
+/* ─── Real-Time Cancellation Timer Component ─── */
+const CancellationCountdownTimer = ({ order, onCancelled }) => {
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  useEffect(() => {
+    if (!order.cancellationEnd || !order.cancellationAllowed) return;
+
+    const calcLeft = () => {
+      const end = new Date(order.cancellationEnd).getTime();
+      const now = new Date().getTime();
+      return Math.max(0, Math.floor((end - now) / 1000));
+    };
+
+    setSecondsLeft(calcLeft());
+
+    const interval = setInterval(() => {
+      const rem = calcLeft();
+      setSecondsLeft(rem);
+      if (rem <= 0) clearInterval(interval);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [order.cancellationEnd, order.cancellationAllowed]);
+
+  const handleConfirmCancel = async () => {
+    try {
+      setCancelling(true);
+      await api.post(`/orders/${order.id}/cancel`, { reason: 'Cancelled by customer during window' });
+      toast.success('Order cancelled successfully.');
+      setShowConfirmModal(false);
+      onCancelled();
+    } catch (err) {
+      console.error('Cancel error:', err);
+      toast.error(err.response?.data?.message || 'Failed to cancel order');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  if (!order.cancellationAllowed || ['PACKED', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REJECTED'].includes(order.orderStatus)) {
+    return null;
+  }
+
+  if (secondsLeft <= 0) {
+    return (
+      <div className="flex items-center gap-2 text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-xl">
+        <FiAlertCircle className="w-4 h-4" /> Cancellation Period Expired
+      </div>
+    );
+  }
+
+  const hours = Math.floor(secondsLeft / 3600);
+  const mins = Math.floor((secondsLeft % 3600) / 60);
+  const secs = secondsLeft % 60;
+  const timeString = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+  return (
+    <>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-2xl">
+        <div className="flex-1">
+          <p className="text-xs font-bold text-emerald-400">Cancellation Window Active</p>
+          <p className="text-[11px] text-emerald-300/80">
+            Available For: <strong className="font-mono text-white text-xs">{timeString}</strong>
+          </p>
+        </div>
+
+        <button
+          onClick={() => setShowConfirmModal(true)}
+          className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-charcoal-900 font-extrabold text-xs transition cursor-pointer shadow-lg shrink-0"
+        >
+          Cancel Order
+        </button>
+      </div>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-charcoal-900 border border-gold-500/30 max-w-md w-full rounded-3xl p-6 shadow-2xl text-white space-y-4"
+            >
+              <h3 className="text-lg font-serif font-bold text-white">Cancel Order #{order.orderNumber}?</h3>
+              <p className="text-xs text-gray-400">
+                Are you sure you want to cancel this order? Stock will be restored and any paid amount will be refunded.
+              </p>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="px-4 py-2 rounded-xl border border-white/10 text-xs font-bold text-gray-300 hover:bg-white/5 cursor-pointer"
+                >
+                  No, Keep Order
+                </button>
+                <button
+                  onClick={handleConfirmCancel}
+                  disabled={cancelling}
+                  className="px-5 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white font-extrabold text-xs transition cursor-pointer"
+                >
+                  {cancelling ? 'Cancelling...' : 'Yes, Cancel Order'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
+
 const OrdersTab = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchOrders = () => {
+    setLoading(true);
     api.get('/orders/my')
       .then(({ data }) => setOrders(data.data || []))
       .catch(() => setOrders([]))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchOrders();
   }, []);
 
   if (loading) {
@@ -83,7 +205,8 @@ const OrdersTab = () => {
           {orders.map((order, i) => {
             const cfg = STATUS_CONFIG[order.orderStatus] || STATUS_CONFIG.PENDING;
             const currentStageIdx = getStageIndex(order.orderStatus);
-            const isCancelled = order.orderStatus === 'CANCELLED';
+            const isPendingApproval = order.orderStatus === 'PENDING_APPROVAL';
+            const isCancelled = order.orderStatus === 'CANCELLED' || order.orderStatus === 'REJECTED';
 
             return (
               <motion.div
@@ -111,6 +234,13 @@ const OrdersTab = () => {
                   </div>
                 </div>
 
+                {/* Pending Approval Message Banner */}
+                {isPendingApproval && (
+                  <div className="p-3 bg-amber-400/10 border border-amber-400/30 rounded-xl text-xs text-amber-300">
+                    ℹ️ <strong>Order Status: Pending Approval</strong> — Your order has been placed successfully and is waiting for admin approval.
+                  </div>
+                )}
+
                 {/* Items */}
                 <div className="space-y-2">
                   {(order.items || []).map((item, idx) => (
@@ -134,7 +264,7 @@ const OrdersTab = () => {
                 </div>
 
                 {/* Order Stage Timeline Progress */}
-                {!isCancelled && (
+                {!isCancelled && !isPendingApproval && (
                   <div className="pt-2">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Order Lifecycle Progress</p>
                     <div className="grid grid-cols-6 gap-1">
@@ -158,7 +288,7 @@ const OrdersTab = () => {
                 )}
 
                 {/* Delivery info */}
-                {(order.expectedDeliveryDate || order.courierName || order.trackingNumber) && (
+                {!isPendingApproval && (order.expectedDeliveryDate || order.courierName || order.trackingNumber) && (
                   <div className="bg-gold-500/10 border border-gold-500/20 p-3 rounded-xl flex flex-wrap items-center justify-between text-xs gap-2">
                     <div className="flex items-center gap-2 text-gold-300">
                       <FiCalendar className="w-4 h-4 text-gold-400 shrink-0" />
@@ -173,6 +303,11 @@ const OrdersTab = () => {
                       </div>
                     )}
                   </div>
+                )}
+
+                {/* Live Cancellation Timer & Button */}
+                {!isPendingApproval && (
+                  <CancellationCountdownTimer order={order} onCancelled={fetchOrders} />
                 )}
 
               </motion.div>
