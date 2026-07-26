@@ -72,12 +72,12 @@ const TestimonialsSection = () => {
 
               <div className="flex items-center gap-3 pt-4 border-t border-gray-200/60">
                 <img
-                  src={t.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(t.customerName)}&background=D4AF37&color=fff`}
-                  alt={t.customerName}
+                  src={t.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(t.customerName || 'Customer')}&background=D4AF37&color=fff`}
+                  alt={t.customerName || 'Customer'}
                   className="w-10 h-10 rounded-full object-cover border"
                 />
                 <div>
-                  <h4 className="text-sm font-semibold text-charcoal-900">{t.customerName}</h4>
+                  <h4 className="text-sm font-semibold text-charcoal-900">{t.customerName || 'Valued Customer'}</h4>
                   <p className="text-xs text-gray-400">{t.location || 'Verified Buyer'}</p>
                 </div>
               </div>
