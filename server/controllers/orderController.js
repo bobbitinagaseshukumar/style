@@ -84,7 +84,8 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
         discountAmount: calcDiscount,
         shippingFee: calcShipping,
         totalAmount,
-        orderStatus: 'PENDING',
+        orderStatus: 'PENDING_APPROVAL',
+        approvalStatus: 'PENDING_APPROVAL',
         paymentStatus: paymentMethod === 'COD' ? 'PENDING' : 'PAID',
         paymentMethod: paymentMethod || 'COD',
         couponCode: couponCode || null,
@@ -266,30 +267,63 @@ exports.getOrderById = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, data: order });
 });
 
-// ==================== CANCEL ORDER ====================
+// ==================== CANCEL ORDER (STRICT SERVER-SIDE VALIDATION) ====================
 exports.cancelOrder = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+
   const order = await prisma.order.findFirst({
     where: { id: req.params.id, userId: req.user.id },
     include: { items: true },
   });
+
   if (!order) return next(new ApiError(404, 'Order not found'));
-  if (['SHIPPED', 'DELIVERED', 'CANCELLED'].includes(order.orderStatus)) {
+
+  // 1. Disallow cancellation if in advanced fulfillment stage
+  if (['PACKED', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REJECTED', 'RETURNED'].includes(order.orderStatus)) {
     return next(new ApiError(400, `Cannot cancel order in status '${order.orderStatus}'`));
   }
 
+  // 2. Disallow if Admin disabled cancellation
+  if (!order.cancellationAllowed) {
+    return next(new ApiError(400, 'Cancellation is not enabled for this order by Admin.'));
+  }
+
+  // 3. Strict Server-Time Window Check
+  const now = new Date();
+  if (order.cancellationStart && now < new Date(order.cancellationStart)) {
+    return next(new ApiError(400, 'Cancellation window has not started yet.'));
+  }
+  if (order.cancellationEnd && now > new Date(order.cancellationEnd)) {
+    return next(new ApiError(400, 'Cancellation period has expired. The order is now being processed.'));
+  }
+
   await prisma.$transaction(async (tx) => {
-    await tx.order.update({ where: { id: order.id }, data: { orderStatus: 'CANCELLED' } });
+    await tx.order.update({
+      where: { id: order.id },
+      data: {
+        orderStatus: 'CANCELLED',
+        cancelledBy: 'CUSTOMER',
+        cancelledAt: now,
+        cancellationAllowed: false,
+        cancellationReason: reason || 'Cancelled by customer during cancellation window',
+      },
+    });
+
+    // Restore Inventory Stock
     for (const item of order.items) {
       await tx.product.update({
         where: { id: item.productId },
         data: { stock: { increment: item.quantity } },
       });
     }
+
+    // Customer Notification
     await tx.notification.create({
       data: {
         userId: req.user.id,
         title: `Order Cancelled (#${order.orderNumber})`,
-        message: 'Your order has been cancelled and stock restored.',
+        message: 'Your order has been cancelled successfully and refund initiated.',
         type: 'ORDER',
         link: '/orders',
       },
@@ -440,5 +474,157 @@ exports.adminUpdateOrderStatus = asyncHandler(async (req, res, next) => {
     message: `Order status updated to ${orderStatus}`,
     data: order,
     whatsappLink,
+  });
+});
+
+// ==================== ADMIN: APPROVE ORDER WITH CANCELLATION WINDOW ====================
+exports.adminApproveOrder = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const {
+    deliveryDate, deliveryTime, deliveryNotes,
+    cancellationAllowed, cancellationDurationMinutes,
+    cancellationStart, cancellationEnd
+  } = req.body;
+
+  const now = new Date();
+  let cStart = null;
+  let cEnd = null;
+
+  if (cancellationAllowed) {
+    cStart = cancellationStart ? new Date(cancellationStart) : now;
+    if (cancellationEnd) {
+      cEnd = new Date(cancellationEnd);
+    } else if (cancellationDurationMinutes) {
+      cEnd = new Date(now.getTime() + parseInt(cancellationDurationMinutes) * 60 * 1000);
+    } else {
+      cEnd = new Date(now.getTime() + 60 * 60 * 1000); // Default 1 hour
+    }
+  }
+
+  const order = await prisma.order.update({
+    where: { id },
+    data: {
+      orderStatus: 'CONFIRMED',
+      approvalStatus: 'APPROVED',
+      approvedAt: now,
+      approvedBy: req.user.id,
+      deliveryDate: deliveryDate || null,
+      deliveryTime: deliveryTime || null,
+      deliveryNotes: deliveryNotes || null,
+      cancellationAllowed: !!cancellationAllowed,
+      cancellationStart: cStart,
+      cancellationEnd: cEnd,
+    },
+    include: {
+      items: { include: { product: { include: { images: true } } } },
+      address: true,
+      user: { select: { fullName: true, email: true, phone: true, whatsappNumber: true } },
+    },
+  });
+
+  // Notify Customer
+  await prisma.notification.create({
+    data: {
+      userId: order.userId,
+      title: `Order Approved (#${order.orderNumber})`,
+      message: `Your order has been approved! Expected Delivery: ${deliveryDate || '3-5 Business Days'}.${
+        cancellationAllowed ? ' Cancellation window is open.' : ''
+      }`,
+      type: 'ORDER',
+      link: '/orders',
+    },
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'Order approved successfully with cancellation window configured',
+    data: order,
+  });
+});
+
+// ==================== ADMIN: REJECT ORDER ====================
+exports.adminRejectOrder = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: { items: true },
+  });
+
+  if (!order) return next(new ApiError(404, 'Order not found'));
+
+  await prisma.$transaction(async (tx) => {
+    await tx.order.update({
+      where: { id },
+      data: {
+        orderStatus: 'REJECTED',
+        approvalStatus: 'REJECTED',
+        cancellationAllowed: false,
+        cancellationReason: reason || 'Rejected by Admin',
+      },
+    });
+
+    // Restore Stock
+    for (const item of order.items) {
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stock: { increment: item.quantity } },
+      });
+    }
+
+    // Customer Notification
+    await tx.notification.create({
+      data: {
+        userId: order.userId,
+        title: `Order Rejected (#${order.orderNumber})`,
+        message: `Your order was rejected by Admin. Reason: ${reason || 'Stock unavailable'}`,
+        type: 'ORDER',
+        link: '/orders',
+      },
+    });
+  });
+
+  res.status(200).json({ success: true, message: 'Order rejected and inventory restored.' });
+});
+
+// ==================== GET CANCELLATION ELIGIBILITY (LIVE TIMING) ====================
+exports.getCancellationEligibility = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const order = await prisma.order.findUnique({ where: { id } });
+  if (!order) return next(new ApiError(404, 'Order not found'));
+
+  const now = new Date();
+  let remainingSeconds = 0;
+  let isEligible = false;
+
+  if (
+    order.cancellationAllowed &&
+    !['PACKED', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REJECTED', 'RETURNED'].includes(order.orderStatus)
+  ) {
+    const cStart = order.cancellationStart ? new Date(order.cancellationStart) : null;
+    const cEnd = order.cancellationEnd ? new Date(order.cancellationEnd) : null;
+
+    if (cStart && now < cStart) {
+      isEligible = false;
+    } else if (cEnd && now <= cEnd) {
+      isEligible = true;
+      remainingSeconds = Math.max(0, Math.floor((cEnd.getTime() - now.getTime()) / 1000));
+    } else {
+      isEligible = false;
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      serverTime: now,
+      cancellationAllowed: order.cancellationAllowed,
+      cancellationStart: order.cancellationStart,
+      cancellationEnd: order.cancellationEnd,
+      remainingSeconds,
+      isEligible,
+      orderStatus: order.orderStatus,
+    },
   });
 });
