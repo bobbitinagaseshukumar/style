@@ -42,6 +42,18 @@ model User {
   canAddWishlist      Boolean       @default(true)
   canUseCoupons       Boolean       @default(true)
 
+  // Admin Specific Security & Permission Fields
+  adminRole           String        @default("SUPER_ADMIN") // SUPER_ADMIN | PRODUCT_MANAGER | ORDER_MANAGER | CUSTOMER_MANAGER | INVENTORY_MANAGER | MARKETING_MANAGER | SUPPORT_MANAGER
+  adminPermissions    String?       // JSON string of feature permission flags
+  twoFactorEnabled    Boolean       @default(true)
+  twoFactorMethod     String        @default("EMAIL_OTP") // EMAIL_OTP | AUTHENTICATOR_APP
+  otpCode             String?
+  otpExpiresAt        DateTime?
+  failedLoginAttempts Int           @default(0)
+  lockoutUntil        DateTime?
+  timeZone            String        @default("UTC")
+  mustChangePassword  Boolean       @default(false)
+
   lastLoginAt         DateTime?
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
@@ -57,6 +69,42 @@ model User {
   notifications       Notification[]
   supportTickets      SupportTicket[]
   recentlyViewed      RecentlyViewed[]
+
+  trustedDevices      AdminTrustedDevice[]
+  loginHistory        AdminLoginHistory[]
+}
+
+model AdminTrustedDevice {
+  id                String    @id @default(uuid())
+  adminId           String
+  admin             User      @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  deviceFingerprint String
+  deviceName        String?
+  browser           String?
+  ipAddress         String?
+  trustedUntil      DateTime
+  createdAt         DateTime  @default(now())
+}
+
+model AdminLoginHistory {
+  id                String    @id @default(uuid())
+  adminId           String?
+  admin             User?     @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  adminEmail        String
+  ipAddress         String?
+  browser           String?
+  device            String?
+  country           String?
+  status            String    // SUCCESS | FAILED | BLOCKED | OTP_REQUIRED
+  failureReason     String?
+  createdAt         DateTime  @default(now())
+}
+
+model SystemSetting {
+  id                String    @id @default(uuid())
+  key               String    @unique
+  value             String
+  updatedAt         DateTime  @updatedAt
 }
 
 model EmailOTP {

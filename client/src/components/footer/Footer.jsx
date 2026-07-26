@@ -77,11 +77,14 @@ const Footer = () => {
 
         </div>
 
-        <div className="border-t border-charcoal-800 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-sm text-gray-500">
+        <div className="border-t border-charcoal-800 pt-8 flex flex-col md:flex-row justify-between items-center text-xs">
+          <p className="text-gray-500">
             &copy; {new Date().getFullYear()} {storeSettings?.storeName || 'StyleVerse'}. All rights reserved.
           </p>
-          <div className="flex space-x-4 mt-4 md:mt-0 text-gray-500 text-sm">
+          <div className="flex items-center space-x-6 mt-4 md:mt-0 text-gray-500">
+            <Link to="/admin/login" className="hover:text-gold-400 font-semibold transition-colors flex items-center gap-1 opacity-75 hover:opacity-100">
+              🔒 Admin Login
+            </Link>
             <span>Secure Payments</span>
           </div>
         </div>
