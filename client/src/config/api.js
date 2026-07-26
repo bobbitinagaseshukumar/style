@@ -18,7 +18,8 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    // Admin pages store token as 'adminToken', customer pages use 'token'
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -31,7 +32,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token');
+      // Don't auto-remove adminToken on 401 — admin might just need to re-login
+      const isAdminRoute = error.config?.url?.includes('/admin/');
+      if (isAdminRoute) {
+        localStorage.removeItem('adminToken');
+      } else {
+        localStorage.removeItem('token');
+      }
     }
     return Promise.reject(error);
   }
