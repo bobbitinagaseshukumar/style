@@ -105,14 +105,20 @@ model SubCategory {
   id          String    @id @default(uuid())
   name        String
   slug        String    @unique
+  description String?
   categoryId  String
   category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   image       String?
+  sortOrder   Int       @default(0)
+  status      String    @default("PUBLISHED")
+  isFeatured  Boolean   @default(false)
   isVisible   Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   products    Product[]
+
+  @@unique([categoryId, name])
 }
 
 model Brand {

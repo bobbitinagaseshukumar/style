@@ -64,12 +64,15 @@ const recentlyViewedRoutes = require('./routes/recentlyViewedRoutes');
 
 const adminCustomerRoutes = require('./routes/adminCustomerRoutes');
 
+const subcategoryRoutes = require('./routes/subcategoryRoutes');
+
 // Mount Routes
 app.use('/api/v1/recommendations', recommendationRoutes);
 app.use('/api/v1/recently-viewed', recentlyViewedRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/categories', categoryRoutes);
+app.use('/api/v1/subcategories', subcategoryRoutes);
 app.use('/api/v1/cart', cartRoutes);
 app.use('/api/v1/wishlist', wishlistRoutes);
 app.use('/api/v1/orders', orderRoutes);
