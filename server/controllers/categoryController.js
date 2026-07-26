@@ -140,8 +140,17 @@ exports.updateCategory = asyncHandler(async (req, res, next) => {
 // ==================== DELETE CATEGORY WITH ADVANCED MODES ====================
 exports.deleteCategory = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const { deleteMode, targetCategoryId } = req.body || {};
+  const body = req.body || {};
+  const query = req.query || {};
+  const deleteMode = body.deleteMode || query.deleteMode || 'DELETE_CATEGORY_ONLY';
+  const targetCategoryId = body.targetCategoryId || query.targetCategoryId;
 
+  const category = await prisma.category.findUnique({ where: { id } });
+  if (!category) {
+    return next(new ApiError(404, 'Category not found'));
+  }
+
+  // 1. ARCHIVE
   if (deleteMode === 'ARCHIVE') {
     await prisma.category.update({
       where: { id },
@@ -150,6 +159,10 @@ exports.deleteCategory = asyncHandler(async (req, res, next) => {
     return res.status(200).json({ success: true, message: 'Category archived successfully' });
   }
 
+  // Clean up subcategories to avoid foreign key constraint violations
+  await prisma.subCategory.deleteMany({ where: { categoryId: id } }).catch(() => {});
+
+  // 2. MOVE_PRODUCTS
   if (deleteMode === 'MOVE_PRODUCTS' && targetCategoryId) {
     await prisma.product.updateMany({
       where: { categoryId: id },
@@ -159,17 +172,28 @@ exports.deleteCategory = asyncHandler(async (req, res, next) => {
     return res.status(200).json({ success: true, message: 'Category deleted & products moved' });
   }
 
+  // 3. DELETE_ALL
   if (deleteMode === 'DELETE_ALL') {
-    await prisma.product.deleteMany({ where: { categoryId: id } });
+    await prisma.product.deleteMany({ where: { categoryId: id } }).catch(() => {});
     await prisma.category.delete({ where: { id } });
     return res.status(200).json({ success: true, message: 'Category and all associated products deleted' });
   }
 
-  // Default: Delete category only (unlinks products)
-  await prisma.product.updateMany({
-    where: { categoryId: id },
-    data: { isVisible: false }
+  // 4. DELETE_CATEGORY_ONLY (Default)
+  // Assign products to another remaining category if available, otherwise delete products
+  const otherCategory = await prisma.category.findFirst({
+    where: { id: { not: id } }
   });
+
+  if (otherCategory) {
+    await prisma.product.updateMany({
+      where: { categoryId: id },
+      data: { categoryId: otherCategory.id }
+    });
+  } else {
+    await prisma.product.deleteMany({ where: { categoryId: id } }).catch(() => {});
+  }
+
   await prisma.category.delete({ where: { id } });
 
   res.status(200).json({
