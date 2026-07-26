@@ -48,6 +48,7 @@ const ResetPassword = lazy(() => import('../pages/ResetPassword'));
 const AdminDashboard = lazy(() => import('../admin/Dashboard'));
 const AdminProducts = lazy(() => import('../admin/Products'));
 const AdminCategories = lazy(() => import('../admin/Categories'));
+const AdminSubcategories = lazy(() => import('../admin/Subcategories'));
 const AdminInventory = lazy(() => import('../admin/Inventory'));
 const AdminOrders = lazy(() => import('../admin/Orders'));
 const AdminCustomers = lazy(() => import('../admin/Customers'));
@@ -139,6 +140,7 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="products" element={<AdminProducts />} />
           <Route path="categories" element={<AdminCategories />} />
+          <Route path="subcategories" element={<AdminSubcategories />} />
           <Route path="inventory" element={<AdminInventory />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="users" element={<AdminCustomers />} />

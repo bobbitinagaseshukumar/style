@@ -13,6 +13,7 @@ const sidebarLinks = [
   { path: '/admin/dashboard', label: 'Dashboard', icon: FiHome },
   { path: '/admin/products', label: 'Products', icon: FiBox },
   { path: '/admin/categories', label: 'Categories', icon: FiGrid },
+  { path: '/admin/subcategories', label: 'Subcategories', icon: FiLayers },
   { path: '/admin/orders', label: 'Orders', icon: FiShoppingBag },
   { path: '/admin/customers', label: 'Customers', icon: FiUsers },
   { path: '/admin/coupons', label: 'Coupons', icon: FiTag },

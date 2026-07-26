@@ -69,7 +69,7 @@ const CategoryStep = ({ form, onChange }) => {
   useEffect(() => {
     if (!form.categoryId) { setSubCategories([]); return; }
     setLoadingSubs(true);
-    api.get(`/categories/${form.categoryId}/subcategories`)
+    api.get(`/subcategories?categoryId=${form.categoryId}&activeOnly=true`)
       .then(({ data }) => setSubCategories(data.data || []))
       .catch(() => setSubCategories([]))
       .finally(() => setLoadingSubs(false));

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiFilter, FiSliders, FiHeart, FiShoppingBag, FiStar, FiX } from 'react-icons/fi';
+import { FiFilter, FiSliders, FiHeart, FiShoppingBag, FiStar, FiX, FiLayers, FiCheck } from 'react-icons/fi';
 import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
 
@@ -9,17 +9,20 @@ const Categories = () => {
   const { slug } = useParams();
 
   const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filter & Sort state
   const [selectedCategory, setSelectedCategory] = useState(slug || '');
+  const [selectedSubcategory, setSelectedSubcategory] = useState('');
   const [sortOption, setSortOption] = useState('newest');
-  const [maxPrice, setMaxPrice] = useState(15000);
+  const [maxPrice, setMaxPrice] = useState(20000);
   const [filterFeatured, setFilterFeatured] = useState(false);
   const [filterTrending, setFilterTrending] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
+  // Fetch Parent Categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -32,15 +35,40 @@ const Categories = () => {
     fetchCategories();
   }, []);
 
+  // Fetch Subcategories whenever selectedCategory changes
+  useEffect(() => {
+    const fetchSubcategories = async () => {
+      try {
+        let url = '/subcategories?activeOnly=true';
+        if (selectedCategory) {
+          const found = categories.find(c => c.slug === selectedCategory || c.id === selectedCategory);
+          if (found) url += `&categoryId=${found.id}`;
+        }
+        const { data } = await api.get(url);
+        setSubcategories(data.data || []);
+      } catch (err) {
+        setSubcategories([]);
+      }
+    };
+    fetchSubcategories();
+  }, [selectedCategory, categories]);
+
+  // Fetch Products based on Category & Subcategory selections
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        let url = `/products?limit=30`;
+        let url = `/products?limit=50`;
+
         if (selectedCategory) {
-          const found = categories.find(c => c.slug === selectedCategory || c.id === selectedCategory);
-          if (found) url += `&category=${found.id}`;
+          const foundCat = categories.find(c => c.slug === selectedCategory || c.id === selectedCategory);
+          if (foundCat) url += `&category=${foundCat.id}`;
         }
+
+        if (selectedSubcategory) {
+          url += `&subCategory=${selectedSubcategory}`;
+        }
+
         if (filterFeatured) url += `&featured=true`;
         if (filterTrending) url += `&trending=true`;
 
@@ -56,9 +84,11 @@ const Categories = () => {
       }
     };
     fetchProducts();
-  }, [selectedCategory, sortOption, filterFeatured, filterTrending, categories]);
+  }, [selectedCategory, selectedSubcategory, sortOption, filterFeatured, filterTrending, categories]);
 
   const filteredProducts = products.filter(p => (p.discountPrice || p.price) <= maxPrice);
+
+  const activeCategoryObj = categories.find(c => c.slug === selectedCategory || c.id === selectedCategory);
 
   return (
     <div className="min-h-screen bg-white">
@@ -66,12 +96,73 @@ const Categories = () => {
       <div className="bg-gradient-to-r from-charcoal-900 via-charcoal-800 to-charcoal-900 text-white py-12 px-4 text-center relative overflow-hidden">
         <div className="max-w-7xl mx-auto relative z-10">
           <h1 className="text-3xl sm:text-4xl font-serif font-bold text-white mb-2">
-            {selectedCategory ? categories.find(c => c.slug === selectedCategory || c.id === selectedCategory)?.name || 'Collections' : 'Explore All Collections'}
+            {activeCategoryObj ? activeCategoryObj.name : 'Explore All Collections'}
           </h1>
           <p className="text-sm text-gray-300">Discover handcrafted sarees, kundan jewellery, kurtis, and designer wear</p>
         </div>
       </div>
 
+      {/* ── Subcategories Carousel / Cards Showcase Grid ──────── */}
+      {subcategories.length > 0 && (
+        <div className="bg-gray-50 border-b border-gray-100 py-6 px-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                <FiLayers className="text-amber-500" /> Subcategory Collections ({subcategories.length})
+              </h3>
+              {selectedSubcategory && (
+                <button
+                  onClick={() => setSelectedSubcategory('')}
+                  className="text-xs text-amber-600 font-bold hover:underline"
+                >
+                  Clear Subcategory Filter ✕
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+              <button
+                onClick={() => setSelectedSubcategory('')}
+                className={`px-4 py-3 rounded-2xl border transition-all text-xs shrink-0 cursor-pointer text-left flex items-center gap-3 ${
+                  !selectedSubcategory ? 'bg-amber-500 border-amber-500 text-black shadow-md font-black' : 'bg-white border-gray-200 text-gray-700 hover:border-amber-400'
+                }`}
+              >
+                <div>
+                  <p className="font-bold">All Subcategories</p>
+                  <p className="text-[10px] opacity-80">Full Category View</p>
+                </div>
+              </button>
+
+              {subcategories.map(sub => {
+                const isSelected = selectedSubcategory === sub.id;
+                const prodCount = sub._count?.products || 0;
+
+                return (
+                  <button
+                    key={sub.id}
+                    onClick={() => setSelectedSubcategory(isSelected ? '' : sub.id)}
+                    className={`p-2 pr-4 rounded-2xl border transition-all text-xs shrink-0 cursor-pointer flex items-center gap-3 ${
+                      isSelected ? 'bg-amber-500 border-amber-500 text-black shadow-md font-black' : 'bg-white border-gray-200 text-gray-800 hover:border-amber-400'
+                    }`}
+                  >
+                    <img
+                      src={sub.image || 'https://via.placeholder.com/80'}
+                      alt={sub.name}
+                      className="w-10 h-10 rounded-xl object-cover border border-amber-200"
+                    />
+                    <div className="text-left">
+                      <p className="font-bold leading-tight">{sub.name}</p>
+                      <p className="text-[10px] opacity-75">{prodCount} Product(s)</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Catalog Workspace */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <div className="text-xs text-gray-500">
@@ -103,14 +194,14 @@ const Categories = () => {
           {/* DESKTOP FILTER SIDEBAR */}
           <div className="hidden lg:block bg-gray-50/50 border border-gray-200 rounded-3xl p-6 h-fit space-y-6">
             <div>
-              <h3 className="font-serif font-bold text-sm text-charcoal-900 mb-3 uppercase tracking-wider">Categories</h3>
+              <h3 className="font-serif font-bold text-sm text-charcoal-900 mb-3 uppercase tracking-wider">Parent Categories</h3>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
                   <input
                     type="radio"
                     name="category"
                     checked={!selectedCategory}
-                    onChange={() => setSelectedCategory('')}
+                    onChange={() => { setSelectedCategory(''); setSelectedSubcategory(''); }}
                     className="text-gold-500 focus:ring-gold-500"
                   />
                   All Categories
@@ -121,7 +212,7 @@ const Categories = () => {
                       type="radio"
                       name="category"
                       checked={selectedCategory === cat.slug || selectedCategory === cat.id}
-                      onChange={() => setSelectedCategory(cat.slug)}
+                      onChange={() => { setSelectedCategory(cat.slug); setSelectedSubcategory(''); }}
                       className="text-gold-500 focus:ring-gold-500"
                     />
                     {cat.name}
@@ -130,8 +221,40 @@ const Categories = () => {
               </div>
             </div>
 
+            {/* Subcategories Filter inside Sidebar */}
+            {subcategories.length > 0 && (
+              <div className="pt-2 border-t border-gray-200">
+                <h3 className="font-serif font-bold text-sm text-charcoal-900 mb-3 uppercase tracking-wider">Subcategories</h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="subcategory"
+                      checked={!selectedSubcategory}
+                      onChange={() => setSelectedSubcategory('')}
+                      className="text-gold-500 focus:ring-gold-500"
+                    />
+                    All Subcategories
+                  </label>
+                  {subcategories.map((sub) => (
+                    <label key={sub.id} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="subcategory"
+                        checked={selectedSubcategory === sub.id}
+                        onChange={() => setSelectedSubcategory(sub.id)}
+                        className="text-gold-500 focus:ring-gold-500"
+                      />
+                      <span>{sub.name}</span>
+                      <span className="text-[10px] text-gray-400">({sub._count?.products || 0})</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Price Slider */}
-            <div>
+            <div className="pt-2 border-t border-gray-200">
               <div className="flex justify-between items-center mb-2 text-xs font-bold text-charcoal-900">
                 <span>Max Price</span>
                 <span className="text-gold-600">{formatCurrency(maxPrice)}</span>
@@ -139,7 +262,7 @@ const Categories = () => {
               <input
                 type="range"
                 min={500}
-                max={20000}
+                max={50000}
                 step={500}
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(Number(e.target.value))}
@@ -181,7 +304,7 @@ const Categories = () => {
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className="p-12 text-center text-gray-500 bg-gray-50 rounded-3xl border border-gray-100">
-                No products match your selected filters. Try widening your price range.
+                No products match your selected category or subcategory filters.
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 lg:gap-6">
@@ -198,26 +321,14 @@ const Categories = () => {
                           alt={product.name}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                         />
-                        {product.discountPercent > 0 && (
-                          <span className="absolute top-3 left-3 bg-red-500 text-white font-bold text-[10px] px-2 py-0.5 rounded-full">
-                            -{product.discountPercent}%
-                          </span>
-                        )}
                       </div>
-
                       <div className="p-4">
-                        <p className="text-[11px] text-gold-600 font-semibold uppercase mb-1">{product.category?.name}</p>
-                        <h3 className="text-sm font-semibold text-charcoal-900 line-clamp-1 group-hover:text-gold-600 transition mb-2">
-                          {product.name}
-                        </h3>
-                        <div className="flex items-center gap-2">
-                          <span className="text-base font-bold text-charcoal-900">
-                            {formatCurrency(product.discountPrice || product.price)}
-                          </span>
-                          {product.discountPercent > 0 && (
-                            <span className="text-xs text-gray-400 line-through">
-                              {formatCurrency(product.price)}
-                            </span>
+                        <p className="text-xs text-gray-400 font-bold uppercase">{product.category?.name || 'Category'}</p>
+                        <h3 className="font-bold text-sm text-gray-900 group-hover:text-amber-600 transition truncate mt-0.5">{product.name}</h3>
+                        <div className="flex items-center justify-between mt-2">
+                          <p className="font-black text-amber-600 text-sm">{formatCurrency(product.discountPrice || product.price)}</p>
+                          {product.discountPrice && (
+                            <p className="text-xs text-gray-400 line-through">{formatCurrency(product.price)}</p>
                           )}
                         </div>
                       </div>
