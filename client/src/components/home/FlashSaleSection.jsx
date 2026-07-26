@@ -13,28 +13,20 @@ const DEFAULT_FLASH_SALE = {
 };
 
 const FlashSaleSection = () => {
-  const [flashSale, setFlashSale] = useState(DEFAULT_FLASH_SALE);
+  const [flashSale, setFlashSale] = useState(null);
   const [products, setProducts] = useState([]);
-  const [timeLeft, setTimeLeft] = useState({ hours: 18, minutes: 42, seconds: 10 });
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [saleRes, prodRes, allProdRes] = await Promise.allSettled([
-          api.get('/cms/flash-sale'),
-          api.get('/products?flashSale=true&limit=4'),
-          api.get('/products?limit=4'),
-        ]);
-
-        if (saleRes.status === 'fulfilled' && saleRes.value.data?.success && saleRes.value.data.data) {
-          setFlashSale(saleRes.value.data.data);
+        const { data } = await api.get('/cms/flash-sale');
+        if (data?.success && data.data) {
+          setFlashSale(data.data);
+          if (data.data.products?.length > 0) {
+            setProducts(data.data.products);
+          }
         }
-        
-        let flashProds = prodRes.status === 'fulfilled' ? (prodRes.value.data?.data?.products || []) : [];
-        if (flashProds.length === 0 && allProdRes.status === 'fulfilled') {
-          flashProds = allProdRes.value.data?.data?.products || [];
-        }
-        setProducts(flashProds);
       } catch (err) {
         console.error('Flash sale fetch error:', err);
       }
@@ -43,18 +35,19 @@ const FlashSaleSection = () => {
   }, []);
 
   useEffect(() => {
-    if (!flashSale?.endTime) return;
+    if (!flashSale?.endDate) return;
 
     const calculateTime = () => {
-      const diff = new Date(flashSale.endTime) - new Date();
+      const diff = new Date(flashSale.endDate) - new Date();
       if (diff <= 0) {
-        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         return;
       }
-      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
       const minutes = Math.floor((diff / (1000 * 60)) % 60);
       const seconds = Math.floor((diff / 1000) % 60);
-      setTimeLeft({ hours, minutes, seconds });
+      setTimeLeft({ days, hours, minutes, seconds });
     };
 
     calculateTime();
@@ -62,34 +55,51 @@ const FlashSaleSection = () => {
     return () => clearInterval(interval);
   }, [flashSale]);
 
+  // If no active Flash Sale created by Admin, do not render section
+  if (!flashSale || products.length === 0) return null;
+
+  const bgColor = flashSale.bgColor || '#111827';
+  const textColor = flashSale.textColor || '#FFFFFF';
+  const buttonColor = flashSale.buttonColor || '#D4AF37';
+
   return (
-    <section className="py-12 bg-gradient-to-r from-charcoal-900 via-charcoal-800 to-charcoal-900 text-white overflow-hidden relative">
+    <section className="py-12 overflow-hidden relative transition-all" style={{ backgroundColor: bgColor, color: textColor }}>
       <div className="absolute top-0 right-0 w-96 h-96 bg-gold-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
       <div className="max-w-7xl mx-auto px-4 relative z-10">
+        {/* Banner header image if uploaded */}
+        {flashSale.bannerUrl && (
+          <div className="w-full h-44 sm:h-64 rounded-3xl overflow-hidden mb-8 border border-white/10 shadow-2xl">
+            <img src={flashSale.bannerUrl} alt={flashSale.name || ''} className="w-full h-full object-cover" />
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-bold mb-2">
-              <FiZap className="w-4 h-4 animate-bounce" /> LIMITED TIME OFFER
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-black mb-2 border border-red-500/30">
+              <FiZap className="w-4 h-4 animate-bounce" /> FLASH SALE • LIMITED TIME
             </span>
-            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-white">{flashSale.title}</h2>
-            <p className="text-gray-400 text-sm mt-1">{flashSale.description}</p>
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold" style={{ color: textColor }}>{flashSale.name}</h2>
+            {flashSale.description && <p className="text-gray-300 text-sm mt-1">{flashSale.description}</p>}
           </div>
 
           {/* Countdown Timer */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400 font-medium">Ends in:</span>
+          <div className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/10 backdrop-blur-md">
+            <span className="text-xs text-gray-300 font-bold flex items-center gap-1">
+              ⚡ SALE ENDS IN:
+            </span>
             <div className="flex gap-2">
               {[
+                { label: 'DAYS', val: timeLeft.days },
                 { label: 'HRS', val: timeLeft.hours },
                 { label: 'MIN', val: timeLeft.minutes },
                 { label: 'SEC', val: timeLeft.seconds },
               ].map((t, i) => (
                 <div key={i} className="flex flex-col items-center">
-                  <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-gold-400 font-bold text-lg shadow-inner">
+                  <div className="w-11 h-11 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center font-black text-base shadow-inner" style={{ color: buttonColor }}>
                     {String(t.val).padStart(2, '0')}
                   </div>
-                  <span className="text-[10px] text-gray-400 mt-1 font-semibold">{t.label}</span>
+                  <span className="text-[9px] text-gray-300 mt-0.5 font-extrabold">{t.label}</span>
                 </div>
               ))}
             </div>
@@ -114,8 +124,8 @@ const FlashSaleSection = () => {
                     alt={product.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
-                  <div className="absolute top-3 left-3 bg-red-600 text-white font-bold text-xs px-2.5 py-1 rounded-full shadow-lg">
-                    -{flashSale.discountPercent || product.discountPercent}%
+                  <div className="absolute top-3 left-3 bg-red-600 text-white font-black text-[10px] px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1">
+                    ⚡ {product.discountPercent || 30}% OFF
                   </div>
                   <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center hover:text-red-400 transition">
                     <FiHeart className="w-4 h-4" />
@@ -130,23 +140,23 @@ const FlashSaleSection = () => {
                   </Link>
 
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-lg font-bold text-gold-400">
+                    <span className="text-lg font-bold" style={{ color: buttonColor }}>
                       {formatCurrency(product.discountPrice || product.price)}
                     </span>
                     <span className="text-xs text-gray-400 line-through">
-                      {formatCurrency(product.price)}
+                      {formatCurrency(product.originalPrice || product.price)}
                     </span>
                   </div>
 
                   {/* Stock progress bar */}
                   <div className="space-y-1">
-                    <div className="flex justify-between text-[11px] text-gray-400">
+                    <div className="flex justify-between text-[11px] text-gray-300">
                       <span>Available: <strong className="text-white">{product.stock}</strong></span>
-                      <span className="text-red-400 font-semibold">Almost Sold Out</span>
+                      <span className="text-red-400 font-semibold">Limited Time</span>
                     </div>
                     <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-red-500 to-gold-500 rounded-full transition-all duration-500"
+                        className="h-full bg-gradient-to-r from-red-500 to-amber-400 rounded-full transition-all duration-500"
                         style={{ width: `${stockPct}%` }}
                       />
                     </div>

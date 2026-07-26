@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiHome, FiBox, FiGrid, FiShoppingBag, FiUsers, FiTag,
   FiSettings, FiFileText, FiImage, FiLayout, FiHelpCircle,
-  FiBarChart2, FiMenu, FiX, FiLogOut, FiChevronRight, FiMail
+  FiBarChart2, FiMenu, FiX, FiLogOut, FiChevronRight, FiMail,
+  FiZap, FiLayers
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 
@@ -15,6 +16,9 @@ const sidebarLinks = [
   { path: '/admin/orders', label: 'Orders', icon: FiShoppingBag },
   { path: '/admin/users', label: 'Customers', icon: FiUsers },
   { path: '/admin/coupons', label: 'Coupons', icon: FiTag },
+  { path: '/admin/flash-sale', label: 'Flash Sales', icon: FiZap },
+  { path: '/admin/special-deals', label: 'Special Deals', icon: FiTag },
+  { path: '/admin/collections', label: 'Collections', icon: FiLayers },
   { path: '/admin/banners', label: 'Banners', icon: FiImage },
   { path: '/admin/homepage', label: 'Homepage', icon: FiLayout },
   { path: '/admin/cms', label: 'CMS Pages', icon: FiFileText },

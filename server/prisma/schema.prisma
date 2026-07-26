@@ -423,13 +423,57 @@ model Banner {
 }
 
 model FlashSale {
-  id              String   @id @default(uuid())
-  title           String
+  id              String    @id @default(uuid())
+  name            String    @default("")
   description     String?
-  endTime         DateTime
-  discountPercent Float    @default(30)
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
+  bannerUrl       String?
+  bgColor         String    @default("#111827")
+  textColor       String    @default("#FFFFFF")
+  buttonColor     String    @default("#D4AF37")
+  discountType    String    @default("PERCENTAGE") // PERCENTAGE | FIXED
+  discountValue   Float     @default(30)
+  startDate       DateTime  @default(now())
+  endDate         DateTime  @default(now())
+  productIds      String    @default("[]") // JSON string of selected product IDs
+  status          String    @default("PUBLISHED") // DRAFT | PUBLISHED | HIDDEN | PAUSED
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
+}
+
+model SpecialDeal {
+  id              String    @id @default(uuid())
+  name            String
+  description     String?
+  bannerUrl       String?
+  buttonText      String?   @default("Shop Special Deal")
+  buttonLink      String?   @default("/offers")
+  bgColor         String    @default("#111827")
+  textColor       String    @default("#FFFFFF")
+  productIds      String    @default("[]") // JSON string of selected product IDs
+  startDate       DateTime?
+  endDate         DateTime?
+  status          String    @default("PUBLISHED") // DRAFT | PUBLISHED | HIDDEN | PAUSED
+  isActive        Boolean   @default(true)
+  sortOrder       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
+}
+
+model ProductCollection {
+  id              String    @id @default(uuid())
+  name            String
+  slug            String    @unique
+  description     String?
+  bannerUrl       String?
+  productIds      String    @default("[]") // JSON string of selected product IDs
+  startDate       DateTime?
+  endDate         DateTime?
+  status          String    @default("PUBLISHED") // DRAFT | PUBLISHED | HIDDEN
+  isActive        Boolean   @default(true)
+  sortOrder       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
 }
 
 model BrandShowcase {

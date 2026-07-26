@@ -4,10 +4,13 @@ const cmsController = require('../controllers/cmsController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 // ── Public endpoints ──────────────────────────────────────────
+// Public endpoints
 router.get('/settings', cmsController.getStoreSettings);
 router.get('/announcements', cmsController.getAnnouncements);
 router.get('/banners', cmsController.getBanners);
 router.get('/flash-sale', cmsController.getFlashSale);
+router.get('/special-deals/public', cmsController.getSpecialDealsPublic);
+router.get('/collections/public', cmsController.getCollectionsPublic);
 router.get('/brands', cmsController.getBrands);
 router.get('/testimonials', cmsController.getTestimonials);
 router.get('/instagram', cmsController.getInstagramPosts);
@@ -33,7 +36,29 @@ router.post('/banners/:id/duplicate', ...adminOnly, cmsController.duplicateBanne
 router.delete('/banners/:id', ...adminOnly, cmsController.deleteBanner);
 router.post('/banners/:id/view', cmsController.trackBannerView);
 router.post('/banners/:id/click', cmsController.trackBannerClick);
+
+// Flash Sale Admin Routes
+router.get('/flash-sales/admin/all', ...adminOnly, cmsController.getAllFlashSalesAdmin);
 router.post('/flash-sale', ...adminOnly, cmsController.createFlashSale);
+router.post('/flash-sales', ...adminOnly, cmsController.createFlashSale);
+router.put('/flash-sales/:id', ...adminOnly, cmsController.updateFlashSale);
+router.post('/flash-sales/:id/duplicate', ...adminOnly, cmsController.duplicateFlashSale);
+router.delete('/flash-sales/:id', ...adminOnly, cmsController.deleteFlashSale);
+
+// Special Deals Admin Routes
+router.get('/special-deals/admin/all', ...adminOnly, cmsController.getAllSpecialDealsAdmin);
+router.post('/special-deals', ...adminOnly, cmsController.createSpecialDeal);
+router.put('/special-deals/:id', ...adminOnly, cmsController.updateSpecialDeal);
+router.post('/special-deals/:id/duplicate', ...adminOnly, cmsController.duplicateSpecialDeal);
+router.delete('/special-deals/:id', ...adminOnly, cmsController.deleteSpecialDeal);
+
+// Product Collections Admin Routes
+router.get('/collections/admin/all', ...adminOnly, cmsController.getAllCollectionsAdmin);
+router.post('/collections', ...adminOnly, cmsController.createCollection);
+router.put('/collections/:id', ...adminOnly, cmsController.updateCollection);
+router.post('/collections/:id/duplicate', ...adminOnly, cmsController.duplicateCollection);
+router.delete('/collections/:id', ...adminOnly, cmsController.deleteCollection);
+
 router.get('/homepage/admin/all', ...adminOnly, cmsController.getAllHomepageSectionsAdmin);
 router.post('/homepage/sections', ...adminOnly, cmsController.createHomepageSection);
 router.put('/homepage/sections/reorder', ...adminOnly, cmsController.reorderHomepageSections);
