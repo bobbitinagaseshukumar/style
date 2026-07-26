@@ -55,10 +55,26 @@ model Category {
   description String?
   image       String?
   banner      String?
-  isVisible   Boolean       @default(true)
-  sortOrder   Int           @default(0)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  shortDesc           String?
+  seoTitle            String?
+  seoDescription     String?
+  seoKeywords        String?
+  status             String        @default("PUBLISHED")
+  showOnHomepage     Boolean       @default(true)
+  inNavMenu          Boolean       @default(true)
+  inMegaMenu         Boolean       @default(true)
+  inSearchFilters    Boolean       @default(true)
+  inMobileMenu       Boolean       @default(true)
+  isFeaturedCategory Boolean       @default(false)
+  isTrendingCategory Boolean       @default(false)
+  isLuxuryCollection Boolean       @default(false)
+  isNewCollection    Boolean       @default(false)
+  isFestivalCollection Boolean     @default(false)
+  isPremiumCollection Boolean      @default(false)
+  isVisible           Boolean      @default(true)
+  sortOrder           Int          @default(0)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   subcategories SubCategory[]
   products      Product[]

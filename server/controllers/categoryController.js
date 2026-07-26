@@ -3,127 +3,216 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const slugify = require('slugify');
 
+// ==================== GET ALL CATEGORIES ====================
 exports.getCategories = asyncHandler(async (req, res, next) => {
-    const categories = await prisma.category.findMany({
-        where: { isVisible: true },
-        orderBy: { sortOrder: 'asc' },
-        include: {
-            subcategories: {
-                where: { isVisible: true }
-            },
-            _count: {
-                select: { products: true }
-            }
-        }
-    });
+  const { includeAll, showOnHomepage, inNavMenu, status, featured } = req.query;
 
-    res.status(200).json({
-        success: true,
-        message: 'Categories fetched successfully',
-        data: categories
-    });
+  let whereClause = {};
+
+  if (includeAll === 'true') {
+    if (status && status !== 'ALL') {
+      whereClause.status = status.toUpperCase();
+    }
+  } else {
+    // Customer view: Published categories
+    whereClause.status = 'PUBLISHED';
+    whereClause.isVisible = true;
+
+    if (showOnHomepage === 'true') {
+      whereClause.showOnHomepage = true;
+    }
+    if (inNavMenu === 'true') {
+      whereClause.inNavMenu = true;
+    }
+    if (featured === 'true') {
+      whereClause.isFeaturedCategory = true;
+    }
+  }
+
+  const categories = await prisma.category.findMany({
+    where: whereClause,
+    orderBy: { sortOrder: 'asc' },
+    include: {
+      subcategories: {
+        where: { isVisible: true }
+      },
+      _count: {
+        select: { products: true }
+      }
+    }
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'Categories fetched successfully',
+    data: categories
+  });
 });
 
+// ==================== CREATE CATEGORY ====================
 exports.createCategory = asyncHandler(async (req, res, next) => {
-    const { name, description, image, banner, sortOrder, isVisible } = req.body;
+  const {
+    name, description, shortDesc, image, banner, sortOrder, isVisible,
+    status, showOnHomepage, inNavMenu, inMegaMenu, inSearchFilters, inMobileMenu,
+    isFeaturedCategory, isTrendingCategory, isLuxuryCollection, isNewCollection,
+    isFestivalCollection, isPremiumCollection,
+    seoTitle, seoDescription, seoKeywords
+  } = req.body;
 
-    const slug = slugify(name, { lower: true, strict: true });
+  if (!name || !name.trim()) {
+    return next(new ApiError(400, 'Category Name is required'));
+  }
 
-    const existing = await prisma.category.findUnique({ where: { slug } });
-    if (existing) {
-        return next(new ApiError(400, 'Category with this name already exists'));
+  let slug = slugify(name, { lower: true, strict: true });
+  const existing = await prisma.category.findUnique({ where: { slug } });
+  if (existing) {
+    slug = `${slug}-${Date.now()}`;
+  }
+
+  const category = await prisma.category.create({
+    data: {
+      name: name.trim(),
+      slug,
+      description: description || '',
+      shortDesc: shortDesc || '',
+      image: image || null,
+      banner: banner || null,
+      sortOrder: sortOrder ? parseInt(sortOrder) : 0,
+      isVisible: isVisible !== false,
+      status: (status || 'PUBLISHED').toUpperCase(),
+      showOnHomepage: showOnHomepage === undefined ? true : (showOnHomepage === 'true' || showOnHomepage === true),
+      inNavMenu: inNavMenu === undefined ? true : (inNavMenu === 'true' || inNavMenu === true),
+      inMegaMenu: inMegaMenu === undefined ? true : (inMegaMenu === 'true' || inMegaMenu === true),
+      inSearchFilters: inSearchFilters === undefined ? true : (inSearchFilters === 'true' || inSearchFilters === true),
+      inMobileMenu: inMobileMenu === undefined ? true : (inMobileMenu === 'true' || inMobileMenu === true),
+      isFeaturedCategory: isFeaturedCategory === 'true' || isFeaturedCategory === true,
+      isTrendingCategory: isTrendingCategory === 'true' || isTrendingCategory === true,
+      isLuxuryCollection: isLuxuryCollection === 'true' || isLuxuryCollection === true,
+      isNewCollection: isNewCollection === 'true' || isNewCollection === true,
+      isFestivalCollection: isFestivalCollection === 'true' || isFestivalCollection === true,
+      isPremiumCollection: isPremiumCollection === 'true' || isPremiumCollection === true,
+      seoTitle: seoTitle || null,
+      seoDescription: seoDescription || null,
+      seoKeywords: seoKeywords || null,
     }
+  });
 
-    const category = await prisma.category.create({
-        data: {
-            name,
-            slug,
-            description,
-            image,
-            banner,
-            sortOrder: parseInt(sortOrder || 0),
-            isVisible: isVisible !== false
-        }
-    });
-
-    res.status(201).json({
-        success: true,
-        message: 'Category created successfully',
-        data: category
-    });
+  res.status(201).json({
+    success: true,
+    message: 'Category created successfully',
+    data: category
+  });
 });
 
+// ==================== UPDATE CATEGORY ====================
 exports.updateCategory = asyncHandler(async (req, res, next) => {
-    const { id } = req.params;
-    const updateData = { ...req.body };
+  const { id } = req.params;
+  const updateData = { ...req.body };
 
-    if (updateData.name) {
-        updateData.slug = slugify(updateData.name, { lower: true, strict: true });
+  if (updateData.name) {
+    updateData.slug = slugify(updateData.name, { lower: true, strict: true });
+  }
+
+  if (updateData.sortOrder !== undefined) updateData.sortOrder = parseInt(updateData.sortOrder);
+  if (updateData.status) updateData.status = updateData.status.toUpperCase();
+
+  // Boolean Toggles
+  ['showOnHomepage', 'inNavMenu', 'inMegaMenu', 'inSearchFilters', 'inMobileMenu',
+   'isFeaturedCategory', 'isTrendingCategory', 'isLuxuryCollection', 'isNewCollection',
+   'isFestivalCollection', 'isPremiumCollection', 'isVisible'].forEach(key => {
+    if (updateData[key] !== undefined) {
+      updateData[key] = updateData[key] === 'true' || updateData[key] === true;
     }
+  });
 
-    if (updateData.sortOrder !== undefined) {
-        updateData.sortOrder = parseInt(updateData.sortOrder);
-    }
+  const category = await prisma.category.update({
+    where: { id },
+    data: updateData
+  });
 
-    const category = await prisma.category.update({
-        where: { id },
-        data: updateData
-    });
-
-    res.status(200).json({
-        success: true,
-        message: 'Category updated successfully',
-        data: category
-    });
+  res.status(200).json({
+    success: true,
+    message: 'Category updated successfully',
+    data: category
+  });
 });
 
+// ==================== DELETE CATEGORY WITH ADVANCED MODES ====================
 exports.deleteCategory = asyncHandler(async (req, res, next) => {
-    const { id } = req.params;
-    await prisma.category.delete({ where: { id } });
+  const { id } = req.params;
+  const { deleteMode, targetCategoryId } = req.body || {};
 
-    res.status(200).json({
-        success: true,
-        message: 'Category deleted successfully',
-        data: null
+  if (deleteMode === 'ARCHIVE') {
+    await prisma.category.update({
+      where: { id },
+      data: { status: 'ARCHIVED', isVisible: false, showOnHomepage: false }
     });
+    return res.status(200).json({ success: true, message: 'Category archived successfully' });
+  }
+
+  if (deleteMode === 'MOVE_PRODUCTS' && targetCategoryId) {
+    await prisma.product.updateMany({
+      where: { categoryId: id },
+      data: { categoryId: targetCategoryId }
+    });
+    await prisma.category.delete({ where: { id } });
+    return res.status(200).json({ success: true, message: 'Category deleted & products moved' });
+  }
+
+  if (deleteMode === 'DELETE_ALL') {
+    await prisma.product.deleteMany({ where: { categoryId: id } });
+    await prisma.category.delete({ where: { id } });
+    return res.status(200).json({ success: true, message: 'Category and all associated products deleted' });
+  }
+
+  // Default: Delete category only (unlinks products)
+  await prisma.product.updateMany({
+    where: { categoryId: id },
+    data: { isVisible: false }
+  });
+  await prisma.category.delete({ where: { id } });
+
+  res.status(200).json({
+    success: true,
+    message: 'Category deleted successfully',
+    data: null
+  });
 });
 
-/* ─── Sub Category CRUD ──────────────────────────────────────── */
-
+// ==================== SUBCATEGORY CONTROLLERS ====================
 exports.getSubCategories = asyncHandler(async (req, res, next) => {
-    const { categoryId } = req.params;
-    const subs = await prisma.subCategory.findMany({
-        where: { categoryId },
-        orderBy: { name: 'asc' },
-        include: { _count: { select: { products: true } } }
-    });
-    res.status(200).json({ success: true, data: subs });
+  const { categoryId } = req.params;
+  const subs = await prisma.subCategory.findMany({
+    where: { categoryId },
+    orderBy: { name: 'asc' },
+    include: { _count: { select: { products: true } } }
+  });
+  res.status(200).json({ success: true, data: subs });
 });
 
 exports.createSubCategory = asyncHandler(async (req, res, next) => {
-    const { categoryId } = req.params;
-    const { name, image, isVisible } = req.body;
-    if (!name) return next(new ApiError(400, 'Subcategory name is required'));
+  const { categoryId } = req.params;
+  const { name, image, isVisible } = req.body;
+  if (!name) return next(new ApiError(400, 'Subcategory name is required'));
 
-    const slug = slugify(`${categoryId}-${name}`, { lower: true, strict: true });
+  const slug = slugify(`${categoryId}-${name}`, { lower: true, strict: true });
 
-    const sub = await prisma.subCategory.create({
-        data: { name, slug, categoryId, image, isVisible: isVisible !== false }
-    });
-    res.status(201).json({ success: true, message: 'Subcategory created', data: sub });
+  const sub = await prisma.subCategory.create({
+    data: { name, slug, categoryId, image, isVisible: isVisible !== false }
+  });
+  res.status(201).json({ success: true, message: 'Subcategory created', data: sub });
 });
 
 exports.updateSubCategory = asyncHandler(async (req, res, next) => {
-    const { id } = req.params;
-    const data = { ...req.body };
-    if (data.name) data.slug = slugify(data.name, { lower: true, strict: true });
-    const sub = await prisma.subCategory.update({ where: { id }, data });
-    res.status(200).json({ success: true, message: 'Subcategory updated', data: sub });
+  const { id } = req.params;
+  const data = { ...req.body };
+  if (data.name) data.slug = slugify(data.name, { lower: true, strict: true });
+  const sub = await prisma.subCategory.update({ where: { id }, data });
+  res.status(200).json({ success: true, message: 'Subcategory updated', data: sub });
 });
 
 exports.deleteSubCategory = asyncHandler(async (req, res, next) => {
-    const { id } = req.params;
-    await prisma.subCategory.delete({ where: { id } });
-    res.status(200).json({ success: true, message: 'Subcategory deleted', data: null });
+  const { id } = req.params;
+  await prisma.subCategory.delete({ where: { id } });
+  res.status(200).json({ success: true, message: 'Subcategory deleted', data: null });
 });
-
