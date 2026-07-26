@@ -196,11 +196,12 @@ const AdminLayout = () => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto p-4 lg:p-6 bg-gray-100">
+        <main className="flex-1 overflow-auto p-3 sm:p-5 lg:p-6 bg-gray-100 flex flex-col">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
+            className="w-full flex-1 flex flex-col"
           >
             <Outlet />
           </motion.div>

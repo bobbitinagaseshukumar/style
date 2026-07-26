@@ -209,34 +209,34 @@ const AdminCMS = () => {
   const headerClasses = "text-2xl font-bold text-white mb-6 flex items-center gap-3";
 
   return (
-    <div className="flex min-h-screen bg-[#0a0a0a]">
+    <div className="flex w-full min-h-[calc(100vh-5rem)] bg-[#0a0a0a] rounded-3xl overflow-hidden shadow-2xl border border-white/10">
       {/* Sidebar Navigation */}
-      <div className="w-72 bg-black/80 backdrop-blur-xl border-r border-white/10 flex flex-col fixed h-full z-10">
+      <div className="w-64 sm:w-72 bg-black/90 border-r border-white/10 flex flex-col shrink-0">
         <div className="p-6 border-b border-white/10">
           <h2 className="text-xl font-bold text-[#D4AF37] flex items-center gap-2">
             <FiSettings /> Settings & CMS
           </h2>
         </div>
-        <div className="flex-1 overflow-y-auto py-4">
+        <div className="flex-1 overflow-y-auto py-4 space-y-1">
           {TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center gap-3 px-6 py-4 text-left transition-all ${
+              className={`w-full flex items-center gap-3 px-6 py-3.5 text-left transition-all ${
                 activeTab === tab.id 
-                  ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-r-4 border-[#D4AF37]' 
+                  ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-r-4 border-[#D4AF37] font-bold' 
                   : 'text-gray-400 hover:bg-white/5 hover:text-white'
               }`}
             >
-              <tab.icon className="text-xl" />
-              <span className="font-medium">{tab.label}</span>
+              <tab.icon className="text-lg" />
+              <span className="text-sm font-medium">{tab.label}</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 ml-72 p-8 overflow-y-auto">
+      <div className="flex-1 p-6 lg:p-8 overflow-y-auto w-full">
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 20 }}
