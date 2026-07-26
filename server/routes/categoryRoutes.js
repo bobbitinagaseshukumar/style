@@ -11,6 +11,7 @@ router.get('/:categoryId/subcategories', categoryController.getSubCategories);
 router.post('/', protect, authorize('ADMIN', 'SUPER_ADMIN'), categoryController.createCategory);
 router.put('/:id', protect, authorize('ADMIN', 'SUPER_ADMIN'), categoryController.updateCategory);
 router.delete('/:id', protect, authorize('ADMIN', 'SUPER_ADMIN'), categoryController.deleteCategory);
+router.post('/:id/delete', protect, authorize('ADMIN', 'SUPER_ADMIN'), categoryController.deleteCategory);
 
 router.post('/:categoryId/subcategories', protect, authorize('ADMIN', 'SUPER_ADMIN'), categoryController.createSubCategory);
 router.put('/subcategories/:id', protect, authorize('ADMIN', 'SUPER_ADMIN'), categoryController.updateSubCategory);
