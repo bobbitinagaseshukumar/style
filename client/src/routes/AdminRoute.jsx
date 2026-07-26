@@ -1,10 +1,19 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 const AdminRoute = ({ children }) => {
-  const { isAuthenticated, user } = useAuth();
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
   const adminToken = localStorage.getItem('adminToken');
+
+  // Never intercept login or verify-otp pages
+  if (
+    location.pathname.includes('/login') ||
+    location.pathname.includes('/verify-otp')
+  ) {
+    return children;
+  }
 
   // If unauthenticated or token missing, redirect to dedicated Admin Login page
   if (!isAuthenticated && !adminToken) {
