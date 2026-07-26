@@ -265,11 +265,11 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
 
       {/* Wizard Panel */}
       <motion.div
-        initial={{ x: '100%' }}
-        animate={{ x: 0 }}
-        exit={{ x: '100%' }}
-        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className="relative ml-auto w-full max-w-5xl bg-white h-full flex flex-col shadow-2xl"
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.98 }}
+        transition={{ duration: 0.25, ease: 'easeInOut' }}
+        className="relative w-full max-w-full bg-white h-full flex flex-col shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* ── Header ─────────────────────────────────────────── */}
