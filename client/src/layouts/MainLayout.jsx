@@ -8,7 +8,7 @@ import WhatsAppFloat from '../components/common/WhatsAppFloat';
 
 const MainLayout = () => {
   return (
-    <div className="flex flex-col min-h-screen bg-ivory text-charcoal-900 font-inter relative overflow-x-hidden">
+    <div className="flex flex-col min-h-screen bg-white text-charcoal-900 font-sans relative overflow-x-hidden">
       <CustomCursor />
       <ParticleCanvas />
       <Navbar />
