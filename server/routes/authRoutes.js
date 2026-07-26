@@ -20,4 +20,9 @@ router.post('/reset-password', authLimiter, resetPasswordValidator, validate, au
 router.post('/logout', authController.logout);
 router.get('/me', protect, authController.getMe);
 
+// Auth Settings Routes (Enterprise Auth Manager)
+router.get('/settings/public', authController.getAuthSettingsPublic);
+router.get('/settings/admin', protect, authController.getAuthSettingsAdmin);
+router.put('/settings/admin', protect, authController.updateAuthSettingsAdmin);
+
 module.exports = router;

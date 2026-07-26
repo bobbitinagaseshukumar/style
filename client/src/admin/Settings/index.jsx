@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import api from '../../config/api';
-import { FiSave, FiGlobe, FiTruck, FiCreditCard, FiSearch } from 'react-icons/fi';
+import { FiSave, FiGlobe, FiTruck, FiCreditCard, FiSearch, FiLock } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import AuthenticationManager from './AuthenticationManager';
 
 const AdminSettings = () => {
   const [activeTab, setActiveTab] = useState('general');
@@ -72,8 +73,9 @@ const AdminSettings = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 gap-4">
+      <div className="flex border-b border-gray-200 gap-4 overflow-x-auto">
         {[
+          { id: 'auth', label: 'Authentication Manager', icon: FiLock },
           { id: 'general', label: 'Store Profile', icon: FiGlobe },
           { id: 'shipping', label: 'Shipping Rules', icon: FiTruck },
           { id: 'payment', label: 'Payment Methods', icon: FiCreditCard },
@@ -97,7 +99,10 @@ const AdminSettings = () => {
         })}
       </div>
 
-      <form onSubmit={handleSave} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
+      {activeTab === 'auth' && <AuthenticationManager />}
+
+      {activeTab !== 'auth' && (
+        <form onSubmit={handleSave} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
         {/* Tab 1: General Store Profile */}
         {activeTab === 'general' && (
           <div className="space-y-4">
@@ -183,6 +188,7 @@ const AdminSettings = () => {
           </Button>
         </div>
       </form>
+      )}
     </div>
   );
 };
