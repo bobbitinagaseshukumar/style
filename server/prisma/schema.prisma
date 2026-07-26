@@ -36,6 +36,7 @@ model User {
   otps                EmailOTP[]
   notifications       Notification[]
   supportTickets      SupportTicket[]
+  recentlyViewed      RecentlyViewed[]
 }
 
 model EmailOTP {
@@ -165,6 +166,7 @@ model Product {
   orderItems      OrderItem[]
   reviews         Review[]
   stockAlerts     BackInStockSubscription[]
+  recentlyViewed  RecentlyViewed[]
 }
 
 model ProductImage {
@@ -872,6 +874,20 @@ model UserPreferences {
   favoriteColors     String   @default("[]")
   favoriteSizes      String   @default("[]")
   updatedAt          DateTime @default(now()) @updatedAt
+}
+
+model RecentlyViewed {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  viewCount Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@unique([userId, productId])
+  @@index([userId, updatedAt])
 }
 
 model ActivityLog {
