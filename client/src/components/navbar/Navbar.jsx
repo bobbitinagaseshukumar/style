@@ -333,6 +333,15 @@ const Navbar = () => {
                           >
                             Create Account
                           </Link>
+                          <div className="border-t border-white/5 pt-2 mt-1">
+                            <Link
+                              to="/admin/login"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="block w-full py-2 text-center text-xs font-bold text-yellow-400/90 hover:text-yellow-400 hover:underline transition-all"
+                            >
+                              🔒 Admin Portal Login
+                            </Link>
+                          </div>
                         </div>
                       )}
                     </motion.div>
