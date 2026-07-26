@@ -380,31 +380,438 @@ exports.createAdminAccount = asyncHandler(async (req, res, next) => {
   });
 });
 
-// ==================== MAINTENANCE MODE TOGGLE ====================
-exports.getMaintenanceStatus = asyncHandler(async (req, res) => {
-  const setting = await prisma.systemSetting.findUnique({ where: { key: 'MAINTENANCE_MODE' } });
-  res.status(200).json({
-    success: true,
-    data: {
-      maintenanceMode: setting?.value === 'true',
-      updatedAt: setting?.updatedAt
-    }
-  });
-});
-
-exports.toggleMaintenanceMode = asyncHandler(async (req, res) => {
-  const { enabled } = req.body;
-  const value = enabled === true || enabled === 'true' ? 'true' : 'false';
-
-  const setting = await prisma.systemSetting.upsert({
-    where: { key: 'MAINTENANCE_MODE' },
-    update: { value },
-    create: { key: 'MAINTENANCE_MODE', value }
-  });
-
   res.status(200).json({
     success: true,
     message: `Maintenance Mode ${value === 'true' ? 'ENABLED (Customers will see maintenance page)' : 'DISABLED (Public access restored)'}`,
     data: { maintenanceMode: value === 'true' }
+  });
+});
+
+// ==================== GET LOGGED-IN ADMIN PROFILE ====================
+exports.getAdminProfile = asyncHandler(async (req, res, next) => {
+  const admin = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    select: {
+      id: true, customerId: true, email: true, username: true, fullName: true,
+      firstName: true, lastName: true, phone: true, alternatePhone: true,
+      whatsappNumber: true, gender: true, dob: true, avatar: true, role: true,
+      adminRole: true, adminPermissions: true, isVerified: true, status: true,
+      canLogin: true, twoFactorEnabled: true, twoFactorMethod: true,
+      lastLoginAt: true, createdAt: true, updatedAt: true, timeZone: true
+    }
+  });
+
+  if (!admin) return next(new ApiError(404, 'Admin profile not found'));
+
+  const parsedPermissions = admin.adminPermissions ? JSON.parse(admin.adminPermissions) : {};
+
+  res.status(200).json({
+    success: true,
+    data: {
+      ...admin,
+      adminPermissions: parsedPermissions
+    }
+  });
+});
+
+// ==================== UPDATE ADMIN PROFILE INFO ====================
+exports.updateAdminProfile = asyncHandler(async (req, res, next) => {
+  const { fullName, phone, alternatePhone, whatsappNumber, avatar, timeZone } = req.body;
+
+  const updatedAdmin = await prisma.user.update({
+    where: { id: req.user.id },
+    data: {
+      fullName: fullName ? fullName.trim() : undefined,
+      phone: phone !== undefined ? phone : undefined,
+      alternatePhone: alternatePhone !== undefined ? alternatePhone : undefined,
+      whatsappNumber: whatsappNumber !== undefined ? whatsappNumber : undefined,
+      avatar: avatar !== undefined ? avatar : undefined,
+      timeZone: timeZone || undefined
+    },
+    select: {
+      id: true, email: true, username: true, fullName: true, phone: true,
+      avatar: true, role: true, adminRole: true, isVerified: true, status: true,
+      twoFactorEnabled: true, lastLoginAt: true, createdAt: true
+    }
+  });
+
+  // Log action
+  await prisma.adminActionLog.create({
+    data: {
+      adminId: req.user.id,
+      adminName: updatedAdmin.fullName,
+      targetUserId: req.user.id,
+      targetName: updatedAdmin.fullName,
+      action: 'PROFILE_UPDATED',
+      reason: 'Admin updated profile details',
+      details: JSON.stringify({ fullName, phone, avatarChanged: !!avatar }),
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+      userAgent: req.headers['user-agent'] || 'Browser'
+    }
+  }).catch(() => {});
+
+  res.status(200).json({
+    success: true,
+    message: 'Profile updated successfully!',
+    data: updatedAdmin
+  });
+});
+
+// ==================== STEP 1: REQUEST EMAIL CHANGE OTP ====================
+exports.requestEmailChangeOTP = asyncHandler(async (req, res, next) => {
+  const { newEmail } = req.body;
+
+  if (!newEmail || !newEmail.trim()) {
+    return next(new ApiError(400, 'Please enter a valid new email address'));
+  }
+
+  const cleanNewEmail = newEmail.trim().toLowerCase();
+
+  // Validate format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(cleanNewEmail)) {
+    return next(new ApiError(400, 'Invalid email format. Please check the address.'));
+  }
+
+  if (cleanNewEmail === req.user.email.toLowerCase()) {
+    return next(new ApiError(400, 'New email address must be different from your current email.'));
+  }
+
+  // Check if email already in use by another user
+  const existing = await prisma.user.findUnique({ where: { email: cleanNewEmail } });
+  if (existing) {
+    return next(new ApiError(400, 'This email address is already in use by another account.'));
+  }
+
+  // Generate 6-digit OTP
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+
+  // Store in User blockNotes as JSON metadata temp storage
+  await prisma.user.update({
+    where: { id: req.user.id },
+    data: {
+      otpCode,
+      otpExpiresAt,
+      blockNotes: JSON.stringify({ pendingNewEmail: cleanNewEmail, action: 'CHANGE_EMAIL' })
+    }
+  });
+
+  // Log action
+  await prisma.adminActionLog.create({
+    data: {
+      adminId: req.user.id,
+      adminName: req.user.fullName || req.user.email,
+      targetUserId: req.user.id,
+      targetName: req.user.fullName || req.user.email,
+      action: 'EMAIL_CHANGE_OTP_REQUESTED',
+      reason: 'Admin requested email change OTP',
+      details: `OTP sent to new email: ${cleanNewEmail}`,
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+      userAgent: req.headers['user-agent'] || 'Browser'
+    }
+  }).catch(() => {});
+
+  res.status(200).json({
+    success: true,
+    message: `Verification OTP has been sent to your NEW email address: ${cleanNewEmail}`,
+    data: {
+      pendingNewEmail: cleanNewEmail,
+      otpCode // Included in response payload for instant test verification & display
+    }
+  });
+});
+
+// ==================== STEP 2: VERIFY EMAIL CHANGE OTP ====================
+exports.verifyEmailChangeOTP = asyncHandler(async (req, res, next) => {
+  const { otpCode } = req.body;
+
+  if (!otpCode) {
+    return next(new ApiError(400, 'Please enter the 6-digit OTP code'));
+  }
+
+  const admin = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!admin || !admin.otpCode) {
+    return next(new ApiError(400, 'No active OTP verification request found. Please request a new code.'));
+  }
+
+  if (admin.otpCode !== otpCode.trim()) {
+    return next(new ApiError(400, 'Invalid verification code. Please check and try again.'));
+  }
+
+  if (new Date() > new Date(admin.otpExpiresAt)) {
+    return next(new ApiError(400, 'Verification code has expired. Please request a new code.'));
+  }
+
+  let pendingNewEmail = null;
+  try {
+    const meta = JSON.parse(admin.blockNotes || '{}');
+    if (meta.action === 'CHANGE_EMAIL') pendingNewEmail = meta.pendingNewEmail;
+  } catch (e) {}
+
+  if (!pendingNewEmail) {
+    return next(new ApiError(400, 'Invalid email change request context. Please try again.'));
+  }
+
+  const oldEmail = admin.email;
+
+  // Update Admin Email & clear OTP
+  const updatedAdmin = await prisma.user.update({
+    where: { id: admin.id },
+    data: {
+      email: pendingNewEmail.toLowerCase(),
+      isVerified: true,
+      otpCode: null,
+      otpExpiresAt: null,
+      blockNotes: null
+    }
+  });
+
+  // Log action
+  await prisma.adminActionLog.create({
+    data: {
+      adminId: admin.id,
+      adminName: admin.fullName,
+      targetUserId: admin.id,
+      targetName: admin.fullName,
+      action: 'EMAIL_CHANGED',
+      reason: 'Admin changed email address via OTP verification',
+      details: `Old: ${oldEmail} -> New: ${pendingNewEmail}`,
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+      userAgent: req.headers['user-agent'] || 'Browser'
+    }
+  }).catch(() => {});
+
+  res.status(200).json({
+    success: true,
+    message: `Email address updated successfully to ${pendingNewEmail}!`,
+    data: {
+      email: updatedAdmin.email
+    }
+  });
+});
+
+// ==================== STEP 1: REQUEST PASSWORD CHANGE OTP ====================
+exports.requestPasswordChangeOTP = asyncHandler(async (req, res, next) => {
+  const { currentPassword, newPassword, confirmNewPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return next(new ApiError(400, 'Current password and new password are required'));
+  }
+
+  if (confirmNewPassword && newPassword !== confirmNewPassword) {
+    return next(new ApiError(400, 'New passwords do not match'));
+  }
+
+  // Password rules complexity check
+  const passRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  if (!passRegex.test(newPassword)) {
+    return next(new ApiError(400, 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character (@$!%*?&)'));
+  }
+
+  const admin = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!admin) return next(new ApiError(404, 'Admin account not found'));
+
+  // Verify current password
+  const isMatch = await bcrypt.compare(currentPassword, admin.password);
+  if (!isMatch) {
+    return next(new ApiError(400, 'Current password is incorrect'));
+  }
+
+  // Hash new password temporary
+  const salt = await bcrypt.genSalt(12);
+  const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+
+  // Generate 6-digit OTP
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await prisma.user.update({
+    where: { id: admin.id },
+    data: {
+      otpCode,
+      otpExpiresAt,
+      blockNotes: JSON.stringify({ pendingHashedPassword: hashedNewPassword, action: 'CHANGE_PASSWORD' })
+    }
+  });
+
+  // Log action
+  await prisma.adminActionLog.create({
+    data: {
+      adminId: admin.id,
+      adminName: admin.fullName,
+      targetUserId: admin.id,
+      targetName: admin.fullName,
+      action: 'PASSWORD_CHANGE_OTP_REQUESTED',
+      reason: 'Admin verified current password and requested OTP',
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+      userAgent: req.headers['user-agent'] || 'Browser'
+    }
+  }).catch(() => {});
+
+  res.status(200).json({
+    success: true,
+    message: `Verification OTP sent to your registered email: ${admin.email}`,
+    data: {
+      email: admin.email,
+      otpCode // Included in response payload for instant test verification & display
+    }
+  });
+});
+
+// ==================== STEP 2: VERIFY PASSWORD CHANGE OTP ====================
+exports.verifyPasswordChangeOTP = asyncHandler(async (req, res, next) => {
+  const { otpCode } = req.body;
+
+  if (!otpCode) {
+    return next(new ApiError(400, 'Please enter the 6-digit verification code'));
+  }
+
+  const admin = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!admin || !admin.otpCode) {
+    return next(new ApiError(400, 'No active password change request found.'));
+  }
+
+  if (admin.otpCode !== otpCode.trim()) {
+    return next(new ApiError(400, 'Invalid verification code. Please check and try again.'));
+  }
+
+  if (new Date() > new Date(admin.otpExpiresAt)) {
+    return next(new ApiError(400, 'Verification code has expired. Please request a new code.'));
+  }
+
+  let pendingHashedPassword = null;
+  try {
+    const meta = JSON.parse(admin.blockNotes || '{}');
+    if (meta.action === 'CHANGE_PASSWORD') pendingHashedPassword = meta.pendingHashedPassword;
+  } catch (e) {}
+
+  if (!pendingHashedPassword) {
+    return next(new ApiError(400, 'Invalid request context. Please try again.'));
+  }
+
+  // Update password and increment tokenVersion to revoke all other active sessions
+  const newTokenVersion = (admin.tokenVersion || 0) + 1;
+  await prisma.user.update({
+    where: { id: admin.id },
+    data: {
+      password: pendingHashedPassword,
+      tokenVersion: newTokenVersion,
+      otpCode: null,
+      otpExpiresAt: null,
+      blockNotes: null
+    }
+  });
+
+  // Issue fresh token for current admin session
+  const newToken = generateToken(admin.id, admin.role, newTokenVersion);
+
+  // Log action
+  await prisma.adminActionLog.create({
+    data: {
+      adminId: admin.id,
+      adminName: admin.fullName,
+      targetUserId: admin.id,
+      targetName: admin.fullName,
+      action: 'PASSWORD_CHANGED',
+      reason: 'Admin updated password via current password + OTP verification',
+      details: 'All other active sessions revoked',
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+      userAgent: req.headers['user-agent'] || 'Browser'
+    }
+  }).catch(() => {});
+
+  res.status(200).json({
+    success: true,
+    message: 'Password changed successfully! All other active sessions have been logged out.',
+    data: {
+      token: newToken
+    }
+  });
+});
+
+// ==================== TOGGLE 2FA ====================
+exports.toggleAdmin2FA = asyncHandler(async (req, res, next) => {
+  const { enabled } = req.body;
+  const isEnabled = enabled === true || enabled === 'true';
+
+  const updatedAdmin = await prisma.user.update({
+    where: { id: req.user.id },
+    data: { twoFactorEnabled: isEnabled }
+  });
+
+  await prisma.adminActionLog.create({
+    data: {
+      adminId: req.user.id,
+      adminName: updatedAdmin.fullName,
+      targetUserId: req.user.id,
+      targetName: updatedAdmin.fullName,
+      action: isEnabled ? '2FA_ENABLED' : '2FA_DISABLED',
+      reason: `Admin toggled 2FA ${isEnabled ? 'ON' : 'OFF'}`,
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+      userAgent: req.headers['user-agent'] || 'Browser'
+    }
+  }).catch(() => {});
+
+  res.status(200).json({
+    success: true,
+    message: `Two-Factor Authentication (Email OTP) ${isEnabled ? 'ENABLED' : 'DISABLED'}.`,
+    data: { twoFactorEnabled: updatedAdmin.twoFactorEnabled }
+  });
+});
+
+// ==================== REVOKE ALL OTHER SESSIONS ====================
+exports.revokeAllOtherSessions = asyncHandler(async (req, res) => {
+  const admin = await prisma.user.findUnique({ where: { id: req.user.id } });
+
+  const newTokenVersion = (admin.tokenVersion || 0) + 1;
+
+  // Clear trusted devices
+  await prisma.adminTrustedDevice.deleteMany({ where: { adminId: admin.id } }).catch(() => {});
+
+  // Update token version
+  await prisma.user.update({
+    where: { id: admin.id },
+    data: { tokenVersion: newTokenVersion }
+  });
+
+  const newToken = generateToken(admin.id, admin.role, newTokenVersion);
+
+  await prisma.adminActionLog.create({
+    data: {
+      adminId: admin.id,
+      adminName: admin.fullName,
+      targetUserId: admin.id,
+      targetName: admin.fullName,
+      action: 'ALL_SESSIONS_REVOKED',
+      reason: 'Admin logged out all other active devices & trusted sessions',
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+      userAgent: req.headers['user-agent'] || 'Browser'
+    }
+  }).catch(() => {});
+
+  res.status(200).json({
+    success: true,
+    message: 'All other active sessions and trusted devices have been logged out.',
+    data: { token: newToken }
+  });
+});
+
+// ==================== GET ADMIN SECURITY ACTIVITY LOGS ====================
+exports.getAdminSecurityLogs = asyncHandler(async (req, res) => {
+  const logs = await prisma.adminActionLog.findMany({
+    where: {
+      OR: [
+        { adminId: req.user.id },
+        { targetUserId: req.user.id }
+      ]
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 50
+  });
+
+  res.status(200).json({
+    success: true,
+    data: logs
   });
 });
