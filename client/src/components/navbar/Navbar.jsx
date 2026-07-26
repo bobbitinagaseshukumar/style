@@ -372,7 +372,7 @@ const Navbar = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
-            style={{ top: '80px' }}
+            style={{ top: scrolled ? '64px' : '80px' }}
             onClick={() => setActiveMegaMenu(null)}
           />
         )}
