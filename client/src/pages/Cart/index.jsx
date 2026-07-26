@@ -7,11 +7,7 @@ import { updateQuantity, removeFromCart, applyCoupon, removeCoupon } from '../..
 import { formatCurrency } from '../../utils/formatCurrency';
 import { toast } from 'react-toastify';
 
-const validCoupons = {
-  FESTIVE15: 15,
-  WELCOME10: 10,
-  ROYAL20: 20,
-};
+import api from '../../config/api';
 
 const Cart = () => {
   const { items, appliedCoupon, discountAmount, shippingFee, freeShippingThreshold } = useSelector((state) => state.cart);
@@ -19,24 +15,37 @@ const Cart = () => {
   const navigate = useNavigate();
 
   const [couponInput, setCouponInput] = useState('');
+  const [validating, setValidating] = useState(false);
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const calculatedShipping = subtotal > freeShippingThreshold ? 0 : (items.length > 0 ? shippingFee : 0);
   const grandTotal = Math.max(0, subtotal - discountAmount + calculatedShipping);
 
-  const handleApplyCoupon = (e) => {
+  const handleApplyCoupon = async (e) => {
     e.preventDefault();
     const code = couponInput.trim().toUpperCase();
     if (!code) return;
 
-    if (validCoupons[code]) {
-      dispatch(applyCoupon({ code, discountPercent: validCoupons[code] }));
-      toast.success(`Coupon '${code}' applied! You saved ${validCoupons[code]}%`);
-      setCouponInput('');
-    } else {
-      toast.error('Invalid coupon code. Try FESTIVE15 or WELCOME10');
+    try {
+      setValidating(true);
+      const { data } = await api.post('/coupons/validate', { code, cartTotal: subtotal });
+      if (data?.success && data?.data) {
+        const result = data.data;
+        dispatch(applyCoupon({
+          code: result.code,
+          discountPercent: result.discountPercent || 0,
+          discountFixed: result.discountAmount || 0
+        }));
+        toast.success(`🎉 ${data.message || 'Coupon applied!'} You save ${formatCurrency(result.amountSaved)}`);
+        setCouponInput('');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Invalid coupon code');
+    } finally {
+      setValidating(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-white py-8 lg:py-12">

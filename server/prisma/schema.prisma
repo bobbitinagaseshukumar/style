@@ -274,15 +274,40 @@ model OrderItem {
 }
 
 model Coupon {
-  id             String    @id @default(uuid())
-  code           String    @unique
-  discountPercent Float?
-  discountAmount  Float?
-  minOrderAmount  Float     @default(0)
-  maxDiscount     Float?
-  expiresAt      DateTime
-  isActive       Boolean   @default(true)
-  createdAt      DateTime  @default(now())
+  id                String    @id @default(uuid())
+  name              String    @default("")
+  code              String    @unique
+  description       String?   
+  discountType      String    @default("PERCENTAGE") // PERCENTAGE | FIXED
+  discountPercent   Float?
+  discountAmount    Float?
+  minOrderAmount    Float     @default(0)
+  maxDiscount       Float?
+  
+  startDate         DateTime  @default(now())
+  expiresAt         DateTime
+  
+  status            String    @default("PUBLISHED") // DRAFT | PUBLISHED | HIDDEN | SCHEDULED | EXPIRED | DISABLED | ARCHIVED | DELETED
+  isActive          Boolean   @default(true)
+  
+  totalUsageLimit   Int?      
+  perCustomerLimit  Int       @default(1)
+  currentUsageCount Int       @default(0)
+  
+  customerEligibility String  @default("ALL") // ALL | NEW_CUSTOMERS | EXISTING | VIP | PREMIUM
+  
+  showOnHomepage     Boolean  @default(false)
+  showOnOffers       Boolean  @default(true)
+  showOnCheckout     Boolean  @default(true)
+  showAsPopup        Boolean  @default(false)
+  showOnBanner       Boolean  @default(false)
+  
+  colorTheme         String   @default("#D4AF37")
+  priority           Int      @default(0)
+  termsConditions    String?
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 model Review {
