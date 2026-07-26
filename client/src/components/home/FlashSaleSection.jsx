@@ -12,68 +12,29 @@ const DEFAULT_FLASH_SALE = {
   discountPercent: 35
 };
 
-const DEFAULT_PRODUCTS = [
-  {
-    id: 'flash-1',
-    name: 'Kanjivaram Pure Silk Saree with Zari Border',
-    slug: 'kanjivaram-pure-silk-saree',
-    price: 18999,
-    discountPrice: 13999,
-    discountPercent: 26,
-    stock: 12,
-    images: [{ url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600' }]
-  },
-  {
-    id: 'flash-2',
-    name: '22K Gold Plated Royal Kundan Choker Necklace Set',
-    slug: 'royal-kundan-choker-necklace-set',
-    price: 11999,
-    discountPrice: 7999,
-    discountPercent: 33,
-    stock: 8,
-    images: [{ url: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=600' }]
-  },
-  {
-    id: 'flash-3',
-    name: 'Handcrafted Heritage Art Silk Kurta Set',
-    slug: 'heritage-art-silk-kurta-set',
-    price: 5999,
-    discountPrice: 3999,
-    discountPercent: 33,
-    stock: 15,
-    images: [{ url: 'https://images.unsplash.com/photo-1597983073493-88cd35cf03b0?w=600' }]
-  },
-  {
-    id: 'flash-4',
-    name: 'Antique Temple Work Gold Plated Bangles',
-    slug: 'antique-temple-gold-plated-bangles',
-    price: 3999,
-    discountPrice: 2499,
-    discountPercent: 37,
-    stock: 20,
-    images: [{ url: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600' }]
-  }
-];
-
 const FlashSaleSection = () => {
   const [flashSale, setFlashSale] = useState(DEFAULT_FLASH_SALE);
-  const [products, setProducts] = useState(DEFAULT_PRODUCTS);
+  const [products, setProducts] = useState([]);
   const [timeLeft, setTimeLeft] = useState({ hours: 18, minutes: 42, seconds: 10 });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [saleRes, prodRes] = await Promise.all([
+        const [saleRes, prodRes, allProdRes] = await Promise.allSettled([
           api.get('/cms/flash-sale'),
           api.get('/products?flashSale=true&limit=4'),
+          api.get('/products?limit=4'),
         ]);
 
-        if (saleRes.data?.success && saleRes.data.data) {
-          setFlashSale(saleRes.data.data);
+        if (saleRes.status === 'fulfilled' && saleRes.value.data?.success && saleRes.value.data.data) {
+          setFlashSale(saleRes.value.data.data);
         }
-        if (prodRes.data?.success && prodRes.data.data?.products?.length > 0) {
-          setProducts(prodRes.data.data.products);
+        
+        let flashProds = prodRes.status === 'fulfilled' ? (prodRes.value.data?.data?.products || []) : [];
+        if (flashProds.length === 0 && allProdRes.status === 'fulfilled') {
+          flashProds = allProdRes.value.data?.data?.products || [];
         }
+        setProducts(flashProds);
       } catch (err) {
         console.error('Flash sale fetch error:', err);
       }

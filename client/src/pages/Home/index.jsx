@@ -60,69 +60,6 @@ const DEFAULT_CATEGORIES = [
   { id: 'cat-4', name: 'Kids & Baby Collection', slug: 'kids-wear', image: 'https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=600' },
 ];
 
-const DEFAULT_PRODUCTS = [
-  {
-    id: 'prod-1',
-    name: 'Kanjivaram Pure Silk Saree with Zari Border',
-    slug: 'kanjivaram-pure-silk-saree',
-    price: 18999,
-    discountPrice: 14999,
-    discountPercent: 21,
-    newArrival: true,
-    trending: true,
-    featured: true,
-    todaysDeal: true,
-    stock: 12,
-    images: [{ url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600' }],
-    category: { name: 'Silk Sarees' }
-  },
-  {
-    id: 'prod-2',
-    name: '22K Gold Plated Royal Kundan Choker Necklace Set',
-    slug: 'royal-kundan-choker-necklace-set',
-    price: 11999,
-    discountPrice: 8499,
-    discountPercent: 29,
-    newArrival: true,
-    trending: true,
-    featured: true,
-    todaysDeal: true,
-    stock: 8,
-    images: [{ url: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=600' }],
-    category: { name: 'Jewellery' }
-  },
-  {
-    id: 'prod-3',
-    name: 'Handcrafted Heritage Art Silk Kurta Set',
-    slug: 'heritage-art-silk-kurta-set',
-    price: 5999,
-    discountPrice: 4299,
-    discountPercent: 28,
-    newArrival: true,
-    trending: true,
-    featured: true,
-    todaysDeal: true,
-    stock: 15,
-    images: [{ url: 'https://images.unsplash.com/photo-1597983073493-88cd35cf03b0?w=600' }],
-    category: { name: 'Men’s Wear' }
-  },
-  {
-    id: 'prod-4',
-    name: 'Antique Temple Work Gold Plated Bangles',
-    slug: 'antique-temple-gold-plated-bangles',
-    price: 3999,
-    discountPrice: 2999,
-    discountPercent: 25,
-    newArrival: true,
-    trending: true,
-    featured: true,
-    todaysDeal: true,
-    stock: 20,
-    images: [{ url: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600' }],
-    category: { name: 'Jewellery' }
-  }
-];
-
 // Reusable Product Card
 const HomeProductCard = ({ product }) => {
   const primaryImage = product.images?.[0]?.url || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&size=400&background=D4AF37&color=fff&format=svg`;
@@ -166,22 +103,23 @@ const Home = () => {
   const [banners, setBanners] = useState(DEFAULT_HERO_SLIDERS);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [products, setProducts] = useState({
-    featured: DEFAULT_PRODUCTS,
-    trending: DEFAULT_PRODUCTS,
-    newArrivals: DEFAULT_PRODUCTS,
-    todaysDeals: DEFAULT_PRODUCTS
+    featured: [],
+    trending: [],
+    newArrivals: [],
+    todaysDeals: []
   });
 
   useEffect(() => {
     const fetchHomeData = async () => {
       try {
-        const [bannersRes, categoriesRes, featuredRes, trendingRes, newRes, dealsRes] = await Promise.allSettled([
+        const [bannersRes, categoriesRes, featuredRes, trendingRes, newRes, dealsRes, allProdsRes] = await Promise.allSettled([
           api.get('/cms/banners'),
           api.get('/categories'),
           api.get('/products?showOnHomepage=true&featured=true&limit=8'),
           api.get('/products?showOnHomepage=true&trending=true&limit=8'),
           api.get('/products?showOnHomepage=true&newArrival=true&limit=8'),
           api.get('/products?showOnHomepage=true&bestSeller=true&limit=8'),
+          api.get('/products?limit=8')
         ]);
 
         if (bannersRes.status === 'fulfilled' && bannersRes.value.data?.data?.length > 0) {
@@ -190,17 +128,21 @@ const Home = () => {
         if (categoriesRes.status === 'fulfilled' && categoriesRes.value.data?.data?.length > 0) {
           setCategories(categoriesRes.value.data.data);
         }
-        
-        const featuredList = featuredRes.status === 'fulfilled' && featuredRes.value.data?.data?.products?.length > 0 ? featuredRes.value.data.data.products : DEFAULT_PRODUCTS;
-        const trendingList = trendingRes.status === 'fulfilled' && trendingRes.value.data?.data?.products?.length > 0 ? trendingRes.value.data.data.products : DEFAULT_PRODUCTS;
-        const newList = newRes.status === 'fulfilled' && newRes.value.data?.data?.products?.length > 0 ? newRes.value.data.data.products : DEFAULT_PRODUCTS;
-        const dealsList = dealsRes.status === 'fulfilled' && dealsRes.value.data?.data?.products?.length > 0 ? dealsRes.value.data.data.products : DEFAULT_PRODUCTS;
+
+        const fallbackAll = allProdsRes.status === 'fulfilled' ? (allProdsRes.value.data?.data?.products || []) : [];
+
+        const getList = (res) => {
+          if (res.status === 'fulfilled' && res.value.data?.data?.products?.length > 0) {
+            return res.value.data.data.products;
+          }
+          return fallbackAll;
+        };
 
         setProducts({
-          featured: featuredList,
-          trending: trendingList,
-          newArrivals: newList,
-          todaysDeals: dealsList,
+          featured: getList(featuredRes),
+          trending: getList(trendingRes),
+          newArrivals: getList(newRes),
+          todaysDeals: getList(dealsRes),
         });
       } catch (err) {
         console.error('Home page data fetch error:', err);
