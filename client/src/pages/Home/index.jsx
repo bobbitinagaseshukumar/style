@@ -82,7 +82,7 @@ const Home = () => {
       try {
         const [bannersRes, categoriesRes, featuredRes, trendingRes, newRes, dealsRes, allProdsRes, trendSelRes, settingsRes, dynSecRes] = await Promise.allSettled([
           api.get('/cms/banners?activeOnly=true'),
-          api.get('/categories?limit=8'),
+          api.get('/categories?showOnHomepage=true&limit=8'),
           api.get('/products?showOnHomepage=true&featured=true&limit=8'),
           api.get('/products?showOnHomepage=true&trending=true&limit=8'),
           api.get('/products?showOnHomepage=true&newArrival=true&limit=8'),

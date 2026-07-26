@@ -363,20 +363,9 @@ const AdminCategories = () => {
 
       {/* Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white border border-gray-100 rounded-3xl overflow-hidden animate-pulse">
-              <div className="h-44 bg-gray-100" />
-              <div className="p-4 space-y-2">
-                <div className="h-4 bg-gray-100 rounded w-3/4" />
-                <div className="h-3 bg-gray-100 rounded w-1/2" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <div className="py-20 text-center text-gray-400">Loading categories...</div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white border border-gray-100 rounded-3xl p-16 text-center">
-          <FiGrid size={40} className="mx-auto text-gray-300 mb-3" />
+        <div className="py-16 text-center bg-white rounded-3xl border border-gray-100 p-8">
           <p className="font-bold text-gray-700">No categories found</p>
           <p className="text-xs text-gray-400 mt-1">Click &quot;Create Category&quot; to upload device photos and set up categories.</p>
         </div>
@@ -386,7 +375,7 @@ const AdminCategories = () => {
             <CategoryCard
               key={cat.id}
               category={cat}
-              onDelete={setDeleteTarget}
+              onDelete={handleOpenDelete}
               onEdit={openEdit}
               onToggleHomepage={handleToggleHomepage}
             />
@@ -399,102 +388,108 @@ const AdminCategories = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
           <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-md border border-gray-100">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-red-100 flex items-center justify-center shrink-0">
-                <FiAlertTriangle className="text-red-600 w-5 h-5" />
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
+                <FiAlertTriangle className="text-amber-600 w-5 h-5" />
               </div>
               <div>
                 <h3 className="font-bold text-gray-900 text-base">Remove Category</h3>
-                <p className="text-xs text-gray-500">Select deletion & product handling option</p>
+                <p className="text-xs text-gray-500">
+                  {(deleteTarget._count?.products || 0) > 0 ? 'Product transfer required' : 'Confirm category deletion'}
+                </p>
               </div>
             </div>
 
-            <p className="text-xs text-gray-700 mb-4 bg-red-50 border border-red-100 rounded-xl p-3">
-              Removing category <strong>&quot;{deleteTarget.name}&quot;</strong> ({deleteTarget._count?.products || 0} products assigned)
-            </p>
+            {(deleteTarget._count?.products || 0) > 0 ? (
+              <div className="space-y-4">
+                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs">
+                  <p className="font-bold text-amber-900 mb-1">
+                    ⚠️ Category &quot;{deleteTarget.name}&quot; has {deleteTarget._count?.products} assigned product(s).
+                  </p>
+                  <p className="text-amber-800 text-[11px] leading-relaxed">
+                    Please select a target category to transfer these products before removing this category.
+                  </p>
+                </div>
 
-            <div className="space-y-2 mb-5 text-xs">
-              <label className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50">
-                <input
-                  type="radio"
-                  name="deleteMode"
-                  checked={deleteMode === 'DELETE_CATEGORY_ONLY'}
-                  onChange={() => setDeleteMode('DELETE_CATEGORY_ONLY')}
-                  className="text-amber-500 focus:ring-amber-400"
-                />
                 <div>
-                  <p className="font-bold text-gray-900">Delete Category Only</p>
-                  <p className="text-[10px] text-gray-500">Unlinks category from products</p>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Target Category to Transfer Products *
+                  </label>
+                  <select
+                    value={targetCatId}
+                    onChange={e => setTargetCatId(e.target.value)}
+                    className="w-full p-2.5 border border-amber-300 rounded-xl text-xs font-bold bg-white focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="">-- Select Destination Category --</option>
+                    {categories.filter(c => c.id !== deleteTarget.id).map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
-              </label>
 
-              <label className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50">
-                <input
-                  type="radio"
-                  name="deleteMode"
-                  checked={deleteMode === 'ARCHIVE'}
-                  onChange={() => setDeleteMode('ARCHIVE')}
-                  className="text-amber-500 focus:ring-amber-400"
-                />
-                <div>
-                  <p className="font-bold text-gray-900">Archive Category</p>
-                  <p className="text-[10px] text-gray-500">Hides from website, recoverable later</p>
+                <div className="space-y-2 text-xs">
+                  <label className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="radio"
+                      name="deleteMode"
+                      checked={deleteMode === 'MOVE_PRODUCTS'}
+                      onChange={() => setDeleteMode('MOVE_PRODUCTS')}
+                      className="text-amber-500 focus:ring-amber-400"
+                    />
+                    <div>
+                      <p className="font-bold text-gray-900">Transfer Products & Remove Category</p>
+                      <p className="text-[10px] text-gray-500">Safely moves all {deleteTarget._count?.products} products to target category</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2.5 p-3 rounded-xl border border-red-200 bg-red-50/40 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="deleteMode"
+                      checked={deleteMode === 'DELETE_ALL'}
+                      onChange={() => setDeleteMode('DELETE_ALL')}
+                      className="text-red-600 focus:ring-red-500"
+                    />
+                    <div>
+                      <p className="font-bold text-red-900">Delete Category AND All Products</p>
+                      <p className="text-[10px] text-red-600">Permanently deletes all {deleteTarget._count?.products} assigned products</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="radio"
+                      name="deleteMode"
+                      checked={deleteMode === 'ARCHIVE'}
+                      onChange={() => setDeleteMode('ARCHIVE')}
+                      className="text-amber-500 focus:ring-amber-400"
+                    />
+                    <div>
+                      <p className="font-bold text-gray-900">Archive Category</p>
+                      <p className="text-[10px] text-gray-500">Hides from website without deleting products</p>
+                    </div>
+                  </label>
                 </div>
-              </label>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-700 mb-5 bg-gray-50 border border-gray-100 rounded-2xl p-3.5">
+                Are you sure you want to remove category <strong>&quot;{deleteTarget.name}&quot;</strong>? This action cannot be undone.
+              </p>
+            )}
 
-              <label className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50">
-                <input
-                  type="radio"
-                  name="deleteMode"
-                  checked={deleteMode === 'MOVE_PRODUCTS'}
-                  onChange={() => setDeleteMode('MOVE_PRODUCTS')}
-                  className="text-amber-500 focus:ring-amber-400"
-                />
-                <div className="flex-1">
-                  <p className="font-bold text-gray-900">Move Products to Another Category</p>
-                  {deleteMode === 'MOVE_PRODUCTS' && (
-                    <select
-                      value={targetCatId}
-                      onChange={e => setTargetCatId(e.target.value)}
-                      className="mt-1.5 w-full p-2 border rounded-lg text-xs bg-white"
-                    >
-                      <option value="">Select Target Category...</option>
-                      {categories.filter(c => c.id !== deleteTarget.id).map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </label>
-
-              <label className="flex items-center gap-2.5 p-3 rounded-xl border border-red-200 bg-red-50/50 cursor-pointer">
-                <input
-                  type="radio"
-                  name="deleteMode"
-                  checked={deleteMode === 'DELETE_ALL'}
-                  onChange={() => setDeleteMode('DELETE_ALL')}
-                  className="text-red-600 focus:ring-red-500"
-                />
-                <div>
-                  <p className="font-bold text-red-900">Delete Category AND All Products</p>
-                  <p className="text-[10px] text-red-600">Permanently deletes all assigned products</p>
-                </div>
-              </label>
-            </div>
-
-            <div className="flex gap-2">
+            <div className="flex gap-2 mt-5">
               <button
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleting}
-                className="flex-1 py-2.5 rounded-xl border text-gray-600 text-xs font-semibold hover:bg-gray-100 transition"
+                className="flex-1 py-2.5 rounded-xl border text-gray-600 text-xs font-semibold hover:bg-gray-100 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteSubmit}
-                disabled={deleting}
-                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition shadow-md cursor-pointer"
+                disabled={deleting || ((deleteTarget._count?.products || 0) > 0 && deleteMode === 'MOVE_PRODUCTS' && !targetCatId)}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-md cursor-pointer disabled:opacity-50"
               >
-                {deleting ? 'Processing...' : 'Confirm Action'}
+                {deleting ? 'Processing...' : (deleteTarget._count?.products || 0) > 0 ? 'Transfer & Remove' : 'Remove Category'}
               </button>
             </div>
           </div>
