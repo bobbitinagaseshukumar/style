@@ -514,99 +514,20 @@ exports.getInstagramPosts = asyncHandler(async (req, res) => {
 });
 
 // ==================== Homepage Sections ====================
+// NOTE: The real implementations are in the Dynamic Homepage Section Builder section below (~line 964)
+// This block only keeps the legacy bulk-update handler and the public getter.
+
 exports.getHomepageSections = asyncHandler(async (req, res) => {
     const sections = await prisma.homepageSection.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' } });
     res.status(200).json({ success: true, data: sections });
-});
-
-exports.getAllHomepageSectionsAdmin = asyncHandler(async (req, res) => {
-    const sections = await prisma.homepageSection.findMany({ orderBy: { sortOrder: 'asc' } });
-    res.status(200).json({ success: true, data: sections });
-});
-
-exports.createHomepageSection = asyncHandler(async (req, res) => {
-    const { title, sectionType, config, sortOrder, isActive } = req.body;
-    
-    // Count existing to set default sortOrder
-    const count = await prisma.homepageSection.count();
-    
-    const section = await prisma.homepageSection.create({
-        data: {
-            title: title || 'New Homepage Section',
-            sectionType: sectionType || 'FEATURED_PRODUCTS',
-            config: typeof config === 'object' ? JSON.stringify(config) : (config || '{}'),
-            sortOrder: sortOrder !== undefined ? parseInt(sortOrder) : count,
-            isActive: isActive !== false
-        }
-    });
-
-    res.status(201).json({ success: true, message: 'Homepage section created', data: section });
-});
-
-exports.updateHomepageSection = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { title, sectionType, config, sortOrder, isActive } = req.body;
-    
-    const updateData = {};
-    if (title !== undefined) updateData.title = title;
-    if (sectionType !== undefined) updateData.sectionType = sectionType;
-    if (config !== undefined) updateData.config = typeof config === 'object' ? JSON.stringify(config) : config;
-    if (sortOrder !== undefined) updateData.sortOrder = parseInt(sortOrder);
-    if (isActive !== undefined) updateData.isActive = Boolean(isActive);
-
-    const section = await prisma.homepageSection.update({
-        where: { id },
-        data: updateData
-    });
-
-    res.status(200).json({ success: true, message: 'Homepage section updated', data: section });
-});
-
-exports.duplicateHomepageSection = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const source = await prisma.homepageSection.findUnique({ where: { id } });
-    if (!source) return res.status(404).json({ success: false, message: 'Section not found' });
-
-    const count = await prisma.homepageSection.count();
-    const duplicate = await prisma.homepageSection.create({
-        data: {
-            title: `${source.title} (Copy)`,
-            sectionType: source.sectionType,
-            config: source.config,
-            sortOrder: count,
-            isActive: false
-        }
-    });
-
-    res.status(201).json({ success: true, message: 'Homepage section duplicated', data: duplicate });
-});
-
-exports.deleteHomepageSection = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    await prisma.homepageSection.delete({ where: { id } });
-    res.status(200).json({ success: true, message: 'Homepage section deleted' });
-});
-
-exports.reorderHomepageSections = asyncHandler(async (req, res) => {
-    const { sections } = req.body; // Array of { id, sortOrder }
-    if (Array.isArray(sections)) {
-        for (let i = 0; i < sections.length; i++) {
-            const sec = sections[i];
-            await prisma.homepageSection.update({
-                where: { id: sec.id },
-                data: { sortOrder: sec.sortOrder !== undefined ? parseInt(sec.sortOrder) : i }
-            });
-        }
-    }
-    const updated = await prisma.homepageSection.findMany({ orderBy: { sortOrder: 'asc' } });
-    res.status(200).json({ success: true, message: 'Homepage sections reordered', data: updated });
 });
 
 exports.updateHomepageSections = asyncHandler(async (req, res) => {
     const { sections } = req.body;
     if (Array.isArray(sections)) {
         for (const section of sections) {
-            await prisma.homepageSection.update({ where: { id: section.id }, data: section });
+            const { id, createdAt, updatedAt, ...data } = section;
+            if (id) await prisma.homepageSection.update({ where: { id }, data });
         }
     }
     const updated = await prisma.homepageSection.findMany({ orderBy: { sortOrder: 'asc' } });
@@ -997,20 +918,41 @@ exports.getAllHomepageSectionsAdmin = asyncHandler(async (req, res) => {
     const sections = await prisma.homepageSection.findMany({
         orderBy: { sortOrder: 'asc' }
     });
-    res.status(200).json({ success: true, data: sections });
+
+    // Enrich each section with its resolved product objects so the admin UI
+    // can display which products are already assigned without a separate call.
+    const enriched = await Promise.all(sections.map(async sec => {
+        let pIds = [];
+        try { pIds = JSON.parse(sec.productIds || '[]'); } catch (e) { pIds = []; }
+        let products = [];
+        if (pIds.length > 0) {
+            const rawProds = await prisma.product.findMany({
+                where: { id: { in: pIds } },
+                include: { images: { take: 1 }, category: { select: { name: true, slug: true } } }
+            });
+            const prodMap = new Map(rawProds.map(p => [p.id, p]));
+            // Preserve admin-defined order
+            products = pIds.map(id => prodMap.get(id)).filter(Boolean);
+        }
+        return { ...sec, products };
+    }));
+
+    res.status(200).json({ success: true, data: enriched });
 });
 
 exports.createHomepageSection = asyncHandler(async (req, res) => {
     const {
-        title, slug, subtitle, description, bannerUrl, sectionType, layoutType,
-        productIds, status, isActive, productsPerRow, bgColor, textColor, buttonText, buttonLink,
-        startDate, endDate, devices, sortOrder
+        title, slug, subtitle, description, bannerUrl, sectionIcon, layoutType,
+        productIds, maxProducts, status, isActive, productsPerRow, bgColor, textColor,
+        buttonText, buttonLink, startDate, endDate, devices, sortOrder
     } = req.body;
 
     if (!title) return res.status(400).json({ success: false, message: 'Section title is required' });
 
     const baseSlug = (slug || title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const finalSlug = `${baseSlug}-${Date.now().toString(36)}`;
+
+    const count = await prisma.homepageSection.count();
 
     const section = await prisma.homepageSection.create({
         data: {
@@ -1019,9 +961,10 @@ exports.createHomepageSection = asyncHandler(async (req, res) => {
             subtitle: subtitle || null,
             description: description || null,
             bannerUrl: bannerUrl || null,
-            sectionType: sectionType || 'DYNAMIC_PRODUCTS',
+            sectionIcon: sectionIcon || null,
             layoutType: layoutType || 'GRID',
             productIds: typeof productIds === 'string' ? productIds : JSON.stringify(productIds || []),
+            maxProducts: parseInt(maxProducts || 12),
             status: status || 'PUBLISHED',
             isActive: isActive !== false,
             productsPerRow: parseInt(productsPerRow || 4),
@@ -1031,8 +974,8 @@ exports.createHomepageSection = asyncHandler(async (req, res) => {
             buttonLink: buttonLink || null,
             startDate: startDate ? new Date(startDate) : null,
             endDate: endDate ? new Date(endDate) : null,
-            devices: typeof devices === 'string' ? devices : JSON.stringify(devices || ["DESKTOP", "TABLET", "MOBILE"]),
-            sortOrder: parseInt(sortOrder || 0)
+            devices: typeof devices === 'string' ? devices : JSON.stringify(devices || ['DESKTOP', 'TABLET', 'MOBILE']),
+            sortOrder: sortOrder !== undefined ? parseInt(sortOrder) : count
         }
     });
 
@@ -1041,14 +984,20 @@ exports.createHomepageSection = asyncHandler(async (req, res) => {
 
 exports.updateHomepageSection = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const updateData = { ...req.body };
+    // Strip read-only fields and relations that can't be updated directly
+    const { createdAt, updatedAt, products, ...rest } = req.body;
+    const updateData = { ...rest };
 
     if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
+    else if (updateData.startDate === '') updateData.startDate = null;
     if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
-    if (typeof updateData.productIds === 'object') updateData.productIds = JSON.stringify(updateData.productIds);
-    if (typeof updateData.devices === 'object') updateData.devices = JSON.stringify(updateData.devices);
-    if (updateData.productsPerRow) updateData.productsPerRow = parseInt(updateData.productsPerRow);
+    else if (updateData.endDate === '') updateData.endDate = null;
+    if (Array.isArray(updateData.productIds)) updateData.productIds = JSON.stringify(updateData.productIds);
+    if (Array.isArray(updateData.devices)) updateData.devices = JSON.stringify(updateData.devices);
+    if (updateData.productsPerRow !== undefined) updateData.productsPerRow = parseInt(updateData.productsPerRow);
+    if (updateData.maxProducts !== undefined) updateData.maxProducts = parseInt(updateData.maxProducts);
     if (updateData.sortOrder !== undefined) updateData.sortOrder = parseInt(updateData.sortOrder);
+    if (updateData.isActive !== undefined) updateData.isActive = Boolean(updateData.isActive);
 
     const section = await prisma.homepageSection.update({
         where: { id },
@@ -1096,6 +1045,76 @@ exports.duplicateHomepageSection = asyncHandler(async (req, res) => {
 exports.deleteHomepageSection = asyncHandler(async (req, res) => {
     await prisma.homepageSection.delete({ where: { id: req.params.id } });
     res.status(200).json({ success: true, message: 'Homepage Section deleted successfully' });
+});
+
+// --- Fine-grained product management for a section ---
+
+exports.getSectionProducts = asyncHandler(async (req, res) => {
+    const sec = await prisma.homepageSection.findUnique({ where: { id: req.params.id } });
+    if (!sec) return res.status(404).json({ success: false, message: 'Section not found' });
+
+    let pIds = [];
+    try { pIds = JSON.parse(sec.productIds || '[]'); } catch (e) { pIds = []; }
+
+    let products = [];
+    if (pIds.length > 0) {
+        const raw = await prisma.product.findMany({
+            where: { id: { in: pIds } },
+            include: { images: { take: 1 }, category: { select: { name: true, slug: true } } }
+        });
+        const map = new Map(raw.map(p => [p.id, p]));
+        products = pIds.map(id => map.get(id)).filter(Boolean);
+    }
+    res.status(200).json({ success: true, data: products, productIds: pIds });
+});
+
+exports.addProductToSection = asyncHandler(async (req, res) => {
+    const { id, productId } = req.params;
+    const sec = await prisma.homepageSection.findUnique({ where: { id } });
+    if (!sec) return res.status(404).json({ success: false, message: 'Section not found' });
+
+    let pIds = [];
+    try { pIds = JSON.parse(sec.productIds || '[]'); } catch (e) { pIds = []; }
+
+    if (!pIds.includes(productId)) {
+        pIds.push(productId);
+        await prisma.homepageSection.update({
+            where: { id },
+            data: { productIds: JSON.stringify(pIds) }
+        });
+    }
+    res.status(200).json({ success: true, message: 'Product added to section', productIds: pIds });
+});
+
+exports.removeProductFromSection = asyncHandler(async (req, res) => {
+    const { id, productId } = req.params;
+    const sec = await prisma.homepageSection.findUnique({ where: { id } });
+    if (!sec) return res.status(404).json({ success: false, message: 'Section not found' });
+
+    let pIds = [];
+    try { pIds = JSON.parse(sec.productIds || '[]'); } catch (e) { pIds = []; }
+
+    const newIds = pIds.filter(pid => pid !== productId);
+    await prisma.homepageSection.update({
+        where: { id },
+        data: { productIds: JSON.stringify(newIds) }
+    });
+    res.status(200).json({ success: true, message: 'Product removed from section (product still exists in database)', productIds: newIds });
+});
+
+exports.reorderProductsInSection = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { productIds } = req.body; // Already-ordered array of product IDs
+    if (!Array.isArray(productIds)) return res.status(400).json({ success: false, message: 'productIds array required' });
+
+    const sec = await prisma.homepageSection.findUnique({ where: { id } });
+    if (!sec) return res.status(404).json({ success: false, message: 'Section not found' });
+
+    await prisma.homepageSection.update({
+        where: { id },
+        data: { productIds: JSON.stringify(productIds) }
+    });
+    res.status(200).json({ success: true, message: 'Product order updated', productIds });
 });
 
 // ==================== Header Navigation Menu Manager ====================

@@ -656,8 +656,10 @@ model HomepageSection {
   subtitle        String?
   description     String?
   bannerUrl       String?
+  sectionIcon     String?
   layoutType      String    @default("GRID") // GRID | SLIDER | CAROUSEL | TWO_COLUMN | FEATURED
   productIds      String    @default("[]") // JSON string of selected product IDs
+  maxProducts     Int       @default(12)
   sortOrder       Int       @default(0)
   status          String    @default("PUBLISHED") // PUBLISHED | DRAFT | HIDDEN | ARCHIVED
   isActive        Boolean   @default(true)

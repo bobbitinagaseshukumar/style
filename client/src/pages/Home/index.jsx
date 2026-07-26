@@ -257,21 +257,13 @@ const Home = () => {
         </section>
       )}
 
-      {/* 10. JEWELLERY COLLECTION SHOWCASE */}
-      <CollectionShowcase
-        title="Royal Jewellery Collection 💎"
-        subtitle="Exquisite Kundan, Gold-Plated & Temple Jewellery"
-        categorySlug="jewellery"
-        bgLight={true}
-      />
-
-      {/* 11. SAREE COLLECTION SHOWCASE */}
-      <CollectionShowcase
-        title="Banarasi & Silk Sarees 🥻"
-        subtitle="Handwoven pure silk sarees with gold zari"
-        categorySlug="womens-sarees"
-        bgLight={false}
-      />
+      {/* ── JEWELLERY, SAREES, MEN'S, KIDS COLLECTION SHOWCASES ──
+           These sections are now 100% managed from the Admin Dashboard
+           (Admin → CMS → Homepage Sections). Create or edit sections there
+           and they will automatically appear below under "DYNAMIC SECTIONS".
+           The hardcoded CollectionShowcase blocks have been removed to give
+           the admin full control over what appears here.
+      ── */}
 
       {/* 15. TODAY'S DEAL */}
       {products.todaysDeals.length > 0 && (
@@ -290,21 +282,7 @@ const Home = () => {
         </section>
       )}
 
-      {/* 12. MEN'S COLLECTION */}
-      <CollectionShowcase
-        title="Men's Royal Heritage"
-        subtitle="Smart casuals, festive shirts & kurtas"
-        categorySlug="mens-wear"
-        bgLight={true}
-      />
 
-      {/* 13. KIDS COLLECTION */}
-      <CollectionShowcase
-        title="Kids Wear & Festive Suits"
-        subtitle="Charming ethnic and casual wear for kids"
-        categorySlug="kids-wear"
-        bgLight={false}
-      />
 
       {/* 8. TRENDING PRODUCTS (ADMIN MANUAL SELECTION ONLY) */}
       {enableTrending && trendingData && trendingData.products?.length > 0 && (
