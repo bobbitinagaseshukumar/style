@@ -319,18 +319,20 @@ const Navbar = () => {
                         </>
                       ) : (
                         <div className="p-3 space-y-2">
-                          <button
-                            onClick={() => { setIsUserMenuOpen(false); openDrawer('auth'); }}
-                            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 text-black text-sm font-bold hover:from-yellow-400 transition-all cursor-pointer"
+                          <Link
+                            to="/login"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="block w-full py-2.5 text-center rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 text-black text-sm font-bold hover:from-yellow-400 transition-all cursor-pointer"
                           >
-                            Sign In
-                          </button>
-                          <button
-                            onClick={() => { setIsUserMenuOpen(false); openDrawer('auth'); }}
-                            className="w-full py-2.5 rounded-xl border border-white/10 text-white/70 text-sm font-medium hover:bg-white/5 transition-all cursor-pointer"
+                            Sign In (3D Login)
+                          </Link>
+                          <Link
+                            to="/login?mode=register"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="block w-full py-2.5 text-center rounded-xl border border-white/10 text-white/70 text-sm font-medium hover:bg-white/5 transition-all cursor-pointer"
                           >
                             Create Account
-                          </button>
+                          </Link>
                         </div>
                       )}
                     </motion.div>

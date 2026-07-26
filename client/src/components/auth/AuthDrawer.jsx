@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { FiX, FiLock, FiMail, FiUser, FiArrowRight, FiCheckCircle } from 'react-icons/fi';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, registerUser, clearError } from '../../redux/auth/authSlice';
@@ -218,6 +219,13 @@ const AuthDrawer = ({ isOpen, onClose }) => {
 
             {/* Footer Trust Badges */}
             <div className="p-6 bg-gray-50 border-t border-gray-100 text-center space-y-2">
+              <Link
+                to="/login"
+                onClick={onClose}
+                className="inline-flex items-center justify-center gap-1.5 w-full py-2 rounded-xl bg-gold-500/10 border border-gold-500/30 text-gold-700 hover:bg-gold-500/20 font-bold text-xs transition mb-2"
+              >
+                ✨ Open Full 3D Interactive Login Page
+              </Link>
               <div className="flex items-center justify-center gap-2 text-[11px] font-semibold text-gray-500">
                 <FiCheckCircle className="text-emerald-500" /> 100% Encrypted & Safe Login
               </div>
