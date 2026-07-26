@@ -248,6 +248,89 @@ exports.getHomepageSections = asyncHandler(async (req, res) => {
     res.status(200).json({ success: true, data: sections });
 });
 
+exports.getAllHomepageSectionsAdmin = asyncHandler(async (req, res) => {
+    const sections = await prisma.homepageSection.findMany({ orderBy: { sortOrder: 'asc' } });
+    res.status(200).json({ success: true, data: sections });
+});
+
+exports.createHomepageSection = asyncHandler(async (req, res) => {
+    const { title, sectionType, config, sortOrder, isActive } = req.body;
+    
+    // Count existing to set default sortOrder
+    const count = await prisma.homepageSection.count();
+    
+    const section = await prisma.homepageSection.create({
+        data: {
+            title: title || 'New Homepage Section',
+            sectionType: sectionType || 'FEATURED_PRODUCTS',
+            config: typeof config === 'object' ? JSON.stringify(config) : (config || '{}'),
+            sortOrder: sortOrder !== undefined ? parseInt(sortOrder) : count,
+            isActive: isActive !== false
+        }
+    });
+
+    res.status(201).json({ success: true, message: 'Homepage section created', data: section });
+});
+
+exports.updateHomepageSection = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { title, sectionType, config, sortOrder, isActive } = req.body;
+    
+    const updateData = {};
+    if (title !== undefined) updateData.title = title;
+    if (sectionType !== undefined) updateData.sectionType = sectionType;
+    if (config !== undefined) updateData.config = typeof config === 'object' ? JSON.stringify(config) : config;
+    if (sortOrder !== undefined) updateData.sortOrder = parseInt(sortOrder);
+    if (isActive !== undefined) updateData.isActive = Boolean(isActive);
+
+    const section = await prisma.homepageSection.update({
+        where: { id },
+        data: updateData
+    });
+
+    res.status(200).json({ success: true, message: 'Homepage section updated', data: section });
+});
+
+exports.duplicateHomepageSection = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const source = await prisma.homepageSection.findUnique({ where: { id } });
+    if (!source) return res.status(404).json({ success: false, message: 'Section not found' });
+
+    const count = await prisma.homepageSection.count();
+    const duplicate = await prisma.homepageSection.create({
+        data: {
+            title: `${source.title} (Copy)`,
+            sectionType: source.sectionType,
+            config: source.config,
+            sortOrder: count,
+            isActive: false
+        }
+    });
+
+    res.status(201).json({ success: true, message: 'Homepage section duplicated', data: duplicate });
+});
+
+exports.deleteHomepageSection = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    await prisma.homepageSection.delete({ where: { id } });
+    res.status(200).json({ success: true, message: 'Homepage section deleted' });
+});
+
+exports.reorderHomepageSections = asyncHandler(async (req, res) => {
+    const { sections } = req.body; // Array of { id, sortOrder }
+    if (Array.isArray(sections)) {
+        for (let i = 0; i < sections.length; i++) {
+            const sec = sections[i];
+            await prisma.homepageSection.update({
+                where: { id: sec.id },
+                data: { sortOrder: sec.sortOrder !== undefined ? parseInt(sec.sortOrder) : i }
+            });
+        }
+    }
+    const updated = await prisma.homepageSection.findMany({ orderBy: { sortOrder: 'asc' } });
+    res.status(200).json({ success: true, message: 'Homepage sections reordered', data: updated });
+});
+
 exports.updateHomepageSections = asyncHandler(async (req, res) => {
     const { sections } = req.body;
     if (Array.isArray(sections)) {
@@ -258,6 +341,7 @@ exports.updateHomepageSections = asyncHandler(async (req, res) => {
     const updated = await prisma.homepageSection.findMany({ orderBy: { sortOrder: 'asc' } });
     res.status(200).json({ success: true, message: 'Homepage sections updated', data: updated });
 });
+
 
 // ==================== CMS Pages ====================
 exports.getCMSPage = asyncHandler(async (req, res, next) => {
