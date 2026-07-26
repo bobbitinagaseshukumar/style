@@ -30,7 +30,7 @@ const AnnouncementBar = () => {
     return () => clearInterval(interval);
   }, [announcements.length]);
 
-  if (dismissed || announcements.length === 0) return null;
+  if (dismissed || announcements.length === 0 || !announcements[currentIndex]) return null;
 
   const current = announcements[currentIndex];
 

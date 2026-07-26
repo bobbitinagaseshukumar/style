@@ -181,17 +181,23 @@ const CollectionShowcase = ({ title, subtitle, categorySlug, bannerImage, bgLigh
         {/* Products Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
           {products.map((product) => {
+            if (!product) return null;
+            const name = product.name || 'Collection Item';
             const img = product.images?.[0]?.url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600';
+            const slug = product.slug || '';
+            const price = product.discountPrice || product.price || 0;
+            const originalPrice = product.price || 0;
+
             return (
               <motion.div
-                key={product.id}
+                key={product.id || Math.random()}
                 whileHover={{ y: -6 }}
                 className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 group"
               >
                 <div className="relative aspect-[3/4] bg-gray-50 overflow-hidden">
                   <img
                     src={img}
-                    alt={product.name}
+                    alt={name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                   {product.discountPercent > 0 && (
@@ -207,18 +213,18 @@ const CollectionShowcase = ({ title, subtitle, categorySlug, bannerImage, bgLigh
                 </div>
 
                 <div className="p-4">
-                  <Link to={`/product/${product.slug}`}>
+                  <Link to={`/product/${slug}`}>
                     <h3 className="text-sm font-semibold text-charcoal-900 line-clamp-1 hover:text-gold-600 transition mb-2">
-                      {product.name}
+                      {name}
                     </h3>
                   </Link>
                   <div className="flex items-center gap-2">
                     <span className="text-base font-bold text-charcoal-900">
-                      {formatCurrency(product.discountPrice || product.price)}
+                      {formatCurrency(price)}
                     </span>
                     {product.discountPercent > 0 && (
                       <span className="text-xs text-gray-400 line-through">
-                        {formatCurrency(product.price)}
+                        {formatCurrency(originalPrice)}
                       </span>
                     )}
                   </div>
