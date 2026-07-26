@@ -582,6 +582,19 @@ model HeaderMenu {
   updatedAt   DateTime @default(now()) @updatedAt
 }
 
+model AuthSettings {
+  id                    String   @id @default(uuid())
+  loginMethods          String   @default("[\"EMAIL\",\"MOBILE\"]")
+  enableRegistration    Boolean  @default(true)
+  formFields            String   @default("[{\"name\":\"fullName\",\"label\":\"Full Name\",\"type\":\"text\",\"required\":true,\"enabled\":true},{\"name\":\"email\",\"label\":\"Email Address\",\"type\":\"email\",\"required\":true,\"enabled\":true},{\"name\":\"phone\",\"label\":\"Mobile Number\",\"type\":\"tel\",\"required\":false,\"enabled\":true},{\"name\":\"password\",\"label\":\"Password\",\"type\":\"password\",\"required\":true,\"enabled\":true}]")
+  verificationMethod    String   @default("NONE")
+  requireAdminApproval  Boolean  @default(false)
+  passwordPolicy        String   @default("{\"minLength\":6,\"requireNumbers\":false,\"requireSymbols\":false}")
+  socialLogins          String   @default("{\"google\":true,\"facebook\":true,\"apple\":false,\"github\":false}")
+  uiSettings            String   @default("{\"welcomeTitle\":\"Welcome Back to StyleVerse\",\"loginButtonText\":\"Sign In\",\"registerButtonText\":\"Create Account\",\"bannerUrl\":\"\"}")
+  updatedAt             DateTime @default(now()) @updatedAt
+}
+
 model BrandShowcase {
   id        String   @id @default(uuid())
   name      String

@@ -278,3 +278,39 @@ exports.logout = asyncHandler(async (req, res) => {
   res.cookie('jwt', '', { httpOnly: true, expires: new Date(0) });
   res.status(200).json({ success: true, message: 'Logged out successfully' });
 });
+
+// ==================== AUTH SETTINGS (ENTERPRISE AUTH MANAGER) ====================
+exports.getAuthSettingsPublic = asyncHandler(async (req, res) => {
+  let settings = await prisma.authSettings.findFirst();
+  if (!settings) {
+    settings = await prisma.authSettings.create({ data: {} });
+  }
+  res.status(200).json({ success: true, data: settings });
+});
+
+exports.getAuthSettingsAdmin = asyncHandler(async (req, res) => {
+  let settings = await prisma.authSettings.findFirst();
+  if (!settings) {
+    settings = await prisma.authSettings.create({ data: {} });
+  }
+  res.status(200).json({ success: true, data: settings });
+});
+
+exports.updateAuthSettingsAdmin = asyncHandler(async (req, res) => {
+  const updateData = { ...req.body };
+  if (typeof updateData.loginMethods === 'object') updateData.loginMethods = JSON.stringify(updateData.loginMethods);
+  if (typeof updateData.formFields === 'object') updateData.formFields = JSON.stringify(updateData.formFields);
+  if (typeof updateData.passwordPolicy === 'object') updateData.passwordPolicy = JSON.stringify(updateData.passwordPolicy);
+  if (typeof updateData.socialLogins === 'object') updateData.socialLogins = JSON.stringify(updateData.socialLogins);
+  if (typeof updateData.uiSettings === 'object') updateData.uiSettings = JSON.stringify(updateData.uiSettings);
+
+  let settings = await prisma.authSettings.findFirst();
+  if (settings) {
+    settings = await prisma.authSettings.update({ where: { id: settings.id }, data: updateData });
+  } else {
+    settings = await prisma.authSettings.create({ data: updateData });
+  }
+
+  res.status(200).json({ success: true, message: 'Authentication settings updated successfully', data: settings });
+});
+
