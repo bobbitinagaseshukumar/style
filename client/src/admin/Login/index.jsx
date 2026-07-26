@@ -14,8 +14,8 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const [email, setEmail] = useState('admin@styleverse.com');
-  const [password, setPassword] = useState('StyleVerseAdmin2026!');
+  const [email, setEmail] = useState('nagaseshukumarbobbiti@gmail.com');
+  const [password, setPassword] = useState('seshu@2409');
   const [showPassword, setShowPassword] = useState(false);
   const [trustDevice, setTrustDevice] = useState(true);
   const [loading, setLoading] = useState(false);
