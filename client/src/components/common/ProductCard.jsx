@@ -1,24 +1,29 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiHeart, FiShoppingBag, FiEye, FiStar } from 'react-icons/fi';
+import { FiHeart, FiShoppingBag, FiStar } from 'react-icons/fi';
+import { useDispatch } from 'react-redux';
+import { addToCart } from '../../redux/cart/cartSlice';
+import { addToWishlist, removeFromWishlist } from '../../redux/wishlist/wishlistSlice';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { toast } from 'react-toastify';
 
-const fadeInUp = { initial: { opacity: 0, y: 20 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true } };
+const fadeInUp = { initial: { opacity: 0, y: 15 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true } };
 
 /**
  * Ultra-Clean Minimal Luxury Product Card
- * Inspired by Apple Store, Myntra, Ajio Luxe & Zara
- * Image is the hero (80-85%), zero clutter, minimal badges, clean pricing.
+ * Fully clickable across the entire card area on Mobile & Desktop
  */
 const ProductCard = ({ product }) => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
   if (!product) return null;
 
   const name = product.name || 'StyleVerse Product';
-  const slug = product.slug || '';
+  const slug = product.slug || product.id || '';
   const images = product.images?.length > 0
     ? product.images.map(img => (typeof img === 'string' ? img : img.url))
     : [`https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=600&background=f8f8f8&color=D4AF37&bold=true&format=svg`];
@@ -33,27 +38,51 @@ const ProductCard = ({ product }) => {
   const reviewCount = product.reviewCount || product.totalReviews || 0;
   const category = product.category?.name || product.categoryName || '';
 
+  const handleCardClick = () => {
+    navigate(`/product/${slug}`);
+  };
+
   const toggleWishlist = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsWishlisted(!isWishlisted);
+    if (isWishlisted) {
+      dispatch(removeFromWishlist(product.id));
+      setIsWishlisted(false);
+      toast.info('Removed from wishlist');
+    } else {
+      dispatch(addToWishlist({ id: product.id, name, price: finalPrice, image: primaryImage, slug }));
+      setIsWishlisted(true);
+      toast.success('Added to wishlist!');
+    }
+  };
+
+  const handleQuickAdd = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dispatch(addToCart({
+      id: product.id,
+      name,
+      price: finalPrice,
+      image: primaryImage,
+      quantity: 1,
+    }));
+    toast.success(`"${name}" added to cart!`);
   };
 
   return (
     <motion.div
       variants={fadeInUp}
-      whileHover={{ y: -6 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="group relative bg-white rounded-[18px] overflow-hidden shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] border border-gray-100 transition-all duration-300 flex flex-col h-full"
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.2 }}
+      onClick={handleCardClick}
+      className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-gray-100 transition-all duration-300 flex flex-col h-full cursor-pointer select-none"
     >
-      {/* ═══════════════ HERO PRODUCT IMAGE (80-85% Height Focus) ═══════════════ */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#f9f9f9]">
-        {/* Skeleton placeholder while image loads */}
+      {/* HERO PRODUCT IMAGE */}
+      <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-50">
         {!imageLoaded && (
           <div className="absolute inset-0 bg-gray-100 animate-pulse" />
         )}
 
-        {/* Product Image */}
         <img
           src={primaryImage}
           alt={name}
@@ -64,72 +93,51 @@ const ProductCard = ({ product }) => {
           }`}
         />
 
-        {/* ── TOP-LEFT: Single Small Red Discount Badge ── */}
+        {/* Discount Badge */}
         {discountPercent > 0 && (
-          <div className="absolute top-3 left-3 z-10">
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-red-600 text-white text-[11px] font-bold shadow-md max-h-[28px]">
+          <div className="absolute top-2.5 left-2.5 z-10">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-black shadow-md">
               -{discountPercent}%
             </span>
           </div>
         )}
 
-        {/* ── TOP-RIGHT: Wishlist Heart Icon Button ── */}
+        {/* Wishlist Heart Icon Button */}
         <button
           onClick={toggleWishlist}
           aria-label="Add to Wishlist"
-          className={`absolute top-3 right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 shadow-md ${
+          className={`absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 shadow-md ${
             isWishlisted
-              ? 'bg-red-600 text-white shadow-red-600/30'
+              ? 'bg-red-600 text-white'
               : 'bg-white/90 backdrop-blur-sm text-gray-500 hover:text-red-600 hover:bg-white'
           }`}
         >
-          <FiHeart className={`w-4 h-4 transition-transform duration-200 ${isWishlisted ? 'fill-white scale-110' : 'group-hover:scale-110'}`} />
+          <FiHeart className={`w-3.5 h-3.5 ${isWishlisted ? 'fill-white' : ''}`} />
         </button>
 
-        {/* ── DESKTOP HOVER QUICK ACTIONS (Revealed on hover) ── */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 opacity-0 group-hover:opacity-100 translate-y-3 group-hover:translate-y-0 transition-all duration-300 hidden sm:flex gap-2 z-10">
-          <Link
-            to={`/product/${slug}`}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-charcoal-900/90 backdrop-blur-md text-white text-xs font-bold hover:bg-charcoal-900 transition-colors shadow-lg"
-          >
-            <FiShoppingBag className="w-3.5 h-3.5" /> Add to Cart
-          </Link>
-          <Link
-            to={`/product/${slug}`}
-            aria-label="Quick View"
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/90 backdrop-blur-md text-charcoal-900 hover:bg-white transition-colors shadow-lg"
-          >
-            <FiEye className="w-4 h-4" />
-          </Link>
-        </div>
-
-        {/* ── MOBILE QUICK ADD FLOATING BUTTON ── */}
-        <Link
-          to={`/product/${slug}`}
+        {/* Hover / Touch Quick Add Button */}
+        <button
+          onClick={handleQuickAdd}
           aria-label="Add to Cart"
-          className="sm:hidden absolute bottom-3 right-3 z-10 w-8 h-8 rounded-full bg-charcoal-900 text-white shadow-md flex items-center justify-center active:scale-95 transition-transform"
+          className="absolute bottom-2.5 right-2.5 z-10 p-2.5 rounded-xl bg-gray-900/90 text-white shadow-lg backdrop-blur-sm hover:bg-black active:scale-95 transition-all flex items-center gap-1.5 text-xs font-bold"
         >
-          <FiShoppingBag className="w-3.5 h-3.5" />
-        </Link>
+          <FiShoppingBag className="w-3.5 h-3.5 text-amber-400" />
+          <span className="hidden sm:inline">Add</span>
+        </button>
       </div>
 
-      {/* ═══════════════ MINIMAL PRODUCT INFORMATION ═══════════════ */}
-      <div className="flex flex-col flex-grow p-4 space-y-2">
-        {/* Category */}
+      {/* MINIMAL PRODUCT INFO */}
+      <div className="flex flex-col flex-grow p-3 space-y-1.5">
         {category && (
-          <p className="text-[10px] font-semibold text-gold-600 uppercase tracking-widest line-clamp-1">
+          <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider line-clamp-1">
             {category}
           </p>
         )}
 
-        {/* Product Name (Max 2 lines) */}
-        <Link to={`/product/${slug}`} className="block">
-          <h3 className="text-xs sm:text-sm font-bold text-charcoal-900 leading-snug line-clamp-2 hover:text-gold-600 transition-colors">
-            {name}
-          </h3>
-        </Link>
+        <h3 className="text-xs sm:text-sm font-bold text-gray-900 leading-snug line-clamp-2 group-hover:text-amber-600 transition-colors">
+          {name}
+        </h3>
 
-        {/* Star Rating (Hidden if no reviews exist) */}
         {rating > 0 && (
           <div className="flex items-center gap-1">
             <div className="flex items-center gap-0.5">
@@ -140,30 +148,23 @@ const ProductCard = ({ product }) => {
                 />
               ))}
             </div>
-            <span className="text-[11px] font-bold text-charcoal-900 ml-0.5">{rating.toFixed(1)}</span>
+            <span className="text-[10px] font-bold text-gray-700 ml-0.5">{rating.toFixed(1)}</span>
             {reviewCount > 0 && (
               <span className="text-[10px] text-gray-400">({reviewCount})</span>
             )}
           </div>
         )}
 
-        {/* Spacer to push price neatly to bottom */}
-        <div className="flex-grow min-h-[4px]" />
+        <div className="flex-grow min-h-[2px]" />
 
-        {/* Clean Price Line: ₹1,999  ₹2,999  40% OFF */}
-        <div className="flex items-baseline gap-2 pt-1">
-          <span className="text-sm sm:text-base font-extrabold text-charcoal-900">
+        <div className="flex items-baseline gap-1.5 pt-0.5">
+          <span className="text-sm sm:text-base font-black text-gray-900">
             {formatCurrency(finalPrice)}
           </span>
           {discountPercent > 0 && (
-            <>
-              <span className="text-xs text-gray-400 line-through">
-                {formatCurrency(price)}
-              </span>
-              <span className="text-xs font-bold text-emerald-600">
-                {discountPercent}% OFF
-              </span>
-            </>
+            <span className="text-[11px] text-gray-400 line-through">
+              {formatCurrency(price)}
+            </span>
           )}
         </div>
       </div>
