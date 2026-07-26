@@ -71,6 +71,7 @@ const AdminReviews = lazy(() => import('../admin/Offers/CustomerReviewsManager')
 const AdminSocial = lazy(() => import('../admin/Offers/SocialFollowManager'));
 const AdminHeritageBrands = lazy(() => import('../admin/Offers/HeritageBrandsManager'));
 const AdminTrending = lazy(() => import('../admin/Offers/TrendingProductsManager'));
+const AdminWhatsApp = lazy(() => import('../admin/WhatsApp'));
 
 const SuspenseLoader = () => (
   <div className="h-screen w-full flex items-center justify-center">
