@@ -453,6 +453,7 @@ const AdminOrders = () => {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [approvalModalOrder, setApprovalModalOrder] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   const handleRejectOrder = async (orderId) => {
     if (!window.confirm('Are you sure you want to reject this order? Stock will be restored.')) return;

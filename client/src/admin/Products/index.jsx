@@ -671,8 +671,9 @@ const AdminProducts = () => {
               </div>
 
               {/* Footer */}
-              <div className="px-6 py-3 border-t border-gray-100 flex justify-end gap-2 shrink-0 bg-gray-50/50">
+              <div className="px-6 py-3 border-t border-gray-100 flex justify-end items-center gap-2 shrink-0 bg-gray-50/50">
                 <button onClick={() => { setEditingProduct(previewProduct); setPreviewProduct(null); setWizardOpen(true); }} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition cursor-pointer flex items-center gap-1"><FiEdit size={12} /> Edit Product</button>
+                <button onClick={() => { setDeleteTarget(previewProduct); setPreviewProduct(null); }} className="px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition cursor-pointer flex items-center gap-1"><FiTrash2 size={12} /> Delete Product</button>
                 <button onClick={() => setPreviewProduct(null)} className="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-100 transition cursor-pointer">Close</button>
               </div>
             </motion.div>
