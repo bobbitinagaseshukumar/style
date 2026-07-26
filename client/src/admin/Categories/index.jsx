@@ -305,16 +305,35 @@ const AdminCategories = () => {
     }
   };
 
+  const handleOpenDelete = (category) => {
+    setDeleteTarget(category);
+    const prodCount = category._count?.products || 0;
+    if (prodCount > 0) {
+      setDeleteMode('MOVE_PRODUCTS');
+      const available = categories.filter(c => c.id !== category.id);
+      setTargetCatId(available.length > 0 ? available[0].id : '');
+    } else {
+      setDeleteMode('DELETE_CATEGORY_ONLY');
+      setTargetCatId('');
+    }
+  };
+
   // Advanced Delete Handler
   const handleDeleteSubmit = async () => {
     if (!deleteTarget) return;
+    const prodCount = deleteTarget._count?.products || 0;
+    if (prodCount > 0 && deleteMode === 'MOVE_PRODUCTS' && !targetCatId) {
+      toast.error('Please select a target category to transfer products.');
+      return;
+    }
+
     try {
       setDeleting(true);
-      await api.post(`/categories/${deleteTarget.id}/delete`, {
-        deleteMode,
+      const { data } = await api.post(`/categories/${deleteTarget.id}/delete`, {
+        deleteMode: prodCount > 0 ? deleteMode : 'DELETE_CATEGORY_ONLY',
         targetCategoryId: targetCatId || undefined
       });
-      toast.success(`Category action "${deleteMode}" completed successfully`);
+      toast.success(data.message || 'Category deleted successfully');
       setDeleteTarget(null);
       fetchCategories();
     } catch (err) {
