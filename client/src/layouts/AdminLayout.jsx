@@ -5,7 +5,7 @@ import {
   FiHome, FiBox, FiGrid, FiShoppingBag, FiUsers, FiTag,
   FiSettings, FiFileText, FiImage, FiLayout, FiHelpCircle,
   FiBarChart2, FiMenu, FiX, FiLogOut, FiChevronRight, FiMail,
-  FiZap, FiLayers
+  FiZap, FiLayers, FiShield, FiUser
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 
