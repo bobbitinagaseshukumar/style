@@ -128,13 +128,18 @@ const CollectionShowcase = ({ title, subtitle, categorySlug, bannerImage, bgLigh
   const [products, setProducts] = useState(
     FALLBACK_COLLECTION_PRODUCTS[categorySlug] || FALLBACK_COLLECTION_PRODUCTS.default
   );
+  const [isHidden, setIsHidden] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const catRes = await api.get('/categories');
-        const foundCat = catRes.data?.data?.find((c) => c.slug === categorySlug);
+        const catRes = await api.get('/categories?includeAll=true');
+        const foundCat = catRes.data?.data?.find((c) => c.slug === categorySlug || c.id === categorySlug);
         if (foundCat) {
+          if (foundCat.showOnHomepage === false || foundCat.isVisible === false || foundCat.status === 'HIDDEN' || foundCat.status === 'ARCHIVED') {
+            setIsHidden(true);
+            return;
+          }
           const prodRes = await api.get(`/products?category=${foundCat.id}&limit=4`);
           if (prodRes.data?.data?.products?.length > 0) {
             setProducts(prodRes.data.data.products);
@@ -146,6 +151,8 @@ const CollectionShowcase = ({ title, subtitle, categorySlug, bannerImage, bgLigh
     };
     fetchData();
   }, [categorySlug]);
+
+  if (isHidden) return null;
 
   return (
     <section className={`py-12 lg:py-16 ${bgLight ? 'bg-gray-50' : 'bg-white'}`}>

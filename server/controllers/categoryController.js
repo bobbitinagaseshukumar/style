@@ -137,7 +137,7 @@ exports.updateCategory = asyncHandler(async (req, res, next) => {
   });
 });
 
-// ==================== DELETE CATEGORY WITH ADVANCED MODES ====================
+// ==================== DELETE CATEGORY WITH PRODUCT TRANSFER REQUIREMENT ====================
 exports.deleteCategory = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const body = req.body || {};
@@ -150,7 +150,7 @@ exports.deleteCategory = asyncHandler(async (req, res, next) => {
     return next(new ApiError(404, 'Category not found'));
   }
 
-  // 1. ARCHIVE
+  // 1. ARCHIVE MODE
   if (deleteMode === 'ARCHIVE') {
     await prisma.category.update({
       where: { id },
@@ -159,41 +159,47 @@ exports.deleteCategory = asyncHandler(async (req, res, next) => {
     return res.status(200).json({ success: true, message: 'Category archived successfully' });
   }
 
-  // Clean up subcategories to avoid foreign key constraint violations
+  // Check product count in this category
+  const productCount = await prisma.product.count({ where: { categoryId: id } });
+
+  // If products exist and no target category is provided and deleteMode is not DELETE_ALL, enforce transfer
+  if (productCount > 0 && !targetCategoryId && deleteMode !== 'DELETE_ALL') {
+    return next(new ApiError(400, `Category "${category.name}" contains ${productCount} assigned product(s). Please select a target category to transfer these products before removing this category.`));
+  }
+
+  // Clean up subcategories to prevent foreign key constraint violations
   await prisma.subCategory.deleteMany({ where: { categoryId: id } }).catch(() => {});
 
-  // 2. MOVE_PRODUCTS
-  if (deleteMode === 'MOVE_PRODUCTS' && targetCategoryId) {
+  // 2. MOVE_PRODUCTS OR TRANSFER & DELETE
+  if (productCount > 0 && targetCategoryId) {
+    // Verify target category exists and is not the same category
+    if (targetCategoryId === id) {
+      return next(new ApiError(400, 'Target category cannot be the same as the category being deleted'));
+    }
+    const targetCategory = await prisma.category.findUnique({ where: { id: targetCategoryId } });
+    if (!targetCategory) {
+      return next(new ApiError(404, 'Target category for transfer not found'));
+    }
+
     await prisma.product.updateMany({
       where: { categoryId: id },
       data: { categoryId: targetCategoryId }
     });
     await prisma.category.delete({ where: { id } });
-    return res.status(200).json({ success: true, message: 'Category deleted & products moved' });
+    return res.status(200).json({
+      success: true,
+      message: `Transferred ${productCount} product(s) to "${targetCategory.name}" and removed category successfully!`
+    });
   }
 
-  // 3. DELETE_ALL
+  // 3. DELETE_ALL (Delete category and all associated products)
   if (deleteMode === 'DELETE_ALL') {
     await prisma.product.deleteMany({ where: { categoryId: id } }).catch(() => {});
     await prisma.category.delete({ where: { id } });
     return res.status(200).json({ success: true, message: 'Category and all associated products deleted' });
   }
 
-  // 4. DELETE_CATEGORY_ONLY (Default)
-  // Assign products to another remaining category if available, otherwise delete products
-  const otherCategory = await prisma.category.findFirst({
-    where: { id: { not: id } }
-  });
-
-  if (otherCategory) {
-    await prisma.product.updateMany({
-      where: { categoryId: id },
-      data: { categoryId: otherCategory.id }
-    });
-  } else {
-    await prisma.product.deleteMany({ where: { categoryId: id } }).catch(() => {});
-  }
-
+  // 4. Clean category with 0 products
   await prisma.category.delete({ where: { id } });
 
   res.status(200).json({
