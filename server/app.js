@@ -66,7 +66,10 @@ const adminCustomerRoutes = require('./routes/adminCustomerRoutes');
 
 const subcategoryRoutes = require('./routes/subcategoryRoutes');
 
+const adminAuthRoutes = require('./routes/adminAuthRoutes');
+
 // Mount Routes
+app.use('/api/v1/admin/auth', adminAuthRoutes);
 app.use('/api/v1/recommendations', recommendationRoutes);
 app.use('/api/v1/recently-viewed', recentlyViewedRoutes);
 app.use('/api/v1/auth', authRoutes);
