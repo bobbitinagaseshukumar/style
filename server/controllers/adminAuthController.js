@@ -380,13 +380,6 @@ exports.createAdminAccount = asyncHandler(async (req, res, next) => {
   });
 });
 
-  res.status(200).json({
-    success: true,
-    message: `Maintenance Mode ${value === 'true' ? 'ENABLED (Customers will see maintenance page)' : 'DISABLED (Public access restored)'}`,
-    data: { maintenanceMode: value === 'true' }
-  });
-});
-
 // ==================== GET LOGGED-IN ADMIN PROFILE ====================
 exports.getAdminProfile = asyncHandler(async (req, res, next) => {
   const admin = await prisma.user.findUnique({
