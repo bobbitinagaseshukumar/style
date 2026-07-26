@@ -7,10 +7,15 @@ import ProtectedRoute from './ProtectedRoute';
 import AdminRoute from './AdminRoute';
 import Spinner from '../components/common/Spinner';
 
+import Home from '../pages/Home';
+import Categories from '../pages/Categories';
+import ProductDetails from '../pages/ProductDetails';
+import Login from '../pages/Login';
+import Register from '../pages/Register';
+import AdminLogin from '../admin/Login';
+import AdminVerifyOTP from '../admin/Login/AdminVerifyOTP';
+
 // Lazy loading customer pages
-const Home = lazy(() => import('../pages/Home'));
-const Categories = lazy(() => import('../pages/Categories'));
-const ProductDetails = lazy(() => import('../pages/ProductDetails'));
 const Cart = lazy(() => import('../pages/Cart'));
 const Checkout = lazy(() => import('../pages/Checkout'));
 const Wishlist = lazy(() => import('../pages/Wishlist'));
@@ -37,15 +42,9 @@ const Error404 = lazy(() => import('../pages/Error404'));
 const Error500 = lazy(() => import('../pages/Error500'));
 
 // Lazy loading auth pages
-// Login is rendered standalone (full-screen 3D) — outside AuthLayout
-const Login = lazy(() => import('../pages/Login'));
-const Register = lazy(() => import('../pages/Register'));
 const VerifyOTP = lazy(() => import('../pages/VerifyOTP'));
 const ForgotPassword = lazy(() => import('../pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('../pages/ResetPassword'));
-
-import AdminLogin from '../admin/Login';
-import AdminVerifyOTP from '../admin/Login/AdminVerifyOTP';
 
 // Lazy loading admin pages
 const AdminProfile = lazy(() => import('../admin/AdminProfile'));
