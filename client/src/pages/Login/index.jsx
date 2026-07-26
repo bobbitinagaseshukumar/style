@@ -242,7 +242,8 @@ const AuthPage = ({ initialMode = 'login' }) => {
         setTimeout(() => navigate(isAdmin ? '/admin/dashboard' : '/'), 1200);
       }
     } catch (err) {
-      setLoginError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+      console.error('Login submit error:', err);
+      setLoginError(err.response?.data?.message || err.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoginLoading(false);
     }
