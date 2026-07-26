@@ -19,6 +19,7 @@ router.get('/brands', cmsController.getBrands);
 router.get('/testimonials', cmsController.getTestimonials);
 router.get('/instagram', cmsController.getInstagramPosts);
 router.get('/homepage', cmsController.getHomepageSections);
+router.get('/homepage/sections/public', cmsController.getHomepageSectionsPublic);
 router.get('/pages/:slug', cmsController.getCMSPage);
 router.get('/faqs', cmsController.getFAQs);
 
