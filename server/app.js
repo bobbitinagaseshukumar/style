@@ -56,6 +56,8 @@ app.get('/robots.txt', seoController.getRobotsTXT);
 // API Rate Limiting for all v1 routes
 app.use('/api/v1', apiLimiter);
 
+const adminDashboardRoutes = require('./routes/adminDashboardRoutes');
+
 // Mount Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/products', productRoutes);
@@ -66,6 +68,7 @@ app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/coupons', couponRoutes);
 app.use('/api/v1/cms', cmsRoutes);
+app.use('/api/v1/admin/dashboard', adminDashboardRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
