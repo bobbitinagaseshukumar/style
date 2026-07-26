@@ -824,6 +824,40 @@ model TicketMessage {
   createdAt  DateTime      @default(now())
 }
 
+model CustomerBehaviorLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  sessionId   String?
+  action      String   // VIEW_PRODUCT | CLICK_PRODUCT | SEARCH_KEYWORD | VISIT_CATEGORY | ADD_WISHLIST | ADD_CART | PURCHASE
+  productId   String?
+  categoryId  String?
+  searchQuery String?
+  color       String?
+  size        String?
+  device      String?  @default("DESKTOP")
+  createdAt   DateTime @default(now())
+}
+
+model ProductRecommendationScore {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  score     Float    @default(0.0)
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@unique([userId, productId])
+}
+
+model UserPreferences {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  favoriteCategories String   @default("[]")
+  favoriteBrands     String   @default("[]")
+  favoriteColors     String   @default("[]")
+  favoriteSizes      String   @default("[]")
+  updatedAt          DateTime @default(now()) @updatedAt
+}
+
 model ActivityLog {
   id        String   @id @default(uuid())
   userId    String?
