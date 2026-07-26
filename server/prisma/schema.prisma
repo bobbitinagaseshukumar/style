@@ -10,9 +10,13 @@ generator client {
 model User {
   id                  String        @id @default(uuid())
   email               String        @unique
+  username            String?       @unique
   password            String
   fullName            String
+  firstName           String?
+  lastName            String?
   phone               String?
+  alternatePhone      String?
   whatsappNumber      String?
   gender              String?
   dob                 DateTime?
@@ -22,7 +26,22 @@ model User {
   preferredLanguage   String        @default("en")
   emailNotifications  Boolean       @default(true)
   smsNotifications    Boolean       @default(true)
-  status              String        @default("ACTIVE")
+  promoNotifications  Boolean       @default(true)
+  status              String        @default("ACTIVE") // ACTIVE | BLOCKED | SUSPENDED | INACTIVE
+  tokenVersion        Int           @default(0)
+  suspendedUntil      DateTime?
+  blockReason         String?
+  blockNotes          String?
+
+  // Fine-Grained Customer Permission Switches
+  canLogin            Boolean       @default(true)
+  canPlaceOrders      Boolean       @default(true)
+  canCancelOrders     Boolean       @default(true)
+  canReturnProducts   Boolean       @default(true)
+  canAddReviews       Boolean       @default(true)
+  canAddWishlist      Boolean       @default(true)
+  canUseCoupons       Boolean       @default(true)
+
   lastLoginAt         DateTime?
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
@@ -33,6 +52,7 @@ model User {
   wishlist            Wishlist?
   reviews             Review[]
   activityLogs        ActivityLog[]
+  adminActionLogs     AdminActionLog[] @relation("TargetUser")
   otps                EmailOTP[]
   notifications       Notification[]
   supportTickets      SupportTicket[]
@@ -893,9 +913,27 @@ model RecentlyViewed {
 model ActivityLog {
   id        String   @id @default(uuid())
   userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   action    String
   details   String?
   ipAddress String?
+  userAgent String?
+  device    String?
+  browser   String?
   createdAt DateTime @default(now())
+}
+
+model AdminActionLog {
+  id           String   @id @default(uuid())
+  adminId      String?
+  adminName    String   @default("Admin")
+  targetUserId String?
+  targetUser   User?    @relation("TargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
+  targetName   String?
+  action       String
+  reason       String?
+  details      String?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
 }
