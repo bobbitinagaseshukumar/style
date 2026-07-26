@@ -960,3 +960,141 @@ exports.updateTrendingSelection = asyncHandler(async (req, res) => {
 
     res.status(200).json({ success: true, message: 'Trending products selection updated', data: selection });
 });
+
+// ==================== Dynamic Homepage Section Builder ====================
+exports.getHomepageSectionsPublic = asyncHandler(async (req, res) => {
+    const sections = await prisma.homepageSection.findMany({
+        where: { isActive: true, status: 'PUBLISHED' },
+        orderBy: { sortOrder: 'asc' }
+    });
+
+    const now = new Date();
+    const activeSections = sections.filter(sec => {
+        if (sec.startDate && new Date(sec.startDate) > now) return false;
+        if (sec.endDate && new Date(sec.endDate) < now) return false;
+        return true;
+    });
+
+    const enriched = await Promise.all(activeSections.map(async sec => {
+        let pIds = [];
+        try { pIds = JSON.parse(sec.productIds || '[]'); } catch (e) { pIds = []; }
+        let products = [];
+        if (pIds.length > 0) {
+            const rawProds = await prisma.product.findMany({
+                where: { id: { in: pIds }, status: 'PUBLISHED', isVisible: true },
+                include: { images: true, category: { select: { name: true, slug: true } } }
+            });
+            const prodMap = new Map(rawProds.map(p => [p.id, p]));
+            products = pIds.map(id => prodMap.get(id)).filter(Boolean);
+        }
+        return { ...sec, products };
+    }));
+
+    res.status(200).json({ success: true, data: enriched });
+});
+
+exports.getAllHomepageSectionsAdmin = asyncHandler(async (req, res) => {
+    const sections = await prisma.homepageSection.findMany({
+        orderBy: { sortOrder: 'asc' }
+    });
+    res.status(200).json({ success: true, data: sections });
+});
+
+exports.createHomepageSection = asyncHandler(async (req, res) => {
+    const {
+        title, slug, subtitle, description, bannerUrl, sectionType, layoutType,
+        productIds, status, isActive, productsPerRow, bgColor, textColor, buttonText, buttonLink,
+        startDate, endDate, devices, sortOrder
+    } = req.body;
+
+    if (!title) return res.status(400).json({ success: false, message: 'Section title is required' });
+
+    const baseSlug = (slug || title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const finalSlug = `${baseSlug}-${Date.now().toString(36)}`;
+
+    const section = await prisma.homepageSection.create({
+        data: {
+            title,
+            slug: finalSlug,
+            subtitle: subtitle || null,
+            description: description || null,
+            bannerUrl: bannerUrl || null,
+            sectionType: sectionType || 'DYNAMIC_PRODUCTS',
+            layoutType: layoutType || 'GRID',
+            productIds: typeof productIds === 'string' ? productIds : JSON.stringify(productIds || []),
+            status: status || 'PUBLISHED',
+            isActive: isActive !== false,
+            productsPerRow: parseInt(productsPerRow || 4),
+            bgColor: bgColor || '#FFFFFF',
+            textColor: textColor || '#111827',
+            buttonText: buttonText || 'Explore Collection',
+            buttonLink: buttonLink || null,
+            startDate: startDate ? new Date(startDate) : null,
+            endDate: endDate ? new Date(endDate) : null,
+            devices: typeof devices === 'string' ? devices : JSON.stringify(devices || ["DESKTOP", "TABLET", "MOBILE"]),
+            sortOrder: parseInt(sortOrder || 0)
+        }
+    });
+
+    res.status(201).json({ success: true, message: 'Homepage Section created successfully', data: section });
+});
+
+exports.updateHomepageSection = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+
+    if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
+    if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
+    if (typeof updateData.productIds === 'object') updateData.productIds = JSON.stringify(updateData.productIds);
+    if (typeof updateData.devices === 'object') updateData.devices = JSON.stringify(updateData.devices);
+    if (updateData.productsPerRow) updateData.productsPerRow = parseInt(updateData.productsPerRow);
+    if (updateData.sortOrder !== undefined) updateData.sortOrder = parseInt(updateData.sortOrder);
+
+    const section = await prisma.homepageSection.update({
+        where: { id },
+        data: updateData
+    });
+
+    res.status(200).json({ success: true, message: 'Homepage Section updated successfully', data: section });
+});
+
+exports.reorderHomepageSections = asyncHandler(async (req, res) => {
+    const { items } = req.body;
+    if (!Array.isArray(items)) return res.status(400).json({ success: false, message: 'Items array required' });
+
+    await Promise.all(items.map(item =>
+        prisma.homepageSection.update({
+            where: { id: item.id },
+            data: { sortOrder: parseInt(item.sortOrder) }
+        })
+    ));
+
+    res.status(200).json({ success: true, message: 'Homepage sections reordered successfully' });
+});
+
+exports.duplicateHomepageSection = asyncHandler(async (req, res) => {
+    const source = await prisma.homepageSection.findUnique({ where: { id: req.params.id } });
+    if (!source) return res.status(404).json({ success: false, message: 'Homepage Section not found' });
+
+    const { id, createdAt, updatedAt, slug, ...rest } = source;
+    const baseSlug = (slug || rest.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+    const duplicate = await prisma.homepageSection.create({
+        data: {
+            ...rest,
+            title: `${rest.title} (Copy)`,
+            slug: `${baseSlug}-copy-${Date.now().toString(36)}`,
+            status: 'DRAFT',
+            isActive: false,
+            sortOrder: rest.sortOrder + 1
+        }
+    });
+
+    res.status(201).json({ success: true, message: 'Homepage Section duplicated', data: duplicate });
+});
+
+exports.deleteHomepageSection = asyncHandler(async (req, res) => {
+    await prisma.homepageSection.delete({ where: { id: req.params.id } });
+    res.status(200).json({ success: true, message: 'Homepage Section deleted successfully' });
+});
+

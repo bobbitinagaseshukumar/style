@@ -544,6 +544,30 @@ model TrendingSelection {
   updatedAt     DateTime  @default(now()) @updatedAt
 }
 
+model HomepageSection {
+  id              String    @id @default(uuid())
+  title           String
+  slug            String    @unique
+  subtitle        String?
+  description     String?
+  bannerUrl       String?
+  layoutType      String    @default("GRID") // GRID | SLIDER | CAROUSEL | TWO_COLUMN | FEATURED
+  productIds      String    @default("[]") // JSON string of selected product IDs
+  sortOrder       Int       @default(0)
+  status          String    @default("PUBLISHED") // PUBLISHED | DRAFT | HIDDEN | ARCHIVED
+  isActive        Boolean   @default(true)
+  productsPerRow  Int       @default(4)
+  bgColor         String?   @default("#FFFFFF")
+  textColor       String?   @default("#111827")
+  buttonText      String?   @default("Explore Collection")
+  buttonLink      String?
+  startDate       DateTime?
+  endDate         DateTime?
+  devices         String    @default("[\"DESKTOP\",\"TABLET\",\"MOBILE\"]")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
+}
+
 model BrandShowcase {
   id        String   @id @default(uuid())
   name      String
@@ -576,14 +600,7 @@ model InstagramPost {
   createdAt  DateTime @default(now())
 }
 
-model HomepageSection {
-  id          String   @id @default(uuid())
-  title       String
-  sectionType String
-  config      String   @default("{}")
-  sortOrder   Int      @default(0)
-  isActive    Boolean  @default(true)
-}
+
 
 model CMSPage {
   id              String   @id @default(uuid())

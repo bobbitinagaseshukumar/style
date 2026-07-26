@@ -74,11 +74,12 @@ const Home = () => {
   });
   const [trendingData, setTrendingData] = useState(null);
   const [enableTrending, setEnableTrending] = useState(true);
+  const [dynamicSections, setDynamicSections] = useState([]);
 
   useEffect(() => {
     const fetchHomeData = async () => {
       try {
-        const [bannersRes, categoriesRes, featuredRes, trendingRes, newRes, dealsRes, allProdsRes, trendSelRes, settingsRes] = await Promise.allSettled([
+        const [bannersRes, categoriesRes, featuredRes, trendingRes, newRes, dealsRes, allProdsRes, trendSelRes, settingsRes, dynSecRes] = await Promise.allSettled([
           api.get('/cms/banners?activeOnly=true'),
           api.get('/categories?limit=8'),
           api.get('/products?showOnHomepage=true&featured=true&limit=8'),
@@ -88,7 +89,12 @@ const Home = () => {
           api.get('/products?limit=8'),
           api.get('/cms/trending-selection/public'),
           api.get('/cms/settings'),
+          api.get('/cms/homepage/sections/public'),
         ]);
+
+        if (dynSecRes.status === 'fulfilled' && dynSecRes.value.data?.data) {
+          setDynamicSections(dynSecRes.value.data.data);
+        }
 
         if (settingsRes.status === 'fulfilled') {
           const cfg = settingsRes.value.data?.data || {};
@@ -330,6 +336,72 @@ const Home = () => {
           </div>
         </section>
       )}
+
+      {/* DYNAMIC DATABASE-DRIVEN HOMEPAGE SECTIONS */}
+      {dynamicSections.map((sec) => {
+        if (!sec.products || sec.products.length === 0) return null;
+
+        const gridCols = sec.productsPerRow === 2
+          ? 'grid-cols-2'
+          : sec.productsPerRow === 3
+          ? 'grid-cols-2 md:grid-cols-3'
+          : sec.productsPerRow === 5
+          ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5'
+          : sec.productsPerRow === 6
+          ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6'
+          : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
+
+        return (
+          <section
+            key={sec.id}
+            style={{ backgroundColor: sec.bgColor || '#FFFFFF', color: sec.textColor || '#111827' }}
+            className="py-12 lg:py-16 border-t border-gray-100 transition-colors"
+          >
+            <div className="max-w-7xl mx-auto px-4">
+              {/* Optional Section Banner */}
+              {sec.bannerUrl && (
+                <div className="relative rounded-2xl overflow-hidden mb-8 h-48 sm:h-64 shadow-md">
+                  <img src={sec.bannerUrl} alt={sec.title} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent flex items-center p-6 lg:p-10">
+                    <div className="max-w-md text-white">
+                      <span className="text-xs font-bold text-gold-400 uppercase tracking-widest">SPECIAL COLLECTION</span>
+                      <h2 className="text-2xl sm:text-3xl font-serif font-bold mt-1">{sec.title}</h2>
+                      {sec.subtitle && <p className="text-sm text-gray-200 mt-2">{sec.subtitle}</p>}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Section Header */}
+              {!sec.bannerUrl && (
+                <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
+                  <div>
+                    <h2 className="text-2xl lg:text-3xl font-serif font-bold" style={{ color: sec.textColor || '#111827' }}>
+                      {sec.title}
+                    </h2>
+                    {sec.subtitle && <p className="text-gray-500 text-sm mt-1">{sec.subtitle}</p>}
+                  </div>
+                  {sec.buttonText && (
+                    <Link
+                      to={sec.buttonLink || '/categories'}
+                      className="inline-flex items-center gap-1 text-sm font-semibold text-gold-600 hover:text-gold-700 transition"
+                    >
+                      {sec.buttonText} <FiArrowRight className="w-4 h-4" />
+                    </Link>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Products Grid */}
+              <motion.div {...stagger} className={`grid ${gridCols} gap-4 sm:gap-5 lg:gap-7`}>
+                {sec.products.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </motion.div>
+            </div>
+          </section>
+        );
+      })}
 
       {/* 16. BRAND SHOWCASE */}
       <BrandShowcase />
