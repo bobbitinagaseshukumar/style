@@ -64,10 +64,16 @@ const cartSlice = createSlice({
     },
 
     applyCoupon: (state, action) => {
-      const { code, discountPercent } = action.payload;
+      const { code, discountPercent, discountFixed } = action.payload;
       state.appliedCoupon = code;
-      const subtotal = state.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-      state.discountAmount = Math.round((subtotal * discountPercent) / 100);
+      if (discountFixed && discountFixed > 0) {
+        // Use the pre-calculated discount amount from the backend API
+        state.discountAmount = Math.round(discountFixed);
+      } else {
+        // Fallback: calculate from percentage
+        const subtotal = state.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        state.discountAmount = Math.round((subtotal * (discountPercent || 0)) / 100);
+      }
     },
 
     removeCoupon: (state) => {
