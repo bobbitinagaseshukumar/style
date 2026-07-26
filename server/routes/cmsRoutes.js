@@ -41,11 +41,19 @@ router.put('/homepage/sections/:id', ...adminOnly, cmsController.updateHomepageS
 router.post('/homepage/sections/:id/duplicate', ...adminOnly, cmsController.duplicateHomepageSection);
 router.delete('/homepage/sections/:id', ...adminOnly, cmsController.deleteHomepageSection);
 router.put('/homepage', ...adminOnly, cmsController.updateHomepageSections);
+router.get('/pages/admin/all', ...adminOnly, cmsController.getAllCMSPages);
 router.put('/pages/:slug', ...adminOnly, cmsController.updateCMSPage);
+router.post('/pages', ...adminOnly, cmsController.createCMSPage);
+router.post('/pages/:slug/duplicate', ...adminOnly, cmsController.duplicateCMSPage);
+router.delete('/pages/:slug', ...adminOnly, cmsController.deleteCMSPage);
 router.post('/faqs', ...adminOnly, cmsController.createFAQ);
 router.put('/faqs/:id', ...adminOnly, cmsController.updateFAQ);
 router.delete('/faqs/:id', ...adminOnly, cmsController.deleteFAQ);
 router.get('/contact/admin/messages', ...adminOnly, cmsController.adminGetContactMessages);
+router.put('/contact/messages/:id/read', ...adminOnly, cmsController.markContactMessageRead);
+router.delete('/contact/messages/:id', ...adminOnly, cmsController.deleteContactMessage);
 router.get('/newsletter/admin/subscribers', ...adminOnly, cmsController.adminGetNewsletterSubscribers);
+router.delete('/newsletter/subscribers/:id', ...adminOnly, cmsController.deleteNewsletterSubscriber);
 
 module.exports = router;
+
