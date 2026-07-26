@@ -7,6 +7,7 @@ import {
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import WriteReviewModal from '../../components/reviews/WriteReviewModal';
 
 const STAGES = [
   { key: 'PENDING_APPROVAL', label: 'Pending Approval' },
@@ -151,6 +152,7 @@ const CancellationCountdownTimer = ({ order, onCancelled }) => {
 const OrdersTab = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeReviewTarget, setActiveReviewTarget] = useState(null);
 
   const fetchOrders = () => {
     setLoading(true);
@@ -258,7 +260,18 @@ const OrdersTab = () => {
                           {item.size ? `Size: ${item.size}` : ''} {item.color ? `· Color: ${item.color}` : ''} · Qty: {item.quantity}
                         </p>
                       </div>
-                      <span className="text-xs font-bold text-gold-400">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-gold-400">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
+                        {order.orderStatus === 'DELIVERED' && (
+                          <button
+                            onClick={() => setActiveReviewTarget({ order, item })}
+                            aria-label={`Write a review for ${item.product?.name || item.name || 'Product'}`}
+                            className="px-3 py-1.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-charcoal-900 font-extrabold text-[11px] transition cursor-pointer shrink-0 shadow-sm"
+                          >
+                            ⭐ Write a Review
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -314,6 +327,15 @@ const OrdersTab = () => {
             );
           })}
         </div>
+      )}
+
+      {activeReviewTarget && (
+        <WriteReviewModal
+          order={activeReviewTarget.order}
+          item={activeReviewTarget.item}
+          onClose={() => setActiveReviewTarget(null)}
+          onReviewSubmitted={() => fetchOrders()}
+        />
       )}
     </div>
   );

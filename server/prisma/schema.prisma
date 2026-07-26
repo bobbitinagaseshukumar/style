@@ -324,16 +324,32 @@ model Coupon {
 }
 
 model Review {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  rating    Int
-  title     String?
-  comment   String
-  isApproved Boolean @default(true)
-  createdAt DateTime @default(now())
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderId          String?  // Linked delivered order ID
+
+  rating           Int
+  title            String?
+  comment          String
+  images           String   @default("[]") // JSON array of uploaded review image URLs
+  videoUrl         String?
+  recommend        Boolean  @default(true)
+  isAnonymous      Boolean  @default(false)
+
+  isVerified       Boolean  @default(true) // True if linked to a DELIVERED order
+  isApproved       Boolean  @default(true)
+  isPublished      Boolean  @default(true)
+  isFeatured       Boolean  @default(false)
+
+  helpfulVotes     Int      @default(0)
+  unhelpfulVotes   Int      @default(0)
+  votedUserIds     String   @default("[]") // JSON array of user IDs who voted
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
 }
 
 model StoreSettings {

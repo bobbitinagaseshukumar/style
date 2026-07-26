@@ -17,6 +17,7 @@ import api from '../../config/api';
 import { addToCart } from '../../redux/cart/cartSlice';
 import { addToWishlist, removeFromWishlist } from '../../redux/wishlist/wishlistSlice';
 import { formatCurrency } from '../../utils/formatCurrency';
+import ReviewSection from '../../components/reviews/ReviewSection';
 import { toast } from 'react-toastify';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -876,6 +877,9 @@ const ProductDetails = () => {
             </AnimatePresence>
           </div>
         </div>
+
+        {/* VERIFIED CUSTOMER REVIEWS */}
+        <ReviewSection productId={product.id} />
 
         {/* ═══════════════════════════════════════════════════
             RELATED PRODUCTS
