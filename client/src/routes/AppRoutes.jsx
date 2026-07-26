@@ -139,48 +139,47 @@ const AppRoutes = () => {
           <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
 
-        {/* Dedicated Admin Login & 2FA OTP Pages (Outside Customer Flow) */}
+        {/* Dedicated Admin Login & 2FA OTP Pages (Outside Customer Flow & Outside Admin Layout) */}
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/admin/verify-otp" element={<AdminVerifyOTP />} />
 
-        {/* Admin Layout Routes */}
-        <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="login" element={<AdminLogin />} />
-          <Route path="profile" element={<AdminProfile />} />
-          <Route path="team" element={<AdminTeam />} />
-          <Route path="products" element={<AdminProducts />} />
-          <Route path="categories" element={<AdminCategories />} />
-          <Route path="subcategories" element={<AdminSubcategories />} />
-          <Route path="inventory" element={<AdminInventory />} />
-          <Route path="orders" element={<AdminOrders />} />
-          <Route path="users" element={<AdminCustomers />} />
-          <Route path="customers" element={<AdminCustomers />} />
-          <Route path="coupons" element={<AdminCoupons />} />
-          <Route path="flash-sale" element={<AdminFlashSale />} />
-          <Route path="special-deals" element={<AdminSpecialDeals />} />
-          <Route path="collections" element={<AdminCollections />} />
-          <Route path="reviews" element={<AdminReviews />} />
-          <Route path="social" element={<AdminSocial />} />
-          <Route path="heritage-brands" element={<AdminHeritageBrands />} />
-          <Route path="trending" element={<AdminTrending />} />
-          <Route path="settings" element={<AdminSettings />} />
-          <Route path="cms" element={<AdminCMS />} />
-          <Route path="banners" element={<AdminBanner />} />
-          <Route path="homepage" element={<AdminHomepage />} />
-          <Route path="homepage-sections" element={<AdminHomepageSections />} />
-          <Route path="header-menu" element={<AdminHeaderMenu />} />
-          <Route path="faqs" element={<AdminFAQs />} />
-          <Route path="analytics" element={<AdminAnalytics />} />
-          <Route path="seo" element={<AdminSEO />} />
-          <Route path="backup" element={<AdminBackup />} />
-          <Route path="marketplace" element={<AdminMarketplace />} />
-          <Route path="blog" element={<AdminBlog />} />
-          <Route path="support" element={<AdminSupport />} />
-          <Route path="email" element={<AdminEmail />} />
-          <Route path="whatsapp" element={<AdminWhatsApp />} />
+        {/* Admin Dashboard & Management Routes */}
+        <Route element={<AdminRoute><AdminLayout /></AdminRoute>}>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/profile" element={<AdminProfile />} />
+          <Route path="/admin/team" element={<AdminTeam />} />
+          <Route path="/admin/products" element={<AdminProducts />} />
+          <Route path="/admin/categories" element={<AdminCategories />} />
+          <Route path="/admin/subcategories" element={<AdminSubcategories />} />
+          <Route path="/admin/inventory" element={<AdminInventory />} />
+          <Route path="/admin/orders" element={<AdminOrders />} />
+          <Route path="/admin/users" element={<AdminCustomers />} />
+          <Route path="/admin/customers" element={<AdminCustomers />} />
+          <Route path="/admin/coupons" element={<AdminCoupons />} />
+          <Route path="/admin/flash-sale" element={<AdminFlashSale />} />
+          <Route path="/admin/special-deals" element={<AdminSpecialDeals />} />
+          <Route path="/admin/collections" element={<AdminCollections />} />
+          <Route path="/admin/reviews" element={<AdminReviews />} />
+          <Route path="/admin/social" element={<AdminSocial />} />
+          <Route path="/admin/heritage-brands" element={<AdminHeritageBrands />} />
+          <Route path="/admin/trending" element={<AdminTrending />} />
+          <Route path="/admin/settings" element={<AdminSettings />} />
+          <Route path="/admin/cms" element={<AdminCMS />} />
+          <Route path="/admin/banners" element={<AdminBanner />} />
+          <Route path="/admin/homepage" element={<AdminHomepage />} />
+          <Route path="/admin/homepage-sections" element={<AdminHomepageSections />} />
+          <Route path="/admin/header-menu" element={<AdminHeaderMenu />} />
+          <Route path="/admin/faqs" element={<AdminFAQs />} />
+          <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/admin/seo" element={<AdminSEO />} />
+          <Route path="/admin/backup" element={<AdminBackup />} />
+          <Route path="/admin/marketplace" element={<AdminMarketplace />} />
+          <Route path="/admin/blog" element={<AdminBlog />} />
+          <Route path="/admin/support" element={<AdminSupport />} />
+          <Route path="/admin/email" element={<AdminEmail />} />
+          <Route path="/admin/whatsapp" element={<AdminWhatsApp />} />
         </Route>
 
         {/* Error Routes */}
