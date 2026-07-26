@@ -7,9 +7,10 @@ import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 
-import { FiArrowRight, FiHeart, FiShoppingBag, FiTruck, FiShield, FiRefreshCw, FiHeadphones, FiZap } from 'react-icons/fi';
+import { FiArrowRight, FiTruck, FiShield, FiRefreshCw, FiHeadphones, FiZap } from 'react-icons/fi';
 import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
+import ProductCard from '../../components/common/ProductCard';
 
 import AnnouncementBar from '../../components/home/AnnouncementBar';
 import FlashSaleSection from '../../components/home/FlashSaleSection';
@@ -60,46 +61,7 @@ const DEFAULT_CATEGORIES = [
   { id: 'cat-4', name: 'Kids & Baby Collection', slug: 'kids-wear', image: 'https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=600' },
 ];
 
-// Reusable Product Card
-const HomeProductCard = ({ product }) => {
-  if (!product) return null;
-  const name = product.name || 'StyleVerse Product';
-  const primaryImage = product.images?.[0]?.url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=400&background=D4AF37&color=fff&format=svg`;
-
-  return (
-    <motion.div variants={fadeInUp} whileHover={{ y: -6 }} transition={{ duration: 0.3 }}
-      className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-gray-100 transition-all duration-300">
-      <div className="relative aspect-[3/4] overflow-hidden bg-gray-50">
-        <img src={primaryImage} alt={name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-          {product.newArrival && <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">NEW</span>}
-          {product.trending && <span className="bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">TRENDING</span>}
-          {product.discountPercent > 0 && <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">-{product.discountPercent}%</span>}
-        </div>
-        <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <button className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-gray-600 hover:text-red-500 hover:bg-white shadow-md transition-all">
-            <FiHeart className="w-4 h-4" />
-          </button>
-          <button className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-gray-600 hover:text-gold-500 hover:bg-white shadow-md transition-all">
-            <FiShoppingBag className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-      <div className="p-4">
-        <p className="text-xs text-gold-600 font-medium mb-1 uppercase tracking-wide">{product.category?.name || 'StyleVerse'}</p>
-        <Link to={`/product/${product.slug || ''}`}>
-          <h3 className="text-sm font-semibold text-charcoal-900 line-clamp-1 hover:text-gold-600 transition-colors mb-2">{name}</h3>
-        </Link>
-        <div className="flex items-center gap-2">
-          <span className="text-base font-bold text-charcoal-900">{formatCurrency(product.discountPrice || product.price || 0)}</span>
-          {product.discountPercent > 0 && (
-            <span className="text-xs text-gray-400 line-through">{formatCurrency(product.price || 0)}</span>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  );
-};
+// Premium ProductCard imported from components/common/ProductCard
 
 const Home = () => {
   const [banners, setBanners] = useState(DEFAULT_HERO_SLIDERS);
@@ -273,9 +235,9 @@ const Home = () => {
                 View All <FiArrowRight className="w-4 h-4" />
               </Link>
             </motion.div>
-            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-7">
               {products.featured.map((product) => (
-                <HomeProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product} />
               ))}
             </motion.div>
           </div>
@@ -306,9 +268,9 @@ const Home = () => {
               <FiZap className="w-6 h-6 text-amber-600 fill-amber-600" />
               <h2 className="text-2xl font-serif font-bold text-charcoal-900">Today&apos;s Special Deals</h2>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-7">
               {products.todaysDeals.map((p) => (
-                <HomeProductCard key={p.id} product={p} />
+                <ProductCard key={p.id} product={p} />
               ))}
             </div>
           </div>
@@ -341,9 +303,9 @@ const Home = () => {
                 <p className="text-gray-500 mt-1">Handpicked trending styles curated by our fashion editors</p>
               </div>
             </motion.div>
-            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-7">
               {trendingData.products.slice(0, trendingData.limit || 8).map((product) => (
-                <HomeProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product} />
               ))}
             </motion.div>
           </div>
@@ -360,9 +322,9 @@ const Home = () => {
                 <p className="text-gray-500 mt-1">Just arrived in our catalogue</p>
               </div>
             </motion.div>
-            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-7">
               {products.newArrivals.map((product) => (
-                <HomeProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product} />
               ))}
             </motion.div>
           </div>
