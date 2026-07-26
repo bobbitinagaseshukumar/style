@@ -1,6 +1,6 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
-import storage from 'redux-persist/lib/storage';
+import createWebStorage from 'redux-persist/lib/storage/createWebStorage';
 
 import authReducer from './auth/authSlice';
 import cartReducer from './cart/cartSlice';
@@ -12,11 +12,29 @@ import settingsReducer from './settings/settingsSlice';
 import notificationReducer from './notification/notificationSlice';
 import adminReducer from './admin/adminSlice';
 
+const createNoopStorage = () => {
+  return {
+    getItem(_key) {
+      return Promise.resolve(null);
+    },
+    setItem(_key, value) {
+      return Promise.resolve(value);
+    },
+    removeItem(_key) {
+      return Promise.resolve();
+    },
+  };
+};
+
+const safeStorage = typeof window !== 'undefined'
+  ? createWebStorage('local')
+  : createNoopStorage();
+
 const rootReducer = combineReducers({
-  auth: persistReducer({ key: 'auth', storage }, authReducer),
-  cart: persistReducer({ key: 'cart', storage }, cartReducer),
-  wishlist: persistReducer({ key: 'wishlist', storage }, wishlistReducer),
-  settings: persistReducer({ key: 'settings', storage }, settingsReducer),
+  auth: persistReducer({ key: 'auth', storage: safeStorage }, authReducer),
+  cart: persistReducer({ key: 'cart', storage: safeStorage }, cartReducer),
+  wishlist: persistReducer({ key: 'wishlist', storage: safeStorage }, wishlistReducer),
+  settings: persistReducer({ key: 'settings', storage: safeStorage }, settingsReducer),
   product: productReducer,
   category: categoryReducer,
   order: orderReducer,
