@@ -1,19 +1,21 @@
 import React from 'react';
-import { FiGlobe, FiCheckSquare, FiEye } from 'react-icons/fi';
+import { FiGlobe, FiEye, FiHome, FiCheck } from 'react-icons/fi';
 
 const STATUSES = [
-  { key: 'draft', label: 'Draft', desc: 'Not visible to customers', emoji: '📝', color: 'gray' },
-  { key: 'published', label: 'Published', desc: 'Live on the website', emoji: '✅', color: 'green' },
-  { key: 'hidden', label: 'Hidden', desc: 'Created but invisible', emoji: '👁️', color: 'blue' },
+  { key: 'published', label: 'Published', desc: 'Live on website, searchable & purchasable', emoji: '✅' },
+  { key: 'draft', label: 'Draft', desc: 'Only visible to Admin', emoji: '📝' },
+  { key: 'hidden', label: 'Hidden', desc: 'Hidden from website storefront', emoji: '👁️' },
+  { key: 'archived', label: 'Archived', desc: 'Stored for future use', emoji: '📦' },
 ];
 
 const BADGES = [
-  { key: 'featured', label: 'Featured', desc: 'Show on Homepage Featured section', emoji: '⭐' },
-  { key: 'trending', label: 'Trending Now', desc: 'Show in Trending section', emoji: '🔥' },
-  { key: 'newArrival', label: 'New Arrival', desc: 'Show in New Arrivals', emoji: '✨' },
-  { key: 'bestSeller', label: 'Best Seller', desc: 'Show in Best Sellers', emoji: '🏆' },
-  { key: 'flashSale', label: 'Flash Sale', desc: 'Show Flash Sale badge', emoji: '⚡' },
-  { key: 'limitedStock', label: 'Limited Stock', desc: 'Show Limited Stock badge', emoji: '🔔' },
+  { key: 'featured', label: 'Featured Product', desc: 'Show in Homepage Featured section', emoji: '⭐' },
+  { key: 'trending', label: 'Trending Product', desc: 'Show in Trending Now section', emoji: '🔥' },
+  { key: 'newArrival', label: 'New Arrival', desc: 'Show in New Arrivals section', emoji: '✨' },
+  { key: 'bestSeller', label: 'Best Seller', desc: 'Show in Best Sellers section', emoji: '🏆' },
+  { key: 'isRecommended', label: 'Recommended Choice', desc: 'Show in Recommended for You', emoji: '💎' },
+  { key: 'isPremium', label: 'Premium Collection', desc: 'Show in Luxury Collection', emoji: '👑' },
+  { key: 'isFestival', label: 'Festival Collection', desc: 'Show in Festive Deals', emoji: '🪔' },
 ];
 
 const StatusStep = ({ form, onChange }) => {
@@ -27,134 +29,121 @@ const StatusStep = ({ form, onChange }) => {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">Status, Badges & SEO</h2>
-        <p className="text-sm text-gray-500 mt-0.5">Control visibility, homepage placement, and search engine optimization</p>
+        <h2 className="text-xl font-bold text-gray-900">Publishing, Homepage & Visibility Controls</h2>
+        <p className="text-sm text-gray-500 mt-0.5">Manage product publishing status, homepage section placement, and search visibility</p>
       </div>
 
-      {/* Status */}
-      <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
-        <h3 className="font-bold text-gray-700 text-sm uppercase tracking-widest">Product Status</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Publishing Status */}
+      <div className="bg-gray-50 rounded-2xl p-5 space-y-3 border border-gray-100">
+        <h3 className="font-bold text-gray-700 text-xs uppercase tracking-widest">1. Publishing Status</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {STATUSES.map(s => (
             <button
               key={s.key}
               type="button"
               onClick={() => onChange('status', s.key)}
-              className={`p-4 rounded-xl border-2 text-left transition
+              className={`p-4 rounded-xl border-2 text-left transition cursor-pointer
                 ${form.status === s.key
-                  ? 'border-yellow-400 bg-yellow-50'
+                  ? 'border-yellow-400 bg-yellow-50/80 shadow-sm'
                   : 'border-gray-200 bg-white hover:border-gray-300'}`}
             >
               <div className="text-2xl mb-2">{s.emoji}</div>
-              <p className="font-bold text-gray-800 text-sm">{s.label}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{s.desc}</p>
+              <p className="font-bold text-gray-900 text-sm">{s.label}</p>
+              <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{s.desc}</p>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Homepage Badges */}
-      <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
-        <h3 className="font-bold text-gray-700 text-sm uppercase tracking-widest">Homepage & Badges</h3>
-        <p className="text-xs text-gray-400">Select which sections this product appears in. Multiple badges allowed.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* Home Page Display Toggle */}
+      <div className="bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-transparent rounded-2xl p-5 border border-amber-200/60">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-400 text-black flex items-center justify-center font-bold shrink-0 shadow-md">
+              <FiHome size={20} />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 text-sm">Home Page Visibility Control</h3>
+              <p className="text-xs text-gray-600 mt-0.5 max-w-xl">
+                When enabled, this product appears in Home Page sections. Disabling it removes it <strong>ONLY from the Home Page</strong> while keeping it visible in Category, Subcategory, Search & Product detail pages.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onChange('showOnHomepage', !form.showOnHomepage)}
+            className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 cursor-pointer shadow-sm ${
+              form.showOnHomepage
+                ? 'bg-amber-400 text-black shadow-amber-400/20'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            {form.showOnHomepage ? <><FiCheck /> Visible on Home Page</> : 'Hidden from Home Page'}
+          </button>
+        </div>
+      </div>
+
+      {/* Section Badges */}
+      <div className="bg-gray-50 rounded-2xl p-5 space-y-3 border border-gray-100">
+        <h3 className="font-bold text-gray-700 text-xs uppercase tracking-widest">2. Section Placement & Badges</h3>
+        <p className="text-xs text-gray-400">Select which storefront sections this product appears in. One product can belong to multiple sections.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {BADGES.map(b => (
             <button
               key={b.key}
               type="button"
               onClick={() => toggleBadge(b.key)}
-              className={`flex items-center gap-3 p-3.5 rounded-xl border-2 text-left transition
+              className={`flex items-center gap-3 p-3.5 rounded-xl border-2 text-left transition cursor-pointer
                 ${form[b.key]
-                  ? 'border-yellow-400 bg-yellow-50'
+                  ? 'border-yellow-400 bg-yellow-50/80 shadow-sm'
                   : 'border-gray-200 bg-white hover:border-gray-300'}`}
             >
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-lg ${form[b.key] ? 'bg-yellow-400' : 'bg-gray-100'}`}>
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-base ${form[b.key] ? 'bg-yellow-400 text-black font-bold' : 'bg-gray-100'}`}>
                 {b.emoji}
               </div>
-              <div>
-                <p className="font-bold text-gray-800 text-sm">{b.label}</p>
-                <p className="text-[11px] text-gray-500">{b.desc}</p>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-gray-900 text-xs truncate">{b.label}</p>
+                <p className="text-[10px] text-gray-500 truncate">{b.desc}</p>
               </div>
-              <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0
+              <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0
                 ${form[b.key] ? 'border-yellow-400 bg-yellow-400' : 'border-gray-300'}`}>
-                {form[b.key] && <span className="text-black text-xs font-black">✓</span>}
+                {form[b.key] && <span className="text-black text-[10px] font-black">✓</span>}
               </div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* SEO */}
-      <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
+      {/* SEO & Slug */}
+      <div className="bg-gray-50 rounded-2xl p-5 space-y-4 border border-gray-100">
         <div className="flex items-center gap-2">
           <FiGlobe size={15} className="text-yellow-500" />
-          <h3 className="font-bold text-gray-700 text-sm uppercase tracking-widest">SEO Settings</h3>
+          <h3 className="font-bold text-gray-700 text-xs uppercase tracking-widest">3. SEO Settings</h3>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">SEO Title</label>
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">SEO Title</label>
           <input type="text" value={form.seoTitle} onChange={handle('seoTitle')}
-            placeholder={form.name || 'Product name — StyleVerse | Fashion Store'}
-            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none" />
-          <p className="text-xs text-gray-400 mt-1">{(form.seoTitle || '').length}/60 characters (ideal: under 60)</p>
+            placeholder={form.name || 'Product name — StyleVerse'}
+            className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs focus:ring-2 focus:ring-yellow-400 focus:outline-none bg-white" />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Meta Description</label>
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Meta Description</label>
           <textarea value={form.seoDescription} onChange={handle('seoDescription')}
-            placeholder="Brief description for Google search results. Include key features and keywords."
-            rows={3}
-            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none resize-none" />
-          <p className="text-xs text-gray-400 mt-1">{(form.seoDescription || '').length}/160 characters (ideal: 120-160)</p>
+            placeholder="Brief description for search engine results..."
+            rows={2}
+            className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs focus:ring-2 focus:ring-yellow-400 focus:outline-none resize-none bg-white" />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Meta Keywords</label>
-          <input type="text" value={form.seoKeywords} onChange={handle('seoKeywords')}
-            placeholder="e.g. silk saree, designer saree, wedding saree, banarasi saree"
-            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none" />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">URL Slug</label>
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">URL Slug</label>
           <div className="flex items-center gap-2">
-            <span className="text-gray-400 text-sm font-mono flex-shrink-0">/products/</span>
+            <span className="text-gray-400 text-xs font-mono shrink-0">/product/</span>
             <input type="text" value={form.slug || autoSlug} onChange={handle('slug')}
               placeholder={autoSlug}
-              className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:ring-2 focus:ring-yellow-400 focus:outline-none" />
-          </div>
-        </div>
-
-        {/* Live Google Preview */}
-        {(form.name || form.seoTitle) && (
-          <div className="border border-gray-200 rounded-xl p-4 bg-white">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-1.5"><FiEye size={11}/>Google Preview</p>
-            <p className="text-[#1a0dab] text-sm font-medium hover:underline cursor-pointer leading-tight">
-              {form.seoTitle || form.name || 'Product Name'} — StyleVerse
-            </p>
-            <p className="text-xs text-[#006621] mt-0.5">https://styleverse.com/products/{form.slug || autoSlug || 'product-slug'}</p>
-            <p className="text-xs text-gray-600 mt-1 leading-relaxed line-clamp-2">
-              {form.seoDescription || form.shortDesc || 'Product description will appear here in Google search results.'}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Return Policy */}
-      <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
-        <h3 className="font-bold text-gray-700 text-sm uppercase tracking-widest">Return & Refund Policy</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Return Period</label>
-            <input type="text" value={form.returnPeriod} onChange={handle('returnPeriod')}
-              placeholder="e.g. 7 days"
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Refund Policy</label>
-            <input type="text" value={form.refundPolicy} onChange={handle('refundPolicy')}
-              placeholder="e.g. Full refund within 7 days"
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none" />
+              className="flex-1 px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-mono focus:ring-2 focus:ring-yellow-400 focus:outline-none bg-white" />
           </div>
         </div>
       </div>

@@ -129,6 +129,12 @@ model Product {
   flashSale       Boolean     @default(false)
   newArrival      Boolean     @default(false)
   bestSeller      Boolean     @default(false)
+  isRecommended   Boolean     @default(false)
+  isPremium       Boolean     @default(false)
+  isFestival      Boolean     @default(false)
+  showOnHomepage  Boolean     @default(true)
+  status          String      @default("PUBLISHED")
+  displayOrder    Int         @default(0)
   isVisible       Boolean     @default(true)
 
   images          ProductImage[]

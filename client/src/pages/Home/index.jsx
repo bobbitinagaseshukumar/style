@@ -178,10 +178,10 @@ const Home = () => {
         const [bannersRes, categoriesRes, featuredRes, trendingRes, newRes, dealsRes] = await Promise.allSettled([
           api.get('/cms/banners'),
           api.get('/categories'),
-          api.get('/products?featured=true&limit=4'),
-          api.get('/products?trending=true&limit=4'),
-          api.get('/products?newArrival=true&limit=4'),
-          api.get('/products?todaysDeal=true&limit=4'),
+          api.get('/products?showOnHomepage=true&featured=true&limit=8'),
+          api.get('/products?showOnHomepage=true&trending=true&limit=8'),
+          api.get('/products?showOnHomepage=true&newArrival=true&limit=8'),
+          api.get('/products?showOnHomepage=true&bestSeller=true&limit=8'),
         ]);
 
         if (bannersRes.status === 'fulfilled' && bannersRes.value.data?.data?.length > 0) {
