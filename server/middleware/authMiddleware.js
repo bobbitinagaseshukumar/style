@@ -38,13 +38,46 @@ const protect = asyncHandler(async (req, res, next) => {
     }
 });
 
+const optionalAuth = asyncHandler(async (req, res, next) => {
+    let token;
+
+    if (req.cookies?.token) {
+        token = req.cookies.token;
+    } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (!token) {
+        req.user = null;
+        return next();
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await prisma.user.findUnique({
+            where: { id: decoded.id },
+            select: { id: true, email: true, role: true, isVerified: true, status: true }
+        });
+
+        if (user && user.status === 'ACTIVE') {
+            req.user = user;
+        } else {
+            req.user = null;
+        }
+    } catch (error) {
+        req.user = null;
+    }
+
+    next();
+});
+
 const authorize = (...roles) => {
     return (req, res, next) => {
-        if (!roles.includes(req.user.role)) {
-            return next(new ApiError(403, `User role ${req.user.role} is not authorized to access this route`));
+        if (!roles.includes(req.user?.role)) {
+            return next(new ApiError(403, `User role ${req.user?.role} is not authorized to access this route`));
         }
         next();
     };
 };
 
-module.exports = { protect, authorize };
+module.exports = { protect, authorize, optionalAuth };
