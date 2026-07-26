@@ -1098,3 +1098,87 @@ exports.deleteHomepageSection = asyncHandler(async (req, res) => {
     res.status(200).json({ success: true, message: 'Homepage Section deleted successfully' });
 });
 
+// ==================== Header Navigation Menu Manager ====================
+exports.getHeaderMenusPublic = asyncHandler(async (req, res) => {
+    const menus = await prisma.headerMenu.findMany({
+        where: { isActive: true, status: 'PUBLISHED' },
+        orderBy: { sortOrder: 'asc' }
+    });
+
+    const enriched = await Promise.all(menus.map(async menu => {
+        let subcategories = [];
+        if (menu.categoryId) {
+            subcategories = await prisma.category.findMany({
+                where: { parentId: menu.categoryId, isActive: true },
+                orderBy: { sortOrder: 'asc' }
+            });
+        }
+        return { ...menu, subcategories };
+    }));
+
+    res.status(200).json({ success: true, data: enriched });
+});
+
+exports.getAllHeaderMenusAdmin = asyncHandler(async (req, res) => {
+    const menus = await prisma.headerMenu.findMany({
+        orderBy: { sortOrder: 'asc' }
+    });
+    res.status(200).json({ success: true, data: menus });
+});
+
+exports.createHeaderMenu = asyncHandler(async (req, res) => {
+    const { title, slug, icon, link, categoryId, status, isActive, sortOrder } = req.body;
+    if (!title) return res.status(400).json({ success: false, message: 'Title is required' });
+
+    const baseSlug = (slug || title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const finalSlug = `${baseSlug}-${Date.now().toString(36)}`;
+
+    const menu = await prisma.headerMenu.create({
+        data: {
+            title,
+            slug: finalSlug,
+            icon: icon || null,
+            link: link || null,
+            categoryId: categoryId || null,
+            status: status || 'PUBLISHED',
+            isActive: isActive !== false,
+            sortOrder: parseInt(sortOrder || 0)
+        }
+    });
+
+    res.status(201).json({ success: true, message: 'Header menu created', data: menu });
+});
+
+exports.updateHeaderMenu = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    if (updateData.sortOrder !== undefined) updateData.sortOrder = parseInt(updateData.sortOrder);
+
+    const menu = await prisma.headerMenu.update({
+        where: { id },
+        data: updateData
+    });
+
+    res.status(200).json({ success: true, message: 'Header menu updated', data: menu });
+});
+
+exports.reorderHeaderMenus = asyncHandler(async (req, res) => {
+    const { items } = req.body;
+    if (!Array.isArray(items)) return res.status(400).json({ success: false, message: 'Items array required' });
+
+    await Promise.all(items.map(item =>
+        prisma.headerMenu.update({
+            where: { id: item.id },
+            data: { sortOrder: parseInt(item.sortOrder) }
+        })
+    ));
+
+    res.status(200).json({ success: true, message: 'Header menus reordered' });
+});
+
+exports.deleteHeaderMenu = asyncHandler(async (req, res) => {
+    await prisma.headerMenu.delete({ where: { id: req.params.id } });
+    res.status(200).json({ success: true, message: 'Header menu deleted' });
+});
+
+

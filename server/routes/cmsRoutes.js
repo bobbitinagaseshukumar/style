@@ -20,6 +20,7 @@ router.get('/testimonials', cmsController.getTestimonials);
 router.get('/instagram', cmsController.getInstagramPosts);
 router.get('/homepage', cmsController.getHomepageSections);
 router.get('/homepage/sections/public', cmsController.getHomepageSectionsPublic);
+router.get('/header-menus/public', cmsController.getHeaderMenusPublic);
 router.get('/pages/:slug', cmsController.getCMSPage);
 router.get('/faqs', cmsController.getFAQs);
 
@@ -95,6 +96,12 @@ router.put('/homepage/sections/reorder', ...adminOnly, cmsController.reorderHome
 router.put('/homepage/sections/:id', ...adminOnly, cmsController.updateHomepageSection);
 router.post('/homepage/sections/:id/duplicate', ...adminOnly, cmsController.duplicateHomepageSection);
 router.delete('/homepage/sections/:id', ...adminOnly, cmsController.deleteHomepageSection);
+
+router.get('/header-menus/admin/all', ...adminOnly, cmsController.getAllHeaderMenusAdmin);
+router.post('/header-menus', ...adminOnly, cmsController.createHeaderMenu);
+router.put('/header-menus/reorder', ...adminOnly, cmsController.reorderHeaderMenus);
+router.put('/header-menus/:id', ...adminOnly, cmsController.updateHeaderMenu);
+router.delete('/header-menus/:id', ...adminOnly, cmsController.deleteHeaderMenu);
 router.put('/homepage', ...adminOnly, cmsController.updateHomepageSections);
 router.get('/pages/admin/all', ...adminOnly, cmsController.getAllCMSPages);
 router.put('/pages/:slug', ...adminOnly, cmsController.updateCMSPage);

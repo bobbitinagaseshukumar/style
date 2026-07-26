@@ -73,6 +73,7 @@ const AdminHeritageBrands = lazy(() => import('../admin/Offers/HeritageBrandsMan
 const AdminTrending = lazy(() => import('../admin/Offers/TrendingProductsManager'));
 const AdminWhatsApp = lazy(() => import('../admin/WhatsApp'));
 const AdminHomepageSections = lazy(() => import('../admin/Offers/HomepageSectionManager'));
+const AdminHeaderMenu = lazy(() => import('../admin/Offers/HeaderMenuManager'));
 
 const SuspenseLoader = () => (
   <div className="h-screen w-full flex items-center justify-center">
@@ -154,6 +155,7 @@ const AppRoutes = () => {
           <Route path="banners" element={<AdminBanner />} />
           <Route path="homepage" element={<AdminHomepage />} />
           <Route path="homepage-sections" element={<AdminHomepageSections />} />
+          <Route path="header-menu" element={<AdminHeaderMenu />} />
           <Route path="faqs" element={<AdminFAQs />} />
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="seo" element={<AdminSEO />} />
