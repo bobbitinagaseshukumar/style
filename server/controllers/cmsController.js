@@ -96,26 +96,109 @@ exports.deleteAnnouncement = asyncHandler(async (req, res) => {
 
 // ==================== Banners ====================
 exports.getBanners = asyncHandler(async (req, res) => {
-    const banners = await prisma.banner.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' } });
+    const where = {};
+    if (req.query.status) where.status = req.query.status;
+    if (req.query.position) where.position = req.query.position;
+    if (req.query.bannerType) where.bannerType = req.query.bannerType;
+    if (req.query.activeOnly === 'true') {
+        where.isActive = true;
+        where.status = 'PUBLISHED';
+    }
+    const banners = await prisma.banner.findMany({ where, orderBy: { priority: 'desc' } });
     res.status(200).json({ success: true, data: banners });
 });
 
+exports.getBannerStats = asyncHandler(async (req, res) => {
+    const all = await prisma.banner.findMany();
+    const now = new Date();
+    const total = all.length;
+    const published = all.filter(b => b.status === 'PUBLISHED' && b.isActive).length;
+    const draft = all.filter(b => b.status === 'DRAFT').length;
+    const scheduled = all.filter(b => b.status === 'SCHEDULED').length;
+    const expired = all.filter(b => b.endDate && new Date(b.endDate) < now).length;
+    const hidden = all.filter(b => b.status === 'HIDDEN').length;
+    const totalViews = all.reduce((sum, b) => sum + (b.views || 0), 0);
+    const totalClicks = all.reduce((sum, b) => sum + (b.clicks || 0), 0);
+    res.status(200).json({
+        success: true,
+        data: { total, published, draft, scheduled, expired, hidden, totalViews, totalClicks }
+    });
+});
+
 exports.createBanner = asyncHandler(async (req, res) => {
-    const { title, subtitle, imageUrl, linkUrl, type, sortOrder, isActive } = req.body;
+    const {
+        title, subtitle, description, imageUrl, buttonText, buttonLink,
+        textColor, buttonColor, overlayOpacity, textAlignment,
+        bannerType, position, priority, sortOrder, status, isActive,
+        devices, altText, seoTitle, seoDescription, startDate, endDate
+    } = req.body;
+
+    if (!imageUrl) return res.status(400).json({ success: false, message: 'Banner image URL is required' });
+
     const banner = await prisma.banner.create({
-        data: { title, subtitle, imageUrl, linkUrl, type: type || 'HERO_SLIDER', sortOrder: parseInt(sortOrder || 0), isActive: isActive !== false }
+        data: {
+            title: title || null,
+            subtitle: subtitle || null,
+            description: description || null,
+            imageUrl,
+            buttonText: buttonText || null,
+            buttonLink: buttonLink || null,
+            textColor: textColor || '#FFFFFF',
+            buttonColor: buttonColor || '#D4AF37',
+            overlayOpacity: overlayOpacity !== undefined ? parseFloat(overlayOpacity) : 0.3,
+            textAlignment: textAlignment || 'CENTER',
+            bannerType: bannerType || 'STATIC',
+            position: position || 'HOMEPAGE_HERO',
+            priority: priority ? parseInt(priority) : 0,
+            sortOrder: sortOrder ? parseInt(sortOrder) : 0,
+            status: status || 'PUBLISHED',
+            isActive: isActive !== false,
+            devices: devices || '["DESKTOP","TABLET","MOBILE"]',
+            altText: altText || null,
+            seoTitle: seoTitle || null,
+            seoDescription: seoDescription || null,
+            startDate: startDate ? new Date(startDate) : null,
+            endDate: endDate ? new Date(endDate) : null
+        }
     });
     res.status(201).json({ success: true, message: 'Banner created', data: banner });
 });
 
 exports.updateBanner = asyncHandler(async (req, res) => {
-    const banner = await prisma.banner.update({ where: { id: req.params.id }, data: req.body });
+    const updateData = { ...req.body };
+    if (updateData.overlayOpacity !== undefined) updateData.overlayOpacity = parseFloat(updateData.overlayOpacity);
+    if (updateData.priority !== undefined) updateData.priority = parseInt(updateData.priority);
+    if (updateData.sortOrder !== undefined) updateData.sortOrder = parseInt(updateData.sortOrder);
+    if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
+    if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
+
+    const banner = await prisma.banner.update({ where: { id: req.params.id }, data: updateData });
     res.status(200).json({ success: true, message: 'Banner updated', data: banner });
+});
+
+exports.duplicateBanner = asyncHandler(async (req, res) => {
+    const source = await prisma.banner.findUnique({ where: { id: req.params.id } });
+    if (!source) return res.status(404).json({ success: false, message: 'Banner not found' });
+    const { id, createdAt, updatedAt, views, clicks, ...rest } = source;
+    const duplicate = await prisma.banner.create({
+        data: { ...rest, title: (rest.title || 'Banner') + ' (Copy)', status: 'DRAFT', isActive: false, views: 0, clicks: 0 }
+    });
+    res.status(201).json({ success: true, message: 'Banner duplicated', data: duplicate });
 });
 
 exports.deleteBanner = asyncHandler(async (req, res) => {
     await prisma.banner.delete({ where: { id: req.params.id } });
     res.status(200).json({ success: true, message: 'Banner deleted' });
+});
+
+exports.trackBannerView = asyncHandler(async (req, res) => {
+    await prisma.banner.update({ where: { id: req.params.id }, data: { views: { increment: 1 } } });
+    res.status(200).json({ success: true });
+});
+
+exports.trackBannerClick = asyncHandler(async (req, res) => {
+    await prisma.banner.update({ where: { id: req.params.id }, data: { clicks: { increment: 1 } } });
+    res.status(200).json({ success: true });
 });
 
 // ==================== Flash Sales ====================
