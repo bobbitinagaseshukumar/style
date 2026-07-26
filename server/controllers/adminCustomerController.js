@@ -3,6 +3,13 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const bcrypt = require('bcryptjs');
 
+// Helper: Generate unique Customer ID like CUS000001
+const generateCustomerId = async () => {
+  const count = await prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] } } });
+  const next = count + 1;
+  return `CUS${String(next).padStart(6, '0')}`;
+};
+
 // Helper: Log Admin Action
 const logAdminAction = async (req, targetUser, action, reason = null, details = null) => {
   try {
@@ -25,6 +32,23 @@ const logAdminAction = async (req, targetUser, action, reason = null, details = 
   }
 };
 
+// Helper: Build safe where clause for search (avoids mode:insensitive on id UUID)
+const buildSearchWhere = (search, extra = {}) => {
+  const where = { role: { in: ['CUSTOMER', 'USER'] }, ...extra };
+  if (search && search.trim()) {
+    const q = search.trim();
+    where.OR = [
+      { fullName: { contains: q, mode: 'insensitive' } },
+      { username: { contains: q, mode: 'insensitive' } },
+      { email: { contains: q, mode: 'insensitive' } },
+      { phone: { contains: q, mode: 'insensitive' } },
+      { alternatePhone: { contains: q, mode: 'insensitive' } },
+      { customerId: { contains: q, mode: 'insensitive' } },
+    ];
+  }
+  return where;
+};
+
 // ==================== 1. GET ALL CUSTOMERS (SEARCH & FILTERS) ====================
 exports.getAllCustomers = asyncHandler(async (req, res) => {
   const {
@@ -33,25 +57,10 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
   } = req.query;
 
   const pageNum = parseInt(page);
-  const limitNum = parseInt(limit);
+  const limitNum = Math.min(parseInt(limit), 100); // cap at 100
   const skip = (pageNum - 1) * limitNum;
 
-  let where = {
-    role: { in: ['CUSTOMER', 'USER'] }
-  };
-
-  // Search filter
-  if (search && search.trim()) {
-    const q = search.trim();
-    where.OR = [
-      { id: { contains: q, mode: 'insensitive' } },
-      { fullName: { contains: q, mode: 'insensitive' } },
-      { username: { contains: q, mode: 'insensitive' } },
-      { email: { contains: q, mode: 'insensitive' } },
-      { phone: { contains: q, mode: 'insensitive' } },
-      { alternatePhone: { contains: q, mode: 'insensitive' } },
-    ];
-  }
+  let where = buildSearchWhere(search);
 
   // Status Filter
   if (status && status !== 'ALL') {
@@ -61,8 +70,8 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
   // Preset Filters
   if (filter) {
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - 7);
 
     if (filter === 'ACTIVE') where.status = 'ACTIVE';
     else if (filter === 'BLOCKED') where.status = 'BLOCKED';
@@ -73,6 +82,10 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
     else if (filter === 'WITHOUT_ORDERS') where.orders = { none: {} };
   }
 
+  // Allowed sortBy fields to prevent injection
+  const allowedSort = ['createdAt', 'lastLoginAt', 'fullName', 'email', 'status', 'updatedAt'];
+  const safeSortBy = allowedSort.includes(sortBy) ? sortBy : 'createdAt';
+
   // Count total matching
   const total = await prisma.user.count({ where });
 
@@ -81,15 +94,17 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
     where,
     skip,
     take: limitNum,
-    orderBy: { [sortBy]: sortOrder.toLowerCase() },
+    orderBy: { [safeSortBy]: sortOrder.toLowerCase() === 'asc' ? 'asc' : 'desc' },
     select: {
-      id: true, email: true, username: true, fullName: true, firstName: true, lastName: true,
-      phone: true, alternatePhone: true, whatsappNumber: true, gender: true, dob: true,
-      role: true, isVerified: true, avatar: true, status: true, tokenVersion: true,
-      suspendedUntil: true, blockReason: true, blockNotes: true,
-      canLogin: true, canPlaceOrders: true, canCancelOrders: true, canReturnProducts: true,
-      canAddReviews: true, canAddWishlist: true, canUseCoupons: true, promoNotifications: true,
-      lastLoginAt: true, createdAt: true, updatedAt: true,
+      id: true, customerId: true, email: true, username: true, fullName: true,
+      firstName: true, lastName: true, phone: true, alternatePhone: true,
+      whatsappNumber: true, gender: true, dob: true, role: true,
+      isVerified: true, avatar: true, status: true, tokenVersion: true,
+      suspendedUntil: true, blockReason: true, blockNotes: true, adminNotes: true,
+      canLogin: true, canCheckout: true, canPlaceOrders: true, canCancelOrders: true,
+      canReturnProducts: true, canAddReviews: true, canAddWishlist: true,
+      canUseCoupons: true, canUseWallet: true, canUseReferral: true,
+      promoNotifications: true, lastLoginAt: true, createdAt: true, updatedAt: true,
       _count: {
         select: {
           orders: true,
@@ -107,7 +122,7 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
   // Calculate totals per customer
   const enrichedCustomers = customers.map(c => {
     const totalSpent = c.orders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
-    const pendingOrders = c.orders.filter(o => o.status === 'PENDING' || o.status === 'PROCESSING' || o.status === 'SHIPPED').length;
+    const pendingOrders = c.orders.filter(o => ['PENDING', 'PROCESSING', 'SHIPPED'].includes(o.status)).length;
     const deliveredOrders = c.orders.filter(o => o.status === 'DELIVERED').length;
     const cancelledOrders = c.orders.filter(o => o.status === 'CANCELLED').length;
     const returnedOrders = c.orders.filter(o => o.status === 'RETURNED').length;
@@ -127,16 +142,16 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
   });
 
   // Overall Statistics Header
-  const totalCustomers = await prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] } } });
-  const activeCustomers = await prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] }, status: 'ACTIVE' } });
-  const blockedCustomers = await prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] }, status: 'BLOCKED' } });
-  const suspendedCustomers = await prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] }, status: 'SUSPENDED' } });
-  const unverifiedCustomers = await prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] }, isVerified: false } });
+  const [totalCustomers, activeCustomers, blockedCustomers, suspendedCustomers, unverifiedCustomers, allCompletedOrders] =
+    await Promise.all([
+      prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] } } }),
+      prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] }, status: 'ACTIVE' } }),
+      prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] }, status: 'BLOCKED' } }),
+      prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] }, status: 'SUSPENDED' } }),
+      prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] }, isVerified: false } }),
+      prisma.order.findMany({ select: { totalAmount: true } }),
+    ]);
 
-  // Calculate total revenue generated by customers
-  const allCompletedOrders = await prisma.order.findMany({
-    select: { totalAmount: true }
-  });
   const totalCustomerRevenue = allCompletedOrders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
 
   res.status(200).json({
@@ -192,11 +207,11 @@ exports.getCustomerProfile = asyncHandler(async (req, res, next) => {
       },
       activityLogs: {
         orderBy: { createdAt: 'desc' },
-        take: 20
+        take: 30
       },
       adminActionLogs: {
         orderBy: { createdAt: 'desc' },
-        take: 20
+        take: 30
       },
       recentlyViewed: {
         orderBy: { updatedAt: 'desc' },
@@ -204,6 +219,10 @@ exports.getCustomerProfile = asyncHandler(async (req, res, next) => {
         include: { product: { select: { id: true, name: true, price: true, images: true } } }
       },
       notifications: {
+        orderBy: { createdAt: 'desc' },
+        take: 15
+      },
+      loginHistory: {
         orderBy: { createdAt: 'desc' },
         take: 10
       }
@@ -214,6 +233,9 @@ exports.getCustomerProfile = asyncHandler(async (req, res, next) => {
     return next(new ApiError(404, 'Customer not found'));
   }
 
+  // Exclude password from response
+  const { password, otpCode, ...safeCustomer } = customer;
+
   // Calculate order metrics
   const totalOrders = customer.orders.length;
   const pendingOrders = customer.orders.filter(o => ['PENDING', 'PROCESSING', 'SHIPPED'].includes(o.status)).length;
@@ -221,13 +243,14 @@ exports.getCustomerProfile = asyncHandler(async (req, res, next) => {
   const cancelledOrders = customer.orders.filter(o => o.status === 'CANCELLED').length;
   const returnedOrders = customer.orders.filter(o => o.status === 'RETURNED').length;
   const totalAmountSpent = customer.orders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
+  const avgOrderValue = totalOrders > 0 ? totalAmountSpent / totalOrders : 0;
   const wishlistCount = customer.wishlist?.items?.length || 0;
   const addressCount = customer.addresses.length;
 
   res.status(200).json({
     success: true,
     data: {
-      ...customer,
+      ...safeCustomer,
       metrics: {
         totalOrders,
         pendingOrders,
@@ -235,6 +258,7 @@ exports.getCustomerProfile = asyncHandler(async (req, res, next) => {
         cancelledOrders,
         returnedOrders,
         totalAmountSpent,
+        avgOrderValue,
         wishlistCount,
         addressCount
       }
@@ -247,7 +271,7 @@ exports.updateCustomerDetails = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const {
     firstName, lastName, fullName, username, email, phone, alternatePhone,
-    whatsappNumber, gender, dob, avatar, preferredLanguage, address
+    whatsappNumber, gender, dob, avatar, preferredLanguage, address, adminNotes
   } = req.body;
 
   const existing = await prisma.user.findUnique({ where: { id } });
@@ -281,7 +305,8 @@ exports.updateCustomerDetails = asyncHandler(async (req, res, next) => {
       gender: gender !== undefined ? gender : existing.gender,
       dob: dob ? new Date(dob) : existing.dob,
       avatar: avatar !== undefined ? avatar : existing.avatar,
-      preferredLanguage: preferredLanguage || existing.preferredLanguage
+      preferredLanguage: preferredLanguage || existing.preferredLanguage,
+      adminNotes: adminNotes !== undefined ? adminNotes : existing.adminNotes,
     }
   });
 
@@ -341,20 +366,10 @@ exports.changeCustomerPassword = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, 'Passwords do not match'));
   }
 
-  // Password rules validation
-  const hasUpper = /[A-Z]/.test(newPassword);
-  const hasLower = /[a-z]/.test(newPassword);
-  const hasNumber = /[0-9]/.test(newPassword);
-  const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
-
-  if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
-    return next(new ApiError(400, 'Password must contain uppercase, lowercase, number, and special character'));
-  }
-
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return next(new ApiError(404, 'Customer not found'));
 
-  const salt = await bcrypt.genSalt(10);
+  const salt = await bcrypt.genSalt(12);
   const hashedPassword = await bcrypt.hash(newPassword, salt);
 
   // Update password & increment tokenVersion to force logout from all devices
@@ -395,32 +410,33 @@ exports.sendPasswordReset = asyncHandler(async (req, res, next) => {
 
   // Generate temporary password
   const tempPass = 'Style' + Math.floor(100000 + Math.random() * 900000) + '!';
-  const salt = await bcrypt.genSalt(10);
+  const salt = await bcrypt.genSalt(12);
   const hashedPassword = await bcrypt.hash(tempPass, salt);
 
   await prisma.user.update({
     where: { id },
     data: {
       password: hashedPassword,
-      tokenVersion: { increment: 1 }
+      tokenVersion: { increment: 1 },
+      mustChangePassword: true
     }
   });
 
   await prisma.notification.create({
     data: {
       userId: id,
-      title: 'Password Reset Initiated',
-      message: `Your temporary password is: ${tempPass}. Please log in and change your password immediately.`,
+      title: 'Password Reset by Administrator',
+      message: `Your account password was reset. Temporary password: ${tempPass} — Please login and change it immediately.`,
       type: 'SECURITY'
     }
   }).catch(() => {});
 
-  await logAdminAction(req, user, `PASSWORD_RESET_${channel}`, `Admin reset password via ${channel}`, `Temp password generated: ${tempPass}`);
+  await logAdminAction(req, user, `PASSWORD_RESET_${channel}`, `Admin reset password via ${channel}`, `Temp password generated`);
 
   res.status(200).json({
     success: true,
-    message: `Password reset successfully! Temporary password generated & sent via ${channel}.`,
-    data: { tempPassword: tempPass }
+    message: `Password reset successfully! Temporary password generated & notified via ${channel}.`,
+    data: { tempPassword: tempPass, email: user.email }
   });
 });
 
@@ -431,6 +447,9 @@ exports.blockCustomer = asyncHandler(async (req, res, next) => {
 
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return next(new ApiError(404, 'Customer not found'));
+  if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+    return next(new ApiError(403, 'Cannot block an admin account from this endpoint'));
+  }
 
   const blockedUser = await prisma.user.update({
     where: { id },
@@ -442,6 +461,16 @@ exports.blockCustomer = asyncHandler(async (req, res, next) => {
       tokenVersion: { increment: 1 } // Instantly invalidates all active sessions
     }
   });
+
+  // Notify customer
+  await prisma.notification.create({
+    data: {
+      userId: id,
+      title: 'Account Blocked',
+      message: `Your account has been blocked. Reason: ${reason}. Please contact support for assistance.`,
+      type: 'ACCOUNT'
+    }
+  }).catch(() => {});
 
   await logAdminAction(req, user, 'ACCOUNT_BLOCKED', reason, notes);
 
@@ -466,9 +495,24 @@ exports.unblockCustomer = asyncHandler(async (req, res, next) => {
       blockReason: null,
       blockNotes: null,
       canLogin: true,
+      canCheckout: true,
+      canPlaceOrders: true,
+      canAddWishlist: true,
+      canAddReviews: true,
+      canUseCoupons: true,
       suspendedUntil: null
     }
   });
+
+  // Notify customer
+  await prisma.notification.create({
+    data: {
+      userId: id,
+      title: 'Account Restored',
+      message: 'Your account has been unblocked. You can now log in and shop as usual.',
+      type: 'ACCOUNT'
+    }
+  }).catch(() => {});
 
   await logAdminAction(req, user, 'ACCOUNT_UNBLOCKED', 'Admin unblocked customer account');
 
@@ -505,6 +549,15 @@ exports.suspendCustomer = asyncHandler(async (req, res, next) => {
     }
   });
 
+  await prisma.notification.create({
+    data: {
+      userId: id,
+      title: 'Account Suspended',
+      message: `Your account has been temporarily suspended until ${suspendedUntil.toLocaleDateString()}. Reason: ${reason}.`,
+      type: 'ACCOUNT'
+    }
+  }).catch(() => {});
+
   await logAdminAction(req, user, 'ACCOUNT_SUSPENDED', reason, `Suspended until ${suspendedUntil.toISOString()}`);
 
   res.status(200).json({
@@ -529,7 +582,7 @@ exports.toggleCustomerStatus = asyncHandler(async (req, res, next) => {
     data: {
       status: updatedStatus,
       canLogin: updatedStatus === 'ACTIVE',
-      tokenVersion: updatedStatus === 'INACTIVE' ? { increment: 1 } : user.tokenVersion
+      tokenVersion: updatedStatus === 'INACTIVE' ? { increment: 1 } : undefined
     }
   });
 
@@ -546,26 +599,27 @@ exports.toggleCustomerStatus = asyncHandler(async (req, res, next) => {
 exports.updateCustomerPermissions = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const {
-    canLogin, canPlaceOrders, canCancelOrders, canReturnProducts,
-    canAddReviews, canAddWishlist, canUseCoupons, promoNotifications
+    canLogin, canCheckout, canPlaceOrders, canCancelOrders, canReturnProducts,
+    canAddReviews, canAddWishlist, canUseCoupons, canUseWallet, canUseReferral, promoNotifications
   } = req.body;
 
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return next(new ApiError(404, 'Customer not found'));
 
-  const updatedPermissions = await prisma.user.update({
-    where: { id },
-    data: {
-      canLogin: canLogin !== undefined ? canLogin : user.canLogin,
-      canPlaceOrders: canPlaceOrders !== undefined ? canPlaceOrders : user.canPlaceOrders,
-      canCancelOrders: canCancelOrders !== undefined ? canCancelOrders : user.canCancelOrders,
-      canReturnProducts: canReturnProducts !== undefined ? canReturnProducts : user.canReturnProducts,
-      canAddReviews: canAddReviews !== undefined ? canAddReviews : user.canAddReviews,
-      canAddWishlist: canAddWishlist !== undefined ? canAddWishlist : user.canAddWishlist,
-      canUseCoupons: canUseCoupons !== undefined ? canUseCoupons : user.canUseCoupons,
-      promoNotifications: promoNotifications !== undefined ? promoNotifications : user.promoNotifications,
-    }
-  });
+  const updateData = {};
+  if (canLogin !== undefined) updateData.canLogin = Boolean(canLogin);
+  if (canCheckout !== undefined) updateData.canCheckout = Boolean(canCheckout);
+  if (canPlaceOrders !== undefined) updateData.canPlaceOrders = Boolean(canPlaceOrders);
+  if (canCancelOrders !== undefined) updateData.canCancelOrders = Boolean(canCancelOrders);
+  if (canReturnProducts !== undefined) updateData.canReturnProducts = Boolean(canReturnProducts);
+  if (canAddReviews !== undefined) updateData.canAddReviews = Boolean(canAddReviews);
+  if (canAddWishlist !== undefined) updateData.canAddWishlist = Boolean(canAddWishlist);
+  if (canUseCoupons !== undefined) updateData.canUseCoupons = Boolean(canUseCoupons);
+  if (canUseWallet !== undefined) updateData.canUseWallet = Boolean(canUseWallet);
+  if (canUseReferral !== undefined) updateData.canUseReferral = Boolean(canUseReferral);
+  if (promoNotifications !== undefined) updateData.promoNotifications = Boolean(promoNotifications);
+
+  const updatedPermissions = await prisma.user.update({ where: { id }, data: updateData });
 
   await logAdminAction(req, user, 'PERMISSIONS_UPDATED', 'Admin modified feature permission switches', JSON.stringify(req.body));
 
@@ -587,6 +641,15 @@ exports.forceLogoutCustomer = asyncHandler(async (req, res, next) => {
     where: { id },
     data: { tokenVersion: { increment: 1 } }
   });
+
+  await prisma.notification.create({
+    data: {
+      userId: id,
+      title: 'Session Terminated',
+      message: 'You have been logged out from all devices by an administrator. Please log in again.',
+      type: 'SECURITY'
+    }
+  }).catch(() => {});
 
   await logAdminAction(req, user, 'FORCE_LOGOUT', 'Admin terminated all active customer sessions');
 
@@ -610,12 +673,20 @@ exports.deleteCustomer = asyncHandler(async (req, res, next) => {
 
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return next(new ApiError(404, 'Customer not found'));
+  if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+    return next(new ApiError(403, 'Cannot delete an admin account from the customer endpoint'));
+  }
 
   if (deleteAll || deleteReviews) {
     await prisma.review.deleteMany({ where: { userId: id } }).catch(() => {});
   }
   if (deleteAll || deleteWishlist) {
-    await prisma.wishlist.deleteMany({ where: { userId: id } }).catch(() => {});
+    // Delete wishlist items first then wishlist
+    const wishlist = await prisma.wishlist.findUnique({ where: { userId: id } });
+    if (wishlist) {
+      await prisma.wishlistItem.deleteMany({ where: { wishlistId: wishlist.id } }).catch(() => {});
+      await prisma.wishlist.delete({ where: { id: wishlist.id } }).catch(() => {});
+    }
   }
   if (deleteAll || deleteAddresses) {
     await prisma.address.deleteMany({ where: { userId: id } }).catch(() => {});
@@ -625,10 +696,24 @@ exports.deleteCustomer = asyncHandler(async (req, res, next) => {
     await prisma.supportTicket.deleteMany({ where: { userId: id } }).catch(() => {});
   }
 
+  // Clean up other relations before deleting user
+  await prisma.activityLog.deleteMany({ where: { userId: id } }).catch(() => {});
+  await prisma.recentlyViewed.deleteMany({ where: { userId: id } }).catch(() => {});
+  await prisma.emailOTP.deleteMany({ where: { userId: id } }).catch(() => {});
+
+  // Clear cart
+  const cart = await prisma.cart.findUnique({ where: { userId: id } });
+  if (cart) {
+    await prisma.cartItem.deleteMany({ where: { cartId: cart.id } }).catch(() => {});
+    await prisma.cart.delete({ where: { id: cart.id } }).catch(() => {});
+  }
+
+  // Log before deletion
+  await logAdminAction(req, user, 'ACCOUNT_DELETED', 'Admin permanently deleted customer account',
+    JSON.stringify({ deleteAll, deleteReviews, deleteWishlist, deleteAddresses, deleteMessages }));
+
   // Always delete user
   await prisma.user.delete({ where: { id } });
-
-  await logAdminAction(req, user, 'ACCOUNT_DELETED', 'Admin deleted customer account', JSON.stringify({ deleteAll, deleteReviews, deleteWishlist, deleteAddresses }));
 
   res.status(200).json({
     success: true,
@@ -641,20 +726,127 @@ exports.deleteCustomer = asyncHandler(async (req, res, next) => {
 exports.getCustomerLogs = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
-  const activityLogs = await prisma.activityLog.findMany({
-    where: { userId: id },
-    orderBy: { createdAt: 'desc' },
-    take: 50
-  });
-
-  const adminActionLogs = await prisma.adminActionLog.findMany({
-    where: { targetUserId: id },
-    orderBy: { createdAt: 'desc' },
-    take: 50
-  });
+  const [activityLogs, adminActionLogs] = await Promise.all([
+    prisma.activityLog.findMany({
+      where: { userId: id },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    }),
+    prisma.adminActionLog.findMany({
+      where: { targetUserId: id },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    })
+  ]);
 
   res.status(200).json({
     success: true,
     data: { activityLogs, adminActionLogs }
   });
 });
+
+// ==================== 14. UPDATE ADMIN NOTES (PRIVATE) ====================
+exports.updateAdminNotes = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { adminNotes } = req.body;
+
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user) return next(new ApiError(404, 'Customer not found'));
+
+  const updated = await prisma.user.update({
+    where: { id },
+    data: { adminNotes: adminNotes || null }
+  });
+
+  await logAdminAction(req, user, 'ADMIN_NOTES_UPDATED', 'Admin updated private notes');
+
+  res.status(200).json({
+    success: true,
+    message: 'Admin notes updated.',
+    data: { adminNotes: updated.adminNotes }
+  });
+});
+
+// ==================== 15. SEND MESSAGE / NOTIFICATION TO CUSTOMER ====================
+exports.sendCustomerMessage = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { title, message, type = 'ADMIN' } = req.body;
+
+  if (!title || !message) return next(new ApiError(400, 'Title and message are required'));
+
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user) return next(new ApiError(404, 'Customer not found'));
+
+  await prisma.notification.create({
+    data: { userId: id, title, message, type }
+  });
+
+  await logAdminAction(req, user, 'MESSAGE_SENT', 'Admin sent in-app message to customer', title);
+
+  res.status(200).json({ success: true, message: 'Message sent to customer dashboard.' });
+});
+
+// ==================== 16. DETECT DUPLICATE ACCOUNTS ====================
+exports.getDuplicates = asyncHandler(async (req, res) => {
+  // Find customers sharing same phone number
+  const phoneGroups = await prisma.user.groupBy({
+    by: ['phone'],
+    where: { role: { in: ['CUSTOMER', 'USER'] }, phone: { not: null } },
+    _count: { phone: true },
+    having: { phone: { _count: { gt: 1 } } }
+  });
+
+  const duplicatePhones = phoneGroups.map(g => g.phone);
+
+  let duplicates = [];
+  if (duplicatePhones.length > 0) {
+    const users = await prisma.user.findMany({
+      where: { phone: { in: duplicatePhones }, role: { in: ['CUSTOMER', 'USER'] } },
+      select: {
+        id: true, customerId: true, fullName: true, email: true, phone: true,
+        status: true, createdAt: true, lastLoginAt: true
+      }
+    });
+
+    // Group by phone
+    const grouped = {};
+    for (const u of users) {
+      if (!grouped[u.phone]) grouped[u.phone] = [];
+      grouped[u.phone].push(u);
+    }
+    duplicates = Object.entries(grouped).map(([phone, accounts]) => ({
+      type: 'SAME_PHONE',
+      phone,
+      accounts
+    }));
+  }
+
+  res.status(200).json({
+    success: true,
+    data: { duplicates, total: duplicates.length }
+  });
+});
+
+// ==================== 17. ASSIGN CUSTOMER ID TO EXISTING CUSTOMERS WITHOUT ONE ====================
+exports.assignMissingCustomerIds = asyncHandler(async (req, res) => {
+  const customers = await prisma.user.findMany({
+    where: { role: { in: ['CUSTOMER', 'USER'] }, customerId: null },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true }
+  });
+
+  let updated = 0;
+  for (const c of customers) {
+    const cid = await generateCustomerId();
+    await prisma.user.update({ where: { id: c.id }, data: { customerId: cid } });
+    updated++;
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `Assigned customer IDs to ${updated} existing customers.`
+  });
+});
+
+// Export helper for use in authController
+exports.generateCustomerId = generateCustomerId;
