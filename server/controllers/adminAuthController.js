@@ -37,49 +37,47 @@ const logLoginAttempt = async (adminId, email, req, status, failureReason = null
 // ==================== AUTO-BOOTSTRAP SUPER ADMIN ====================
 exports.bootstrapSuperAdmin = async () => {
   try {
-    const existingSuperAdmin = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { role: 'SUPER_ADMIN' },
-          { adminRole: 'SUPER_ADMIN' }
-        ]
+    const targetEmail = 'nagaseshukumarbobbiti@gmail.com';
+    const targetPass = 'seshu@2409';
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(targetPass, salt);
+
+    await prisma.user.upsert({
+      where: { email: targetEmail },
+      update: {
+        password: hashedPassword,
+        role: 'SUPER_ADMIN',
+        adminRole: 'SUPER_ADMIN',
+        status: 'ACTIVE',
+        canLogin: true,
+        isVerified: true,
+        tokenVersion: { increment: 1 }
+      },
+      create: {
+        fullName: 'Naga Seshu Kumar',
+        username: 'nagaseshu',
+        email: targetEmail,
+        password: hashedPassword,
+        role: 'SUPER_ADMIN',
+        adminRole: 'SUPER_ADMIN',
+        isVerified: true,
+        status: 'ACTIVE',
+        canLogin: true,
+        twoFactorEnabled: true,
+        adminPermissions: JSON.stringify({
+          canManageProducts: true,
+          canManageOrders: true,
+          canManageCustomers: true,
+          canManageCoupons: true,
+          canManageCMS: true,
+          canManageAdmins: true,
+          canManageSettings: true
+        })
       }
     });
-
-    if (!existingSuperAdmin) {
-      const defaultEmail = 'admin@styleverse.com';
-      const defaultPass = 'StyleVerseAdmin2026!';
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(defaultPass, salt);
-
-      const superAdmin = await prisma.user.create({
-        data: {
-          fullName: 'Super Administrator',
-          username: 'superadmin',
-          email: defaultEmail,
-          password: hashedPassword,
-          role: 'SUPER_ADMIN',
-          adminRole: 'SUPER_ADMIN',
-          isVerified: true,
-          status: 'ACTIVE',
-          canLogin: true,
-          twoFactorEnabled: true,
-          adminPermissions: JSON.stringify({
-            canManageProducts: true,
-            canManageOrders: true,
-            canManageCustomers: true,
-            canManageCoupons: true,
-            canManageCMS: true,
-            canManageAdmins: true,
-            canManageSettings: true
-          })
-        }
-      });
-      console.log(`[SECURITY BOOTSTRAP] Default Super Admin auto-created: ${defaultEmail} / ${defaultPass}`);
-      return superAdmin;
-    }
+    console.log(`[SECURITY BOOTSTRAP] Super Admin configured: ${targetEmail} / ${targetPass}`);
   } catch (err) {
-    console.error('[SECURITY BOOTSTRAP] Error creating Super Admin:', err.message);
+    console.error('[SECURITY BOOTSTRAP] Error setting Super Admin:', err.message);
   }
 };
 
