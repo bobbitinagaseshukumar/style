@@ -450,6 +450,35 @@ const AuthPage = ({ initialMode = 'login' }) => {
                         )}
                       </div>
 
+                      {/* Quick 1-Click Demo Login Presets */}
+                      <div className="pt-1 pb-1">
+                        <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider text-center mb-1.5">Quick Demo Login</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLoginEmail('customer@styleverse.com');
+                              setLoginPassword('Password123!');
+                              setLoginError(null);
+                            }}
+                            className="py-1.5 px-2 rounded-xl bg-white/[0.05] border border-white/10 hover:border-yellow-400/50 text-white/80 hover:text-yellow-400 text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            👑 Demo Customer
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLoginEmail('admin@styleverse.com');
+                              setLoginPassword('Password123!');
+                              setLoginError(null);
+                            }}
+                            className="py-1.5 px-2 rounded-xl bg-white/[0.05] border border-white/10 hover:border-yellow-400/50 text-white/80 hover:text-yellow-400 text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            🛡️ Demo Admin
+                          </button>
+                        </div>
+                      </div>
+
                       {loginError && (
                         <motion.div
                           initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
