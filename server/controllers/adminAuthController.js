@@ -808,3 +808,33 @@ exports.getAdminSecurityLogs = asyncHandler(async (req, res) => {
     data: logs
   });
 });
+
+// ==================== GET MAINTENANCE STATUS ====================
+exports.getMaintenanceStatus = asyncHandler(async (req, res) => {
+  const setting = await prisma.systemSetting.findUnique({
+    where: { key: 'maintenance_mode' }
+  });
+  res.status(200).json({
+    success: true,
+    data: { maintenanceMode: setting?.value === 'true' }
+  });
+});
+
+// ==================== TOGGLE MAINTENANCE MODE ====================
+exports.toggleMaintenanceMode = asyncHandler(async (req, res, next) => {
+  const { value } = req.body;
+  const isEnabled = String(value) === 'true';
+
+  await prisma.systemSetting.upsert({
+    where: { key: 'maintenance_mode' },
+    update: { value: String(isEnabled) },
+    create: { key: 'maintenance_mode', value: String(isEnabled) }
+  });
+
+  res.status(200).json({
+    success: true,
+    message: `Maintenance Mode ${isEnabled ? 'ENABLED' : 'DISABLED'}`,
+    data: { maintenanceMode: isEnabled }
+  });
+});
+
