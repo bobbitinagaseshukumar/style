@@ -30,6 +30,7 @@ const healthController = require('./controllers/healthController');
 const { apiLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Security & Core Middlewares
 app.use(helmet({
