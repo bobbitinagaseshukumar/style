@@ -44,9 +44,10 @@ const VerifyOTP = lazy(() => import('../pages/VerifyOTP'));
 const ForgotPassword = lazy(() => import('../pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('../pages/ResetPassword'));
 
+import AdminLogin from '../admin/Login';
+import AdminVerifyOTP from '../admin/Login/AdminVerifyOTP';
+
 // Lazy loading admin pages
-const AdminLogin = lazy(() => import('../admin/Login'));
-const AdminVerifyOTP = lazy(() => import('../admin/Login/AdminVerifyOTP'));
 const AdminProfile = lazy(() => import('../admin/AdminProfile'));
 const AdminTeam = lazy(() => import('../admin/Team'));
 const AdminDashboard = lazy(() => import('../admin/Dashboard'));
@@ -140,12 +141,14 @@ const AppRoutes = () => {
 
         {/* Dedicated Admin Login & 2FA OTP Pages (Outside Customer Flow) */}
         <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/admin/verify-otp" element={<AdminVerifyOTP />} />
 
         {/* Admin Layout Routes */}
         <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
           <Route index element={<AdminDashboard />} />
           <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="login" element={<AdminLogin />} />
           <Route path="profile" element={<AdminProfile />} />
           <Route path="team" element={<AdminTeam />} />
           <Route path="products" element={<AdminProducts />} />
