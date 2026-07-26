@@ -93,6 +93,12 @@ router.delete('/collections/:id', ...adminOnly, cmsController.deleteCollection);
 router.get('/homepage/admin/all', ...adminOnly, cmsController.getAllHomepageSectionsAdmin);
 router.post('/homepage/sections', ...adminOnly, cmsController.createHomepageSection);
 router.put('/homepage/sections/reorder', ...adminOnly, cmsController.reorderHomepageSections);
+// Fine-grained product management routes (must come before :id routes)
+router.get('/homepage/sections/:id/products', ...adminOnly, cmsController.getSectionProducts);
+router.put('/homepage/sections/:id/products/reorder', ...adminOnly, cmsController.reorderProductsInSection);
+router.post('/homepage/sections/:id/products/:productId', ...adminOnly, cmsController.addProductToSection);
+router.delete('/homepage/sections/:id/products/:productId', ...adminOnly, cmsController.removeProductFromSection);
+// Section CRUD
 router.put('/homepage/sections/:id', ...adminOnly, cmsController.updateHomepageSection);
 router.post('/homepage/sections/:id/duplicate', ...adminOnly, cmsController.duplicateHomepageSection);
 router.delete('/homepage/sections/:id', ...adminOnly, cmsController.deleteHomepageSection);
