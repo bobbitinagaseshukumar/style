@@ -14,7 +14,7 @@ const sidebarLinks = [
   { path: '/admin/products', label: 'Products', icon: FiBox },
   { path: '/admin/categories', label: 'Categories', icon: FiGrid },
   { path: '/admin/orders', label: 'Orders', icon: FiShoppingBag },
-  { path: '/admin/users', label: 'Customers', icon: FiUsers },
+  { path: '/admin/customers', label: 'Customers', icon: FiUsers },
   { path: '/admin/coupons', label: 'Coupons', icon: FiTag },
   { path: '/admin/flash-sale', label: 'Flash Sales', icon: FiZap },
   { path: '/admin/special-deals', label: 'Special Deals', icon: FiTag },

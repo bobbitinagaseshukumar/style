@@ -62,6 +62,8 @@ const adminDashboardRoutes = require('./routes/adminDashboardRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
 const recentlyViewedRoutes = require('./routes/recentlyViewedRoutes');
 
+const adminCustomerRoutes = require('./routes/adminCustomerRoutes');
+
 // Mount Routes
 app.use('/api/v1/recommendations', recommendationRoutes);
 app.use('/api/v1/recently-viewed', recentlyViewedRoutes);
@@ -75,6 +77,7 @@ app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/coupons', couponRoutes);
 app.use('/api/v1/cms', cmsRoutes);
 app.use('/api/v1/admin/dashboard', adminDashboardRoutes);
+app.use('/api/v1/admin/customers', adminCustomerRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/notifications', notificationRoutes);

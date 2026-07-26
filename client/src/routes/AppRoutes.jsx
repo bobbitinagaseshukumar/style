@@ -50,7 +50,7 @@ const AdminProducts = lazy(() => import('../admin/Products'));
 const AdminCategories = lazy(() => import('../admin/Categories'));
 const AdminInventory = lazy(() => import('../admin/Inventory'));
 const AdminOrders = lazy(() => import('../admin/Orders'));
-const AdminUsers = lazy(() => import('../admin/Users'));
+const AdminCustomers = lazy(() => import('../admin/Customers'));
 const AdminCoupons = lazy(() => import('../admin/Coupons'));
 const AdminSettings = lazy(() => import('../admin/Settings'));
 const AdminCMS = lazy(() => import('../admin/CMS'));
@@ -141,7 +141,8 @@ const AppRoutes = () => {
           <Route path="categories" element={<AdminCategories />} />
           <Route path="inventory" element={<AdminInventory />} />
           <Route path="orders" element={<AdminOrders />} />
-          <Route path="users" element={<AdminUsers />} />
+          <Route path="users" element={<AdminCustomers />} />
+          <Route path="customers" element={<AdminCustomers />} />
           <Route path="coupons" element={<AdminCoupons />} />
           <Route path="flash-sale" element={<AdminFlashSale />} />
           <Route path="special-deals" element={<AdminSpecialDeals />} />
