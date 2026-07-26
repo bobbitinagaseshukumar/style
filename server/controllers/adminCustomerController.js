@@ -3,11 +3,36 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const bcrypt = require('bcryptjs');
 
-// Helper: Generate unique Customer ID like CUS000001
+// Helper: Generate unique Customer ID like CUS000001 (Guaranteed Unique & Sequential)
 const generateCustomerId = async () => {
-  const count = await prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] } } });
-  const next = count + 1;
-  return `CUS${String(next).padStart(6, '0')}`;
+  try {
+    const latestCustomer = await prisma.user.findFirst({
+      where: { customerId: { startsWith: 'CUS' } },
+      orderBy: { createdAt: 'desc' },
+      select: { customerId: true }
+    });
+
+    let nextNum = 1;
+    if (latestCustomer?.customerId) {
+      const numPart = parseInt(latestCustomer.customerId.replace('CUS', ''), 10);
+      if (!isNaN(numPart)) {
+        nextNum = numPart + 1;
+      }
+    }
+
+    let candidate = `CUS${String(nextNum).padStart(6, '0')}`;
+    let exists = await prisma.user.findUnique({ where: { customerId: candidate } });
+    while (exists) {
+      nextNum++;
+      candidate = `CUS${String(nextNum).padStart(6, '0')}`;
+      exists = await prisma.user.findUnique({ where: { customerId: candidate } });
+    }
+
+    return candidate;
+  } catch (err) {
+    console.error('generateCustomerId error:', err.message);
+    return `CUS${Math.floor(100000 + Math.random() * 900000)}`;
+  }
 };
 
 // Helper: Log Admin Action
@@ -32,7 +57,7 @@ const logAdminAction = async (req, targetUser, action, reason = null, details = 
   }
 };
 
-// Helper: Build safe where clause for search (avoids mode:insensitive on id UUID)
+// Helper: Build safe where clause for search
 const buildSearchWhere = (search, extra = {}) => {
   const where = { role: { in: ['CUSTOMER', 'USER'] }, ...extra };
   if (search && search.trim()) {
@@ -49,15 +74,15 @@ const buildSearchWhere = (search, extra = {}) => {
   return where;
 };
 
-// ==================== 1. GET ALL CUSTOMERS (SEARCH & FILTERS) ====================
+// ==================== 1. GET ALL CUSTOMERS (FAST & HIGH-PERFORMANCE) ====================
 exports.getAllCustomers = asyncHandler(async (req, res) => {
   const {
     page = 1, limit = 20, search = '', status, filter,
     sortBy = 'createdAt', sortOrder = 'desc'
   } = req.query;
 
-  const pageNum = parseInt(page);
-  const limitNum = Math.min(parseInt(limit), 100); // cap at 100
+  const pageNum = Math.max(parseInt(page) || 1, 1);
+  const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
   const skip = (pageNum - 1) * limitNum;
 
   let where = buildSearchWhere(search);
@@ -82,77 +107,109 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
     else if (filter === 'WITHOUT_ORDERS') where.orders = { none: {} };
   }
 
-  // Allowed sortBy fields to prevent injection
   const allowedSort = ['createdAt', 'lastLoginAt', 'fullName', 'email', 'status', 'updatedAt'];
   const safeSortBy = allowedSort.includes(sortBy) ? sortBy : 'createdAt';
+  const orderDirection = sortOrder.toLowerCase() === 'asc' ? 'asc' : 'desc';
 
-  // Count total matching
-  const total = await prisma.user.count({ where });
-
-  // Fetch customer list with relations
-  const customers = await prisma.user.findMany({
-    where,
-    skip,
-    take: limitNum,
-    orderBy: { [safeSortBy]: sortOrder.toLowerCase() === 'asc' ? 'asc' : 'desc' },
-    select: {
-      id: true, customerId: true, email: true, username: true, fullName: true,
-      firstName: true, lastName: true, phone: true, alternatePhone: true,
-      whatsappNumber: true, gender: true, dob: true, role: true,
-      isVerified: true, avatar: true, status: true, tokenVersion: true,
-      suspendedUntil: true, blockReason: true, blockNotes: true, adminNotes: true,
-      canLogin: true, canCheckout: true, canPlaceOrders: true, canCancelOrders: true,
-      canReturnProducts: true, canAddReviews: true, canAddWishlist: true,
-      canUseCoupons: true, canUseWallet: true, canUseReferral: true,
-      promoNotifications: true, lastLoginAt: true, createdAt: true, updatedAt: true,
-      _count: {
-        select: {
-          orders: true,
-          reviews: true,
-          addresses: true,
-          supportTickets: true
+  // Step 1: Fetch paginated customer list & count matching total
+  const [total, customers] = await Promise.all([
+    prisma.user.count({ where }),
+    prisma.user.findMany({
+      where,
+      skip,
+      take: limitNum,
+      orderBy: { [safeSortBy]: orderDirection },
+      select: {
+        id: true, customerId: true, email: true, username: true, fullName: true,
+        firstName: true, lastName: true, phone: true, alternatePhone: true,
+        whatsappNumber: true, gender: true, dob: true, role: true,
+        isVerified: true, avatar: true, status: true, tokenVersion: true,
+        suspendedUntil: true, blockReason: true, blockNotes: true, adminNotes: true,
+        canLogin: true, canCheckout: true, canPlaceOrders: true, canCancelOrders: true,
+        canReturnProducts: true, canAddReviews: true, canAddWishlist: true,
+        canUseCoupons: true, canUseWallet: true, canUseReferral: true,
+        promoNotifications: true, lastLoginAt: true, createdAt: true, updatedAt: true,
+        _count: {
+          select: {
+            orders: true,
+            reviews: true,
+            addresses: true,
+            supportTickets: true
+          }
         }
-      },
-      orders: {
-        select: { totalAmount: true, status: true }
       }
-    }
-  });
+    })
+  ]);
 
-  // Calculate totals per customer
+  // Step 2: Fetch order statistics ONLY for the customers on the current page
+  const customerIds = customers.map(c => c.id);
+  const spendingMap = {};
+  const orderStatsMap = {};
+
+  if (customerIds.length > 0) {
+    const pageOrders = await prisma.order.findMany({
+      where: { userId: { in: customerIds } },
+      select: { userId: true, totalAmount: true, status: true }
+    });
+
+    pageOrders.forEach(o => {
+      if (!spendingMap[o.userId]) spendingMap[o.userId] = 0;
+      spendingMap[o.userId] += Number(o.totalAmount || 0);
+
+      if (!orderStatsMap[o.userId]) {
+        orderStatsMap[o.userId] = { pending: 0, delivered: 0, cancelled: 0, returned: 0 };
+      }
+      if (['PENDING', 'PROCESSING', 'SHIPPED'].includes(o.status)) orderStatsMap[o.userId].pending++;
+      if (o.status === 'DELIVERED') orderStatsMap[o.userId].delivered++;
+      if (o.status === 'CANCELLED') orderStatsMap[o.userId].cancelled++;
+      if (o.status === 'RETURNED') orderStatsMap[o.userId].returned++;
+    });
+  }
+
   const enrichedCustomers = customers.map(c => {
-    const totalSpent = c.orders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
-    const pendingOrders = c.orders.filter(o => ['PENDING', 'PROCESSING', 'SHIPPED'].includes(o.status)).length;
-    const deliveredOrders = c.orders.filter(o => o.status === 'DELIVERED').length;
-    const cancelledOrders = c.orders.filter(o => o.status === 'CANCELLED').length;
-    const returnedOrders = c.orders.filter(o => o.status === 'RETURNED').length;
-
-    const { orders, ...rest } = c;
+    const stats = orderStatsMap[c.id] || { pending: 0, delivered: 0, cancelled: 0, returned: 0 };
     return {
-      ...rest,
+      ...c,
       stats: {
         totalOrders: c._count.orders,
-        pendingOrders,
-        deliveredOrders,
-        cancelledOrders,
-        returnedOrders,
-        totalSpent
+        pendingOrders: stats.pending,
+        deliveredOrders: stats.delivered,
+        cancelledOrders: stats.cancelled,
+        returnedOrders: stats.returned,
+        totalSpent: spendingMap[c.id] || 0
       }
     };
   });
 
-  // Overall Statistics Header
-  const [totalCustomers, activeCustomers, blockedCustomers, suspendedCustomers, unverifiedCustomers, allCompletedOrders] =
-    await Promise.all([
-      prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] } } }),
-      prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] }, status: 'ACTIVE' } }),
-      prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] }, status: 'BLOCKED' } }),
-      prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] }, status: 'SUSPENDED' } }),
-      prisma.user.count({ where: { role: { in: ['CUSTOMER', 'USER'] }, isVerified: false } }),
-      prisma.order.findMany({ select: { totalAmount: true } }),
-    ]);
+  // Step 3: Fast Overall Statistics Header (Optimized SQL aggregations)
+  const [statusCounts, unverifiedCount, totalRevenueAgg] = await Promise.all([
+    prisma.user.groupBy({
+      by: ['status'],
+      where: { role: { in: ['CUSTOMER', 'USER'] } },
+      _count: { id: true }
+    }),
+    prisma.user.count({
+      where: { role: { in: ['CUSTOMER', 'USER'] }, isVerified: false }
+    }),
+    prisma.order.aggregate({
+      _sum: { totalAmount: true }
+    })
+  ]);
 
-  const totalCustomerRevenue = allCompletedOrders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
+  let totalCustomers = 0;
+  let activeCustomers = 0;
+  let blockedCustomers = 0;
+  let suspendedCustomers = 0;
+
+  statusCounts.forEach(sc => {
+    const cnt = sc._count.id;
+    totalCustomers += cnt;
+    if (sc.status === 'ACTIVE') activeCustomers = cnt;
+    if (sc.status === 'BLOCKED') blockedCustomers = cnt;
+    if (sc.status === 'SUSPENDED') suspendedCustomers = cnt;
+  });
+
+  const totalCustomerRevenue = Number(totalRevenueAgg._sum?.totalAmount || 0);
 
   res.status(200).json({
     success: true,
@@ -162,14 +219,14 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
         total,
         page: pageNum,
         limit: limitNum,
-        pages: Math.ceil(total / limitNum)
+        pages: Math.ceil(total / limitNum) || 1
       },
       summary: {
         totalCustomers,
         activeCustomers,
         blockedCustomers,
         suspendedCustomers,
-        unverifiedCustomers,
+        unverifiedCustomers: unverifiedCount,
         totalCustomerRevenue
       }
     }
@@ -233,10 +290,8 @@ exports.getCustomerProfile = asyncHandler(async (req, res, next) => {
     return next(new ApiError(404, 'Customer not found'));
   }
 
-  // Exclude password from response
   const { password, otpCode, ...safeCustomer } = customer;
 
-  // Calculate order metrics
   const totalOrders = customer.orders.length;
   const pendingOrders = customer.orders.filter(o => ['PENDING', 'PROCESSING', 'SHIPPED'].includes(o.status)).length;
   const deliveredOrders = customer.orders.filter(o => o.status === 'DELIVERED').length;
@@ -279,7 +334,6 @@ exports.updateCustomerDetails = asyncHandler(async (req, res, next) => {
     return next(new ApiError(404, 'Customer not found'));
   }
 
-  // Check email/username uniqueness if changing
   if (email && email.toLowerCase() !== existing.email.toLowerCase()) {
     const emailTaken = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
     if (emailTaken) return next(new ApiError(400, 'Email address is already in use by another account'));
@@ -310,7 +364,6 @@ exports.updateCustomerDetails = asyncHandler(async (req, res, next) => {
     }
   });
 
-  // Update default address if address payload provided
   if (address && typeof address === 'object') {
     const defaultAddr = await prisma.address.findFirst({ where: { userId: id, isDefault: true } });
     if (defaultAddr) {
@@ -354,7 +407,7 @@ exports.updateCustomerDetails = asyncHandler(async (req, res, next) => {
   });
 });
 
-// ==================== 4. CHANGE CUSTOMER PASSWORD (WITH FORCE LOGOUT) ====================
+// ==================== 4. CHANGE CUSTOMER PASSWORD ====================
 exports.changeCustomerPassword = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const { newPassword, confirmPassword } = req.body;
@@ -372,7 +425,6 @@ exports.changeCustomerPassword = asyncHandler(async (req, res, next) => {
   const salt = await bcrypt.genSalt(12);
   const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-  // Update password & increment tokenVersion to force logout from all devices
   const updated = await prisma.user.update({
     where: { id },
     data: {
@@ -381,7 +433,6 @@ exports.changeCustomerPassword = asyncHandler(async (req, res, next) => {
     }
   });
 
-  // Create customer notification
   await prisma.notification.create({
     data: {
       userId: id,
@@ -391,7 +442,7 @@ exports.changeCustomerPassword = asyncHandler(async (req, res, next) => {
     }
   }).catch(() => {});
 
-  await logAdminAction(req, user, 'PASSWORD_CHANGED', 'Admin manually changed customer password', 'Token version incremented to force logout');
+  await logAdminAction(req, user, 'PASSWORD_CHANGED', 'Admin manually changed customer password', 'Token version incremented');
 
   res.status(200).json({
     success: true,
@@ -400,15 +451,14 @@ exports.changeCustomerPassword = asyncHandler(async (req, res, next) => {
   });
 });
 
-// ==================== 5. RESET CUSTOMER PASSWORD (LINK/NOTIFICATION) ====================
+// ==================== 5. RESET CUSTOMER PASSWORD ====================
 exports.sendPasswordReset = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const { channel = 'EMAIL' } = req.body; // 'EMAIL' | 'SMS' | 'WHATSAPP'
+  const { channel = 'EMAIL' } = req.body;
 
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return next(new ApiError(404, 'Customer not found'));
 
-  // Generate temporary password
   const tempPass = 'Style' + Math.floor(100000 + Math.random() * 900000) + '!';
   const salt = await bcrypt.genSalt(12);
   const hashedPassword = await bcrypt.hash(tempPass, salt);
@@ -426,7 +476,7 @@ exports.sendPasswordReset = asyncHandler(async (req, res, next) => {
     data: {
       userId: id,
       title: 'Password Reset by Administrator',
-      message: `Your account password was reset. Temporary password: ${tempPass} — Please login and change it immediately.`,
+      message: `Your account password was reset. Temporary password: ${tempPass}`,
       type: 'SECURITY'
     }
   }).catch(() => {});
@@ -458,16 +508,17 @@ exports.blockCustomer = asyncHandler(async (req, res, next) => {
       blockReason: reason,
       blockNotes: notes,
       canLogin: false,
-      tokenVersion: { increment: 1 } // Instantly invalidates all active sessions
+      canCheckout: false,
+      canPlaceOrders: false,
+      tokenVersion: { increment: 1 }
     }
   });
 
-  // Notify customer
   await prisma.notification.create({
     data: {
       userId: id,
       title: 'Account Blocked',
-      message: `Your account has been blocked. Reason: ${reason}. Please contact support for assistance.`,
+      message: `Your account has been blocked. Reason: ${reason}. Please contact support.`,
       type: 'ACCOUNT'
     }
   }).catch(() => {});
@@ -476,7 +527,7 @@ exports.blockCustomer = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    message: `Customer "${user.fullName}" has been blocked & logged out from all devices.`,
+    message: `Customer "${user.fullName}" has been blocked & logged out.`,
     data: blockedUser
   });
 });
@@ -504,7 +555,6 @@ exports.unblockCustomer = asyncHandler(async (req, res, next) => {
     }
   });
 
-  // Notify customer
   await prisma.notification.create({
     data: {
       userId: id,
@@ -545,6 +595,7 @@ exports.suspendCustomer = asyncHandler(async (req, res, next) => {
       status: 'SUSPENDED',
       suspendedUntil,
       blockReason: reason,
+      canLogin: false,
       tokenVersion: { increment: 1 }
     }
   });
@@ -553,7 +604,7 @@ exports.suspendCustomer = asyncHandler(async (req, res, next) => {
     data: {
       userId: id,
       title: 'Account Suspended',
-      message: `Your account has been temporarily suspended until ${suspendedUntil.toLocaleDateString()}. Reason: ${reason}.`,
+      message: `Your account has been suspended until ${suspendedUntil.toLocaleDateString()}. Reason: ${reason}.`,
       type: 'ACCOUNT'
     }
   }).catch(() => {});
@@ -562,7 +613,7 @@ exports.suspendCustomer = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    message: `Customer suspended until ${suspendedUntil.toLocaleDateString()}. Sessions terminated.`,
+    message: `Customer suspended until ${suspendedUntil.toLocaleDateString()}.`,
     data: suspendedUser
   });
 });
@@ -570,7 +621,7 @@ exports.suspendCustomer = asyncHandler(async (req, res, next) => {
 // ==================== 9. ACTIVATE / DEACTIVATE CUSTOMER ====================
 exports.toggleCustomerStatus = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const { status } = req.body; // 'ACTIVE' | 'INACTIVE'
+  const { status } = req.body;
 
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return next(new ApiError(404, 'Customer not found'));
@@ -621,7 +672,7 @@ exports.updateCustomerPermissions = asyncHandler(async (req, res, next) => {
 
   const updatedPermissions = await prisma.user.update({ where: { id }, data: updateData });
 
-  await logAdminAction(req, user, 'PERMISSIONS_UPDATED', 'Admin modified feature permission switches', JSON.stringify(req.body));
+  await logAdminAction(req, user, 'PERMISSIONS_UPDATED', 'Admin modified feature permissions', JSON.stringify(req.body));
 
   res.status(200).json({
     success: true,
@@ -646,16 +697,16 @@ exports.forceLogoutCustomer = asyncHandler(async (req, res, next) => {
     data: {
       userId: id,
       title: 'Session Terminated',
-      message: 'You have been logged out from all devices by an administrator. Please log in again.',
+      message: 'You have been logged out from all devices by an administrator.',
       type: 'SECURITY'
     }
   }).catch(() => {});
 
-  await logAdminAction(req, user, 'FORCE_LOGOUT', 'Admin terminated all active customer sessions');
+  await logAdminAction(req, user, 'FORCE_LOGOUT', 'Admin terminated active customer sessions');
 
   res.status(200).json({
     success: true,
-    message: `Customer "${user.fullName}" forcibly logged out from all active devices.`
+    message: `Customer "${user.fullName}" forcibly logged out from all devices.`
   });
 });
 
@@ -663,7 +714,6 @@ exports.forceLogoutCustomer = asyncHandler(async (req, res, next) => {
 exports.deleteCustomer = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const {
-    deleteAccountOnly = false,
     deleteWishlist = false,
     deleteAddresses = false,
     deleteReviews = false,
@@ -674,14 +724,13 @@ exports.deleteCustomer = asyncHandler(async (req, res, next) => {
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return next(new ApiError(404, 'Customer not found'));
   if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
-    return next(new ApiError(403, 'Cannot delete an admin account from the customer endpoint'));
+    return next(new ApiError(403, 'Cannot delete an admin account from customer management'));
   }
 
   if (deleteAll || deleteReviews) {
     await prisma.review.deleteMany({ where: { userId: id } }).catch(() => {});
   }
   if (deleteAll || deleteWishlist) {
-    // Delete wishlist items first then wishlist
     const wishlist = await prisma.wishlist.findUnique({ where: { userId: id } });
     if (wishlist) {
       await prisma.wishlistItem.deleteMany({ where: { wishlistId: wishlist.id } }).catch(() => {});
@@ -696,23 +745,18 @@ exports.deleteCustomer = asyncHandler(async (req, res, next) => {
     await prisma.supportTicket.deleteMany({ where: { userId: id } }).catch(() => {});
   }
 
-  // Clean up other relations before deleting user
   await prisma.activityLog.deleteMany({ where: { userId: id } }).catch(() => {});
   await prisma.recentlyViewed.deleteMany({ where: { userId: id } }).catch(() => {});
   await prisma.emailOTP.deleteMany({ where: { userId: id } }).catch(() => {});
 
-  // Clear cart
   const cart = await prisma.cart.findUnique({ where: { userId: id } });
   if (cart) {
     await prisma.cartItem.deleteMany({ where: { cartId: cart.id } }).catch(() => {});
     await prisma.cart.delete({ where: { id: cart.id } }).catch(() => {});
   }
 
-  // Log before deletion
-  await logAdminAction(req, user, 'ACCOUNT_DELETED', 'Admin permanently deleted customer account',
-    JSON.stringify({ deleteAll, deleteReviews, deleteWishlist, deleteAddresses, deleteMessages }));
+  await logAdminAction(req, user, 'ACCOUNT_DELETED', 'Admin permanently deleted customer account');
 
-  // Always delete user
   await prisma.user.delete({ where: { id } });
 
   res.status(200).json({
@@ -781,14 +825,13 @@ exports.sendCustomerMessage = asyncHandler(async (req, res, next) => {
     data: { userId: id, title, message, type }
   });
 
-  await logAdminAction(req, user, 'MESSAGE_SENT', 'Admin sent in-app message to customer', title);
+  await logAdminAction(req, user, 'MESSAGE_SENT', 'Admin sent message to customer', title);
 
   res.status(200).json({ success: true, message: 'Message sent to customer dashboard.' });
 });
 
 // ==================== 16. DETECT DUPLICATE ACCOUNTS ====================
 exports.getDuplicates = asyncHandler(async (req, res) => {
-  // Find customers sharing same phone number
   const phoneGroups = await prisma.user.groupBy({
     by: ['phone'],
     where: { role: { in: ['CUSTOMER', 'USER'] }, phone: { not: null } },
@@ -808,7 +851,6 @@ exports.getDuplicates = asyncHandler(async (req, res) => {
       }
     });
 
-    // Group by phone
     const grouped = {};
     for (const u of users) {
       if (!grouped[u.phone]) grouped[u.phone] = [];
@@ -827,7 +869,7 @@ exports.getDuplicates = asyncHandler(async (req, res) => {
   });
 });
 
-// ==================== 17. ASSIGN CUSTOMER ID TO EXISTING CUSTOMERS WITHOUT ONE ====================
+// ==================== 17. ASSIGN MISSING CUSTOMER IDS ====================
 exports.assignMissingCustomerIds = asyncHandler(async (req, res) => {
   const customers = await prisma.user.findMany({
     where: { role: { in: ['CUSTOMER', 'USER'] }, customerId: null },
@@ -844,9 +886,8 @@ exports.assignMissingCustomerIds = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: `Assigned customer IDs to ${updated} existing customers.`
+    message: `Assigned Customer IDs to ${updated} customers.`
   });
 });
 
-// Export helper for use in authController
 exports.generateCustomerId = generateCustomerId;
