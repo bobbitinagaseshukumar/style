@@ -339,13 +339,20 @@ exports.adminGetAllOrders = asyncHandler(async (req, res) => {
 // ==================== ADMIN: UPDATE ORDER STATUS ====================
 exports.adminUpdateOrderStatus = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const { orderStatus, courierName, trackingNumber, trackingUrl, cancelReason } = req.body;
+  const {
+    orderStatus, courierName, trackingNumber, trackingUrl,
+    cancelReason, expectedDeliveryDate, deliveryTimeSlot, internalNotes
+  } = req.body;
 
-  const updateData = { orderStatus };
-  if (courierName) updateData.courierName = courierName;
-  if (trackingNumber) updateData.trackingNumber = trackingNumber;
-  if (trackingUrl) updateData.trackingUrl = trackingUrl;
-  if (cancelReason) updateData.cancelReason = cancelReason;
+  const updateData = {};
+  if (orderStatus) updateData.orderStatus = orderStatus;
+  if (courierName !== undefined) updateData.courierName = courierName;
+  if (trackingNumber !== undefined) updateData.trackingNumber = trackingNumber;
+  if (trackingUrl !== undefined) updateData.trackingUrl = trackingUrl;
+  if (cancelReason !== undefined) updateData.cancelReason = cancelReason;
+  if (expectedDeliveryDate !== undefined) updateData.expectedDeliveryDate = expectedDeliveryDate;
+  if (deliveryTimeSlot !== undefined) updateData.deliveryTimeSlot = deliveryTimeSlot;
+  if (internalNotes !== undefined) updateData.notes = internalNotes;
   if (orderStatus === 'DELIVERED') updateData.deliveredAt = new Date();
 
   const order = await prisma.order.update({
@@ -359,11 +366,14 @@ exports.adminUpdateOrderStatus = asyncHandler(async (req, res, next) => {
   });
 
   // In-app notification to customer
+  const statusFormatted = (orderStatus || order.orderStatus).replace(/_/g, ' ');
   await prisma.notification.create({
     data: {
       userId: order.userId,
-      title: `Order Update: ${orderStatus.replace(/_/g, ' ')} — #${order.orderNumber}`,
-      message: `Your order #${order.orderNumber} status is now: ${orderStatus.replace(/_/g, ' ')}`,
+      title: `Order Update: ${statusFormatted} (#${order.orderNumber})`,
+      message: `Your order #${order.orderNumber} is now: ${statusFormatted}.${
+        expectedDeliveryDate ? ' Expected Delivery: ' + expectedDeliveryDate : ''
+      }`,
       type: 'ORDER',
       link: '/orders',
     },

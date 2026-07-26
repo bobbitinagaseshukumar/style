@@ -52,38 +52,57 @@ const StatusBadge = ({ status }) => {
 /* ─── Order Detail Side Panel ─────────────────────────────── */
 const OrderDetail = ({ order, onClose, onStatusUpdate }) => {
   const [updating, setUpdating] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState('');
-  const [courierName, setCourierName] = useState(order?.courierName || '');
-  const [trackingNumber, setTrackingNumber] = useState(order?.trackingNumber || '');
-  const [cancelReason, setCancelReason] = useState('');
+  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState(order?.expectedDeliveryDate || '');
+  const [deliveryTimeSlot, setDeliveryTimeSlot] = useState(order?.deliveryTimeSlot || '');
+  const [internalNotes, setInternalNotes] = useState(order?.notes || '');
 
-  const nextStatuses = TRANSITIONS[order?.orderStatus] || [];
+  const nextStatuses = TRANSITIONS[order?.orderStatus] || ALL_STATUSES;
 
   const handleUpdate = async () => {
-    if (!selectedStatus) { toast.error('Select a new status'); return; }
+    if (!selectedStatus && !expectedDeliveryDate && !courierName) {
+      toast.error('Please select a status or update delivery details');
+      return;
+    }
     try {
       setUpdating(true);
-      const payload = { orderStatus: selectedStatus };
+      const payload = {};
+      if (selectedStatus) payload.orderStatus = selectedStatus;
       if (courierName) payload.courierName = courierName;
       if (trackingNumber) payload.trackingNumber = trackingNumber;
       if (cancelReason) payload.cancelReason = cancelReason;
+      if (expectedDeliveryDate) payload.expectedDeliveryDate = expectedDeliveryDate;
+      if (deliveryTimeSlot) payload.deliveryTimeSlot = deliveryTimeSlot;
+      if (internalNotes) payload.internalNotes = internalNotes;
 
       const { data } = await api.put(`/orders/admin/${order.id}/status`, payload);
 
-      // Open WhatsApp deeplink if returned
-      if (data.whatsappLink) {
+      // Generate WhatsApp Deeplink Message
+      const customerPhone = (order.user?.phone || order.user?.whatsappNumber || order.address?.phone || '').replace(/\D/g, '');
+      if (customerPhone) {
+        const itemNames = (order.items || []).map(i => `• ${i.product?.name || 'Item'} (Size: ${i.size || 'N/A'}, Qty: ${i.quantity})`).join('\n');
+        const waMsg = encodeURIComponent(
+          `Hello ${order.user?.fullName || 'Valued Customer'},\n\n` +
+          `✅ Your Order *#${order.orderNumber}* status has been updated to *${(selectedStatus || order.orderStatus).replace(/_/g, ' ')}*!\n\n` +
+          `📦 *Items Purchased:*\n${itemNames}\n\n` +
+          `💰 *Total Amount:* ₹${order.totalAmount?.toLocaleString('en-IN')}\n` +
+          `📅 *Expected Delivery:* ${expectedDeliveryDate || order.expectedDeliveryDate || '3-5 Business Days'}\n` +
+          `⏰ *Time Slot:* ${deliveryTimeSlot || order.deliveryTimeSlot || '10:00 AM - 6:00 PM'}\n` +
+          (trackingNumber ? `🚚 *Courier:* ${courierName || 'Partner'} (Tracking ID: ${trackingNumber})\n` : '') +
+          `\nThank you for shopping with StyleVerse! 🌸`
+        );
+        const waLink = `https://wa.me/${customerPhone}?text=${waMsg}`;
+
         toast.info(
           <div>
-            Status updated! Click to notify customer on WhatsApp.
-            <a href={data.whatsappLink} target="_blank" rel="noreferrer"
-              className="block mt-1 text-green-600 font-bold underline">
-              📱 Open WhatsApp
+            Order updated successfully!
+            <a href={waLink} target="_blank" rel="noreferrer" className="block mt-1.5 px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold text-center">
+              📱 Click to Send WhatsApp Confirmation
             </a>
           </div>,
-          { autoClose: 8000 }
+          { autoClose: 10000 }
         );
       } else {
-        toast.success(`Status updated to ${selectedStatus}`);
+        toast.success(`Order status updated to ${selectedStatus || order.orderStatus}`);
       }
 
       onStatusUpdate(order.id, data.data);
@@ -230,14 +249,40 @@ const OrderDetail = ({ order, onClose, onStatusUpdate }) => {
                 ))}
               </div>
 
-              {selectedStatus === 'SHIPPED' && (
+              {/* Delivery & Tracking Controls */}
+              <div className="space-y-2 pt-2 border-t border-gray-100">
+                <p className="text-xs font-bold text-gray-700">Delivery Schedule & Courier Details</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase">Expected Delivery Date</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 15 August 2026"
+                      value={expectedDeliveryDate}
+                      onChange={e => setExpectedDeliveryDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase">Delivery Time Slot</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 10:00 AM – 1:00 PM"
+                      value={deliveryTimeSlot}
+                      onChange={e => setDeliveryTimeSlot(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs"
+                    />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2">
                   <input value={courierName} onChange={e => setCourierName(e.target.value)}
-                    placeholder="Courier name" className="px-3 py-2 rounded-xl border border-gray-200 text-xs" />
+                    placeholder="Courier name (e.g. Blue Dart)" className="px-3 py-2 rounded-xl border border-gray-200 text-xs" />
                   <input value={trackingNumber} onChange={e => setTrackingNumber(e.target.value)}
-                    placeholder="Tracking number" className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-mono" />
+                    placeholder="Tracking ID (e.g. BD123456789)" className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-mono" />
                 </div>
-              )}
+              </div>
+
               {selectedStatus === 'CANCELLED' && (
                 <input value={cancelReason} onChange={e => setCancelReason(e.target.value)}
                   placeholder="Cancellation reason (optional)"
