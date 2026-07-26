@@ -13,6 +13,9 @@ import {
   FiType, FiLink, FiChevronDown, FiChevronUp, FiExternalLink
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import FlashSaleManager from '../Offers/FlashSaleManager';
+import SpecialDealsManager from '../Offers/SpecialDealsManager';
+import ProductCollectionsManager from '../Offers/ProductCollectionsManager';
 
 /* ─── Animation variants ──────────────────────────────────── */
 const fadeInUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -16 } };
@@ -180,6 +183,7 @@ const EditorSection = ({ title, icon: Icon, children, defaultOpen = true }) => {
 /*   ADMIN HOMEPAGE MANAGEMENT — VISUAL PAGE BUILDER               */
 /* ═══════════════════════════════════════════════════════════════ */
 const AdminHomepage = () => {
+  const [activeTab, setActiveTab] = useState('LAYOUT'); // LAYOUT | FLASH_SALE | SPECIAL_DEALS | COLLECTIONS
   const [sections, setSections] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -425,30 +429,58 @@ const AdminHomepage = () => {
       {/* ── HEADER ───────────────────────────────────────── */}
       <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Homepage Control Center</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Visual page builder — create, edit, reorder & publish homepage sections without code</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Homepage Marketing & Sales Center</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Control every homepage section, flash sales, special deals, collections, and page builder</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={fetchAll} className="p-2.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition cursor-pointer" title="Refresh">
             <FiRefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
-          <Button icon={FiPlus} onClick={() => { setPickerSearch(''); setPickerOpen(true); }}>+ Add Homepage Section</Button>
+          {activeTab === 'LAYOUT' && (
+            <Button icon={FiPlus} onClick={() => { setPickerSearch(''); setPickerOpen(true); }}>+ Add Homepage Section</Button>
+          )}
         </div>
       </motion.div>
 
-      {/* ── STATS DASHBOARD ──────────────────────────────── */}
-      <motion.div variants={fadeInUp} className="grid grid-cols-3 sm:grid-cols-3 gap-3">
+      {/* ── NAVIGATION TABS ───────────────────────────────── */}
+      <div className="flex items-center gap-2 border-b border-gray-200 overflow-x-auto pb-1">
         {[
-          { label: 'Total Sections', count: totalSections, color: 'text-blue-600 bg-blue-50 border-blue-100' },
-          { label: 'Published', count: publishedCount, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
-          { label: 'Hidden', count: hiddenCount, color: 'text-gray-600 bg-gray-100 border-gray-200' },
-        ].map(item => (
-          <div key={item.label} className={`p-4 rounded-2xl border shadow-sm ${item.color}`}>
-            <p className="text-2xl font-black">{item.count}</p>
-            <p className="text-[11px] font-semibold opacity-80 mt-0.5">{item.label}</p>
-          </div>
+          { id: 'LAYOUT', label: '📐 Layout & Page Builder', icon: FiLayout },
+          { id: 'FLASH_SALE', label: '⚡ Midnight Flash Sale Manager', icon: FiZap },
+          { id: 'SPECIAL_DEALS', label: '🎁 Special Deals Manager', icon: FiTag },
+          { id: 'COLLECTIONS', label: '📦 Product Collections', icon: FiLayers },
+        ].map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2.5 text-xs font-extrabold rounded-t-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 border-b-2 ${
+              activeTab === tab.id
+                ? 'border-amber-500 text-amber-600 bg-amber-50/50'
+                : 'border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+            }`}>
+            {tab.label}
+          </button>
         ))}
-      </motion.div>
+      </div>
+
+      {/* ── TAB CONTENTS ──────────────────────────────────── */}
+      {activeTab === 'FLASH_SALE' && <FlashSaleManager />}
+      {activeTab === 'SPECIAL_DEALS' && <SpecialDealsManager />}
+      {activeTab === 'COLLECTIONS' && <ProductCollectionsManager />}
+
+      {activeTab === 'LAYOUT' && (
+        <>
+          {/* ── STATS DASHBOARD ──────────────────────────────── */}
+          <motion.div variants={fadeInUp} className="grid grid-cols-3 sm:grid-cols-3 gap-3">
+            {[
+              { label: 'Total Sections', count: totalSections, color: 'text-blue-600 bg-blue-50 border-blue-100' },
+              { label: 'Published', count: publishedCount, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
+              { label: 'Hidden', count: hiddenCount, color: 'text-gray-600 bg-gray-100 border-gray-200' },
+            ].map(item => (
+              <div key={item.label} className={`p-4 rounded-2xl border shadow-sm ${item.color}`}>
+                <p className="text-2xl font-black">{item.count}</p>
+                <p className="text-[11px] font-semibold opacity-80 mt-0.5">{item.label}</p>
+              </div>
+            ))}
+          </motion.div>
 
       {/* ── TOOLBAR: Search, Filters, Device Preview, Bulk ── */}
       <motion.div variants={fadeInUp} className="flex flex-wrap items-center gap-3 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
@@ -1085,6 +1117,8 @@ const AdminHomepage = () => {
           </div>
         )}
       </AnimatePresence>
+        </>
+      )}
     </motion.div>
   );
 };

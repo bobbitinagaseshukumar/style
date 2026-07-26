@@ -203,17 +203,288 @@ exports.trackBannerClick = asyncHandler(async (req, res) => {
 
 // ==================== Flash Sales ====================
 exports.getFlashSale = asyncHandler(async (req, res) => {
+    const now = new Date();
     const flashSale = await prisma.flashSale.findFirst({
-        where: { isActive: true, endTime: { gte: new Date() } },
+        where: {
+            isActive: true,
+            status: 'PUBLISHED',
+            startDate: { lte: now },
+            endDate: { gte: now }
+        },
         orderBy: { createdAt: 'desc' }
     });
-    res.status(200).json({ success: true, data: flashSale });
+
+    if (!flashSale) {
+        return res.status(200).json({ success: true, data: null });
+    }
+
+    // Fetch products belonging to this Flash Sale
+    let pIds = [];
+    try { pIds = JSON.parse(flashSale.productIds || '[]'); } catch (e) { pIds = []; }
+
+    let products = [];
+    if (pIds.length > 0) {
+        products = await prisma.product.findMany({
+            where: { id: { in: pIds }, status: 'PUBLISHED', isVisible: true },
+            include: { images: true, category: { select: { name: true, slug: true } } }
+        });
+
+        // Compute Flash Sale discounted prices
+        products = products.map(p => {
+            let flashPrice = p.price;
+            let discountPercent = p.discountPercent || 0;
+
+            if (flashSale.discountType === 'PERCENTAGE') {
+                discountPercent = Math.max(discountPercent, flashSale.discountValue);
+                flashPrice = Math.round(p.price - (p.price * discountPercent / 100));
+            } else if (flashSale.discountType === 'FIXED') {
+                flashPrice = Math.max(0, p.price - flashSale.discountValue);
+                discountPercent = Math.round(((p.price - flashPrice) / p.price) * 100);
+            }
+
+            return {
+                ...p,
+                originalPrice: p.price,
+                price: p.price,
+                discountPrice: flashPrice,
+                discountPercent,
+                isFlashSaleProduct: true
+            };
+        });
+    }
+
+    res.status(200).json({ success: true, data: { ...flashSale, products } });
+});
+
+exports.getAllFlashSalesAdmin = asyncHandler(async (req, res) => {
+    const flashSales = await prisma.flashSale.findMany({ orderBy: { createdAt: 'desc' } });
+    res.status(200).json({ success: true, data: flashSales });
 });
 
 exports.createFlashSale = asyncHandler(async (req, res) => {
-    const flashSale = await prisma.flashSale.create({ data: req.body });
-    res.status(201).json({ success: true, message: 'Flash sale created', data: flashSale });
+    const { name, description, bannerUrl, bgColor, textColor, buttonColor, discountType, discountValue, startDate, endDate, productIds, status, isActive } = req.body;
+    
+    const flashSale = await prisma.flashSale.create({
+        data: {
+            name: name || 'Midnight Flash Sale',
+            description: description || null,
+            bannerUrl: bannerUrl || null,
+            bgColor: bgColor || '#111827',
+            textColor: textColor || '#FFFFFF',
+            buttonColor: buttonColor || '#D4AF37',
+            discountType: discountType || 'PERCENTAGE',
+            discountValue: parseFloat(discountValue || 30),
+            startDate: startDate ? new Date(startDate) : new Date(),
+            endDate: endDate ? new Date(endDate) : new Date(Date.now() + 24 * 60 * 60 * 1000),
+            productIds: typeof productIds === 'string' ? productIds : JSON.stringify(productIds || []),
+            status: status || 'PUBLISHED',
+            isActive: isActive !== false
+        }
+    });
+
+    // Mark selected products as flashSale = true
+    let pIds = [];
+    try { pIds = JSON.parse(flashSale.productIds); } catch (e) { pIds = []; }
+    if (pIds.length > 0) {
+        await prisma.product.updateMany({
+            where: { id: { in: pIds } },
+            data: { flashSale: true }
+        });
+    }
+
+    res.status(201).json({ success: true, message: 'Flash Sale created successfully', data: flashSale });
 });
+
+exports.updateFlashSale = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
+    if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
+    if (updateData.discountValue !== undefined) updateData.discountValue = parseFloat(updateData.discountValue);
+    if (typeof updateData.productIds === 'object') updateData.productIds = JSON.stringify(updateData.productIds);
+
+    const flashSale = await prisma.flashSale.update({ where: { id }, data: updateData });
+
+    // Sync product flags
+    let pIds = [];
+    try { pIds = JSON.parse(flashSale.productIds); } catch (e) { pIds = []; }
+    if (pIds.length > 0) {
+        await prisma.product.updateMany({
+            where: { id: { in: pIds } },
+            data: { flashSale: flashSale.status === 'PUBLISHED' && flashSale.isActive }
+        });
+    }
+
+    res.status(200).json({ success: true, message: 'Flash Sale updated', data: flashSale });
+});
+
+exports.duplicateFlashSale = asyncHandler(async (req, res) => {
+    const source = await prisma.flashSale.findUnique({ where: { id: req.params.id } });
+    if (!source) return res.status(404).json({ success: false, message: 'Flash Sale not found' });
+    const { id, createdAt, updatedAt, ...rest } = source;
+    const duplicate = await prisma.flashSale.create({
+        data: { ...rest, name: `${rest.name} (Copy)`, status: 'DRAFT', isActive: false }
+    });
+    res.status(201).json({ success: true, message: 'Flash Sale duplicated', data: duplicate });
+});
+
+exports.deleteFlashSale = asyncHandler(async (req, res) => {
+    await prisma.flashSale.delete({ where: { id: req.params.id } });
+    res.status(200).json({ success: true, message: 'Flash Sale deleted' });
+});
+
+// ==================== Special Deals ====================
+exports.getSpecialDealsPublic = asyncHandler(async (req, res) => {
+    const deals = await prisma.specialDeal.findMany({
+        where: { isActive: true, status: 'PUBLISHED' },
+        orderBy: { sortOrder: 'asc' }
+    });
+
+    const enriched = await Promise.all(deals.map(async deal => {
+        let pIds = [];
+        try { pIds = JSON.parse(deal.productIds || '[]'); } catch (e) { pIds = []; }
+        let products = [];
+        if (pIds.length > 0) {
+            products = await prisma.product.findMany({
+                where: { id: { in: pIds }, status: 'PUBLISHED', isVisible: true },
+                include: { images: true, category: { select: { name: true, slug: true } } }
+            });
+        }
+        return { ...deal, products };
+    }));
+
+    res.status(200).json({ success: true, data: enriched });
+});
+
+exports.getAllSpecialDealsAdmin = asyncHandler(async (req, res) => {
+    const deals = await prisma.specialDeal.findMany({ orderBy: { createdAt: 'desc' } });
+    res.status(200).json({ success: true, data: deals });
+});
+
+exports.createSpecialDeal = asyncHandler(async (req, res) => {
+    const { name, description, bannerUrl, buttonText, buttonLink, bgColor, textColor, productIds, startDate, endDate, status, isActive } = req.body;
+    
+    const deal = await prisma.specialDeal.create({
+        data: {
+            name,
+            description: description || null,
+            bannerUrl: bannerUrl || null,
+            buttonText: buttonText || 'Shop Special Deal',
+            buttonLink: buttonLink || '/offers',
+            bgColor: bgColor || '#111827',
+            textColor: textColor || '#FFFFFF',
+            productIds: typeof productIds === 'string' ? productIds : JSON.stringify(productIds || []),
+            startDate: startDate ? new Date(startDate) : null,
+            endDate: endDate ? new Date(endDate) : null,
+            status: status || 'PUBLISHED',
+            isActive: isActive !== false
+        }
+    });
+
+    res.status(201).json({ success: true, message: 'Special Deal created', data: deal });
+});
+
+exports.updateSpecialDeal = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
+    if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
+    if (typeof updateData.productIds === 'object') updateData.productIds = JSON.stringify(updateData.productIds);
+
+    const deal = await prisma.specialDeal.update({ where: { id }, data: updateData });
+    res.status(200).json({ success: true, message: 'Special Deal updated', data: deal });
+});
+
+exports.duplicateSpecialDeal = asyncHandler(async (req, res) => {
+    const source = await prisma.specialDeal.findUnique({ where: { id: req.params.id } });
+    if (!source) return res.status(404).json({ success: false, message: 'Special Deal not found' });
+    const { id, createdAt, updatedAt, ...rest } = source;
+    const duplicate = await prisma.specialDeal.create({
+        data: { ...rest, name: `${rest.name} (Copy)`, status: 'DRAFT', isActive: false }
+    });
+    res.status(201).json({ success: true, message: 'Special Deal duplicated', data: duplicate });
+});
+
+exports.deleteSpecialDeal = asyncHandler(async (req, res) => {
+    await prisma.specialDeal.delete({ where: { id: req.params.id } });
+    res.status(200).json({ success: true, message: 'Special Deal deleted' });
+});
+
+// ==================== Product Collections ====================
+exports.getCollectionsPublic = asyncHandler(async (req, res) => {
+    const collections = await prisma.productCollection.findMany({
+        where: { isActive: true, status: 'PUBLISHED' },
+        orderBy: { sortOrder: 'asc' }
+    });
+
+    const enriched = await Promise.all(collections.map(async col => {
+        let pIds = [];
+        try { pIds = JSON.parse(col.productIds || '[]'); } catch (e) { pIds = []; }
+        let products = [];
+        if (pIds.length > 0) {
+            products = await prisma.product.findMany({
+                where: { id: { in: pIds }, status: 'PUBLISHED', isVisible: true },
+                include: { images: true, category: { select: { name: true, slug: true } } }
+            });
+        }
+        return { ...col, products };
+    }));
+
+    res.status(200).json({ success: true, data: enriched });
+});
+
+exports.getAllCollectionsAdmin = asyncHandler(async (req, res) => {
+    const collections = await prisma.productCollection.findMany({ orderBy: { createdAt: 'desc' } });
+    res.status(200).json({ success: true, data: collections });
+});
+
+exports.createCollection = asyncHandler(async (req, res) => {
+    const { name, slug, description, bannerUrl, productIds, startDate, endDate, status, isActive } = req.body;
+    const finalSlug = (slug || name || 'collection').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+    const collection = await prisma.productCollection.create({
+        data: {
+            name,
+            slug: `${finalSlug}-${Date.now().toString(36)}`,
+            description: description || null,
+            bannerUrl: bannerUrl || null,
+            productIds: typeof productIds === 'string' ? productIds : JSON.stringify(productIds || []),
+            startDate: startDate ? new Date(startDate) : null,
+            endDate: endDate ? new Date(endDate) : null,
+            status: status || 'PUBLISHED',
+            isActive: isActive !== false
+        }
+    });
+
+    res.status(201).json({ success: true, message: 'Collection created', data: collection });
+});
+
+exports.updateCollection = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
+    if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
+    if (typeof updateData.productIds === 'object') updateData.productIds = JSON.stringify(updateData.productIds);
+
+    const collection = await prisma.productCollection.update({ where: { id }, data: updateData });
+    res.status(200).json({ success: true, message: 'Collection updated', data: collection });
+});
+
+exports.duplicateCollection = asyncHandler(async (req, res) => {
+    const source = await prisma.productCollection.findUnique({ where: { id: req.params.id } });
+    if (!source) return res.status(404).json({ success: false, message: 'Collection not found' });
+    const { id, createdAt, updatedAt, slug, ...rest } = source;
+    const duplicate = await prisma.productCollection.create({
+        data: { ...rest, name: `${rest.name} (Copy)`, slug: `${slug}-copy-${Date.now().toString(36)}`, status: 'DRAFT', isActive: false }
+    });
+    res.status(201).json({ success: true, message: 'Collection duplicated', data: duplicate });
+});
+
+exports.deleteCollection = asyncHandler(async (req, res) => {
+    await prisma.productCollection.delete({ where: { id: req.params.id } });
+    res.status(200).json({ success: true, message: 'Collection deleted' });
+});
+
 
 // ==================== Brands Showcase ====================
 exports.getBrands = asyncHandler(async (req, res) => {

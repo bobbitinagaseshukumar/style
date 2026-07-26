@@ -64,7 +64,9 @@ const AdminMarketplace = lazy(() => import('../admin/Marketplace'));
 const AdminBlog = lazy(() => import('../admin/Blog'));
 const AdminSupport = lazy(() => import('../admin/Support'));
 const AdminEmail = lazy(() => import('../admin/Email'));
-const AdminWhatsApp = lazy(() => import('../admin/WhatsApp'));
+const AdminFlashSale = lazy(() => import('../admin/Offers/FlashSaleManager'));
+const AdminSpecialDeals = lazy(() => import('../admin/Offers/SpecialDealsManager'));
+const AdminCollections = lazy(() => import('../admin/Offers/ProductCollectionsManager'));
 
 const SuspenseLoader = () => (
   <div className="h-screen w-full flex items-center justify-center">
@@ -134,6 +136,9 @@ const AppRoutes = () => {
           <Route path="orders" element={<AdminOrders />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="coupons" element={<AdminCoupons />} />
+          <Route path="flash-sale" element={<AdminFlashSale />} />
+          <Route path="special-deals" element={<AdminSpecialDeals />} />
+          <Route path="collections" element={<AdminCollections />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="cms" element={<AdminCMS />} />
           <Route path="banners" element={<AdminBanner />} />
