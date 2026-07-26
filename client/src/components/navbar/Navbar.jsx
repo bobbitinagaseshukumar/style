@@ -8,11 +8,21 @@ import {
 } from 'react-icons/fi';
 import { useSelector } from 'react-redux';
 import { useAuth } from '../../hooks/useAuth';
-import { NAV_LINKS } from '../../constants';
 import SearchBar from './SearchBar';
 import MegaMenu from './MegaMenu';
 import MobileMenu from './MobileMenu';
 import MiniCart from '../cart/MiniCart';
+import SearchOverlay from './SearchOverlay';
+import AuthDrawer from '../auth/AuthDrawer';
+import api from '../../config/api';
+
+const DEFAULT_NAV_ITEMS = [
+  { title: 'Home', link: '/' },
+  { title: 'Women', link: '/categories/women', megaKey: 'women' },
+  { title: 'Men', link: '/categories/men', megaKey: 'men' },
+  { title: 'Jewellery', link: '/categories/jewellery', megaKey: 'jewellery' },
+  { title: 'Kids', link: '/categories/kids', megaKey: 'kids' },
+];
 
 const Navbar = () => {
   const { storeSettings } = useSelector((state) => state.settings);
@@ -21,22 +31,59 @@ const Navbar = () => {
   const wishlistItems = useSelector((state) => state.wishlist?.items || []);
   const notifications = useSelector((state) => state.notifications?.unreadCount || 0);
 
+  // Overlay state — Single Drawer Guarantee
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isMiniCartOpen, setIsMiniCartOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [activeMegaMenu, setActiveMegaMenu] = useState(null);
   const [scrolled, setScrolled] = useState(false);
+
+  // Dynamic Header Navigation Menus
+  const [navItems, setNavItems] = useState(DEFAULT_NAV_ITEMS);
 
   const navigate = useNavigate();
   const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
   const megaMenuTimeout = useRef(null);
+
+  // Helper to open a specific drawer and close all others
+  const openDrawer = (drawerName) => {
+    setIsMobileMenuOpen(drawerName === 'mobile');
+    setIsSearchOpen(drawerName === 'search');
+    setIsAuthOpen(drawerName === 'auth');
+    setIsMiniCartOpen(drawerName === 'cart');
+    setIsUserMenuOpen(false);
+    setActiveMegaMenu(null);
+  };
 
   /* ── Scroll detection ──────────────────────────────────────── */
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  /* ── Fetch Dynamic Header Navigation ──────────────────────── */
+  useEffect(() => {
+    const fetchHeaderMenus = async () => {
+      try {
+        const res = await api.get('/cms/header-menus/public');
+        if (res.data?.data?.length > 0) {
+          const formatted = res.data.data.map(m => ({
+            id: m.id,
+            title: m.title,
+            link: m.link || `/categories/${m.slug}`,
+            megaKey: m.slug,
+            subcategories: m.subcategories || []
+          }));
+          setNavItems([{ title: 'Home', link: '/' }, ...formatted]);
+        }
+      } catch (err) {
+        console.error('Failed to load dynamic header menus:', err);
+      }
+    };
+    fetchHeaderMenus();
   }, []);
 
   /* ── Close user menu on outside click ─────────────────────── */
@@ -61,23 +108,14 @@ const Navbar = () => {
   };
   const keepMega = () => clearTimeout(megaMenuTimeout.current);
 
-  const navItems = [
-    { name: 'Home', path: '/' },
-    { name: 'Women', path: '/categories/women', megaKey: 'women' },
-    { name: 'Men', path: '/categories/men', megaKey: 'men' },
-    { name: 'Jewellery', path: '/categories/jewellery', megaKey: 'jewellery' },
-    { name: 'Kids', path: '/categories/kids', megaKey: 'kids' },
-    { name: 'Blog', path: '/blog' },
-  ];
-
   return (
     <>
       {/* ── Navbar Shell ──────────────────────────────────────── */}
       <nav className={`
-        fixed top-0 left-0 right-0 z-50 transition-all duration-500
+        fixed top-0 left-0 right-0 z-40 transition-all duration-500
         ${scrolled
           ? 'bg-[#0D0D0D]/95 backdrop-blur-2xl shadow-[0_4px_32px_rgba(0,0,0,0.5)] border-b border-white/5'
-          : 'bg-gradient-to-b from-[#0D0D0D]/80 to-transparent backdrop-blur-md border-b border-white/5'
+          : 'bg-gradient-to-b from-[#0D0D0D]/90 to-transparent backdrop-blur-md border-b border-white/5'
         }
       `}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -85,8 +123,8 @@ const Navbar = () => {
 
             {/* Mobile Hamburger */}
             <button
-              className="lg:hidden text-white/80 hover:text-yellow-400 transition-colors p-2"
-              onClick={() => setIsMobileMenuOpen(true)}
+              className="lg:hidden text-white/80 hover:text-yellow-400 transition-colors p-2 cursor-pointer"
+              onClick={() => openDrawer('mobile')}
               aria-label="Open menu"
             >
               <FiMenu className="w-6 h-6" />
@@ -109,13 +147,13 @@ const Navbar = () => {
             <div className="hidden lg:flex items-center gap-1">
               {navItems.map((item) => (
                 <div
-                  key={item.name}
+                  key={item.title}
                   className="relative"
                   onMouseEnter={() => item.megaKey ? openMega(item.megaKey) : null}
                   onMouseLeave={() => item.megaKey ? closeMega() : null}
                 >
                   <Link
-                    to={item.path}
+                    to={item.link}
                     className={`
                       flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 group
                       ${activeMegaMenu === item.megaKey
@@ -123,8 +161,8 @@ const Navbar = () => {
                         : 'text-white/70 hover:text-white'}
                     `}
                   >
-                    {item.name}
-                    {item.megaKey && (
+                    {item.title}
+                    {item.subcategories?.length > 0 && (
                       <motion.span
                         animate={{ rotate: activeMegaMenu === item.megaKey ? 180 : 0 }}
                         transition={{ duration: 0.2 }}
@@ -132,11 +170,6 @@ const Navbar = () => {
                         <FiChevronDown size={12} className="opacity-60" />
                       </motion.span>
                     )}
-                    {/* Underline indicator */}
-                    <span className={`
-                      absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] rounded-full bg-yellow-400 transition-all duration-200
-                      ${activeMegaMenu === item.megaKey ? 'w-8' : 'w-0 group-hover:w-4'}
-                    `} />
                   </Link>
                 </div>
               ))}
@@ -145,12 +178,12 @@ const Navbar = () => {
             {/* Right Icons */}
             <div className="flex items-center gap-1 sm:gap-2">
 
-              {/* Search */}
+              {/* Live Search Icon Button */}
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => navigate('/search')}
-                className="p-2.5 rounded-xl text-white/70 hover:text-yellow-400 hover:bg-white/5 transition-all"
+                onClick={() => openDrawer('search')}
+                className="p-2.5 rounded-xl text-white/70 hover:text-yellow-400 hover:bg-white/5 transition-all cursor-pointer"
                 aria-label="Search"
               >
                 <FiSearch className="w-[18px] h-[18px]" />
@@ -179,12 +212,12 @@ const Navbar = () => {
                 </Link>
               </motion.div>
 
-              {/* Cart */}
+              {/* Cart Drawer Icon Button */}
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => setIsMiniCartOpen(true)}
-                className="relative p-2.5 rounded-xl text-white/70 hover:text-yellow-400 hover:bg-white/5 transition-all"
+                onClick={() => openDrawer('cart')}
+                className="relative p-2.5 rounded-xl text-white/70 hover:text-yellow-400 hover:bg-white/5 transition-all cursor-pointer"
                 aria-label="Cart"
               >
                 <FiShoppingBag className="w-[18px] h-[18px]" />
@@ -220,13 +253,13 @@ const Navbar = () => {
                 </motion.div>
               )}
 
-              {/* User Menu */}
+              {/* User Account Menu */}
               <div className="relative" ref={userMenuRef}>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center gap-2 p-2 rounded-xl hover:bg-white/5 transition-all"
+                  className="flex items-center gap-2 p-2 rounded-xl hover:bg-white/5 transition-all cursor-pointer"
                   aria-label="Account menu"
                 >
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-black text-xs font-bold shadow">
@@ -278,31 +311,27 @@ const Navbar = () => {
                           )}
                           <button
                             onClick={() => { logout(); setIsUserMenuOpen(false); }}
-                            className="flex items-center gap-3 w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/5 transition-colors"
+                            className="flex items-center gap-3 w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/5 transition-colors cursor-pointer"
                           >
                             <FiLogOut size={14} />
                             Logout
                           </button>
                         </>
                       ) : (
-                        <>
-                          <div className="p-3 space-y-2">
-                            <Link
-                              onClick={() => setIsUserMenuOpen(false)}
-                              to="/login"
-                              className="block w-full text-center py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 text-black text-sm font-bold hover:from-yellow-400 transition-all"
-                            >
-                              Sign In
-                            </Link>
-                            <Link
-                              onClick={() => setIsUserMenuOpen(false)}
-                              to="/register"
-                              className="block w-full text-center py-2.5 rounded-xl border border-white/10 text-white/70 text-sm font-medium hover:bg-white/5 transition-all"
-                            >
-                              Create Account
-                            </Link>
-                          </div>
-                        </>
+                        <div className="p-3 space-y-2">
+                          <button
+                            onClick={() => { setIsUserMenuOpen(false); openDrawer('auth'); }}
+                            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 text-black text-sm font-bold hover:from-yellow-400 transition-all cursor-pointer"
+                          >
+                            Sign In
+                          </button>
+                          <button
+                            onClick={() => { setIsUserMenuOpen(false); openDrawer('auth'); }}
+                            className="w-full py-2.5 rounded-xl border border-white/10 text-white/70 text-sm font-medium hover:bg-white/5 transition-all cursor-pointer"
+                          >
+                            Create Account
+                          </button>
+                        </div>
                       )}
                     </motion.div>
                   )}
@@ -331,17 +360,23 @@ const Navbar = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
             style={{ top: '80px' }}
             onClick={() => setActiveMegaMenu(null)}
           />
         )}
       </AnimatePresence>
 
-      {/* MiniCart Drawer */}
+      {/* ── Auth Drawer (Sign In & Register) ── */}
+      <AuthDrawer isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+
+      {/* ── Predictive Live Search Overlay ── */}
+      <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+
+      {/* ── MiniCart Drawer ── */}
       <MiniCart isOpen={isMiniCartOpen} onClose={() => setIsMiniCartOpen(false)} />
 
-      {/* Mobile Drawer */}
+      {/* ── Mobile Drawer ── */}
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
     </>
   );

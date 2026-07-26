@@ -21,6 +21,7 @@ import SocialFollowManager from '../Offers/SocialFollowManager';
 import HeritageBrandsManager from '../Offers/HeritageBrandsManager';
 import TrendingProductsManager from '../Offers/TrendingProductsManager';
 import HomepageSectionManager from '../Offers/HomepageSectionManager';
+import HeaderMenuManager from '../Offers/HeaderMenuManager';
 
 /* ─── Animation variants ──────────────────────────────────── */
 const fadeInUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -16 } };
@@ -450,6 +451,7 @@ const AdminHomepage = () => {
       {/* ── NAVIGATION TABS ───────────────────────────────── */}
       <div className="flex items-center gap-2 border-b border-gray-200 overflow-x-auto pb-1">
         {[
+          { id: 'HEADER_MENU', label: '🧭 Header Menu Manager', icon: FiMenu },
           { id: 'DYNAMIC_SECTIONS', label: '🚀 Dynamic Sections Builder', icon: FiLayers },
           { id: 'LAYOUT', label: '📐 Layout & Page Builder', icon: FiLayout },
           { id: 'TRENDING', label: '🔥 Trending Products', icon: FiZap },
@@ -472,6 +474,7 @@ const AdminHomepage = () => {
       </div>
 
       {/* ── TAB CONTENTS ──────────────────────────────────── */}
+      {activeTab === 'HEADER_MENU' && <HeaderMenuManager />}
       {activeTab === 'DYNAMIC_SECTIONS' && <HomepageSectionManager />}
       {activeTab === 'TRENDING' && <TrendingProductsManager />}
       {activeTab === 'REVIEWS' && <CustomerReviewsManager />}
