@@ -9,30 +9,41 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import { store, persistor } from './redux/store';
 import App from './App';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import './styles/index.css';
+
+const InitialLoader = () => (
+  <div className="min-h-screen w-full bg-slate-950 text-amber-400 flex flex-col items-center justify-center p-4">
+    <div className="w-12 h-12 border-4 border-amber-400/20 border-t-amber-400 rounded-full animate-spin mb-4" />
+    <h1 className="text-xl font-black tracking-widest text-white uppercase">StyleVerse</h1>
+    <p className="text-xs text-slate-400 mt-1">Loading Luxury Storefront...</p>
+  </div>
+);
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
-        <BrowserRouter>
-          <HelmetProvider>
-            <App />
-            <ToastContainer 
-              position="bottom-right"
-              autoClose={3000}
-              hideProgressBar={false}
-              newestOnTop
-              closeOnClick
-              rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              theme="light"
-            />
-          </HelmetProvider>
-        </BrowserRouter>
-      </PersistGate>
-    </Provider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <PersistGate loading={<InitialLoader />} persistor={persistor}>
+          <BrowserRouter>
+            <HelmetProvider>
+              <App />
+              <ToastContainer 
+                position="bottom-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="dark"
+              />
+            </HelmetProvider>
+          </BrowserRouter>
+        </PersistGate>
+      </Provider>
+    </ErrorBoundary>
   </React.StrictMode>
 );
