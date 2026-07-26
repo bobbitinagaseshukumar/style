@@ -112,12 +112,13 @@ const AppRoutes = () => {
           </Route>
         </Route>
 
-        {/* Standalone Full-Screen Login Route (3D luxury page) */}
+        {/* Standalone Full-Screen Auth Pages (3D luxury — no AuthLayout wrapper) */}
+        <Route path="/auth" element={<Login />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
-        {/* Auth Layout Routes (Register, OTP, Forgot, Reset) */}
+        {/* Auth Layout Routes (OTP, Forgot, Reset) */}
         <Route element={<AuthLayout />}>
-          <Route path="/register" element={<Register />} />
           <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />

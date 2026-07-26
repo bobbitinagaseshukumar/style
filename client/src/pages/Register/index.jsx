@@ -1,8 +1,7 @@
 import React from 'react';
-import Login from '../Login';
+import AuthPage from '../Login';
 
-const Register = () => {
-  return <Login initialMode="register" />;
-};
+// /register renders the same AuthPage starting in register mode
+const Register = () => <AuthPage initialMode="register" />;
 
 export default Register;
