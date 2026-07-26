@@ -131,12 +131,18 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
   });
 });
 
-// ==================== GET PRODUCT BY SLUG ====================
+// ==================== GET PRODUCT BY SLUG / ID / SKU ====================
 exports.getProductBySlug = asyncHandler(async (req, res, next) => {
   const { slug } = req.params;
 
-  const product = await prisma.product.findUnique({
-    where: { slug },
+  let product = await prisma.product.findFirst({
+    where: {
+      OR: [
+        { slug: slug },
+        { id: slug },
+        { sku: slug }
+      ]
+    },
     include: {
       images: true,
       category: true,
