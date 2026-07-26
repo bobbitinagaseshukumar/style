@@ -9,6 +9,7 @@ generator client {
 
 model User {
   id                  String        @id @default(uuid())
+  customerId          String?       @unique // CUS000001 format — auto-generated on customer registration
   email               String        @unique
   username            String?       @unique
   password            String
@@ -32,15 +33,19 @@ model User {
   suspendedUntil      DateTime?
   blockReason         String?
   blockNotes          String?
+  adminNotes          String?       // Private admin-only notes (never visible to customer)
 
   // Fine-Grained Customer Permission Switches
   canLogin            Boolean       @default(true)
+  canCheckout         Boolean       @default(true)
   canPlaceOrders      Boolean       @default(true)
   canCancelOrders     Boolean       @default(true)
   canReturnProducts   Boolean       @default(true)
   canAddReviews       Boolean       @default(true)
   canAddWishlist      Boolean       @default(true)
   canUseCoupons       Boolean       @default(true)
+  canUseWallet        Boolean       @default(true)
+  canUseReferral      Boolean       @default(true)
 
   // Admin Specific Security & Permission Fields
   adminRole           String        @default("SUPER_ADMIN") // SUPER_ADMIN | PRODUCT_MANAGER | ORDER_MANAGER | CUSTOMER_MANAGER | INVENTORY_MANAGER | MARKETING_MANAGER | SUPPORT_MANAGER

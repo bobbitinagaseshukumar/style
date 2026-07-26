@@ -5,6 +5,7 @@ const ApiError = require('../utils/ApiError');
 const { generateToken } = require('../utils/generateToken');
 const { createOTP, verifyOTPCode } = require('../services/otpService');
 const { sendOTPEmail, sendWelcomeEmail, sendPasswordResetEmail, sendPasswordChangedEmail } = require('../services/emailService');
+const { generateCustomerId } = require('./adminCustomerController');
 
 // Password complexity regex (min 8 chars, uppercase, lowercase, number, special char)
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -34,6 +35,10 @@ exports.register = asyncHandler(async (req, res, next) => {
 
   const hashedPassword = await bcrypt.hash(password, 12);
 
+  // Generate unique customer ID (CUS000001 format)
+  let customerId = null;
+  try { customerId = await generateCustomerId(); } catch (e) {}
+
   const user = await prisma.user.create({
     data: {
       fullName,
@@ -42,6 +47,7 @@ exports.register = asyncHandler(async (req, res, next) => {
       password: hashedPassword,
       gender: gender || null,
       role: 'CUSTOMER',
+      customerId,
       isVerified: false,
     },
   });
