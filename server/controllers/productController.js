@@ -29,19 +29,16 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
 
   // Where Clause Filtering
   let whereClause = {};
+  const andConditions = [];
 
   // Admin view (includeAll=true) vs Customer view
   if (includeAll === 'true') {
-    // Admin can filter by status or view everything except hard-deleted
     if (status && status !== 'ALL') {
       whereClause.status = status.toUpperCase();
     }
   } else {
-    // Customer Storefront: Only show PUBLISHED and IS_VISIBLE products
     whereClause.status = 'PUBLISHED';
     whereClause.isVisible = true;
-
-    // Homepage visibility filter
     if (showOnHomepage === 'true') {
       whereClause.showOnHomepage = true;
     }
@@ -49,27 +46,33 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
 
   // Text Search
   if (search) {
-    whereClause.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { description: { contains: search, mode: 'insensitive' } },
-      { shortDesc: { contains: search, mode: 'insensitive' } },
-      { sku: { contains: search, mode: 'insensitive' } },
-    ];
+    andConditions.push({
+      OR: [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { shortDesc: { contains: search, mode: 'insensitive' } },
+        { sku: { contains: search, mode: 'insensitive' } },
+      ]
+    });
   }
 
   // Category & Subcategory
   if (category) {
-    whereClause.OR = [
-      { categoryId: category },
-      { category: { slug: category } }
-    ];
+    andConditions.push({
+      OR: [
+        { categoryId: category },
+        { category: { slug: category } }
+      ]
+    });
   }
 
   if (subCategory || subCategoryId) {
-    whereClause.OR = [
-      { subCategoryId: subCategory || subCategoryId },
-      { subCategory: { slug: subCategory } }
-    ];
+    andConditions.push({
+      OR: [
+        { subCategoryId: subCategory || subCategoryId },
+        { subCategory: { slug: subCategory } }
+      ]
+    });
   }
 
   // Section Badges / Toggles
@@ -81,12 +84,21 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
   if (isPremium === 'true') whereClause.isPremium = true;
   if (isFestival === 'true') whereClause.isFestival = true;
 
+  // Combine AND conditions
+  if (andConditions.length > 0) {
+    whereClause.AND = andConditions;
+  }
+
   // Sorting
   let orderByClause = [{ displayOrder: 'asc' }, { createdAt: 'desc' }];
   if (sort === 'price_asc') orderByClause = { price: 'asc' };
   else if (sort === 'price_desc') orderByClause = { price: 'desc' };
   else if (sort === 'newest') orderByClause = { createdAt: 'desc' };
+  else if (sort === 'oldest') orderByClause = { createdAt: 'asc' };
   else if (sort === 'name_asc') orderByClause = { name: 'asc' };
+  else if (sort === 'name_desc') orderByClause = { name: 'desc' };
+  else if (sort === 'stock_asc') orderByClause = { stock: 'asc' };
+  else if (sort === 'stock_desc') orderByClause = { stock: 'desc' };
 
   const [products, total] = await Promise.all([
     prisma.product.findMany({
