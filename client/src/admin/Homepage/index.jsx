@@ -10,7 +10,7 @@ import {
   FiAlertTriangle, FiMonitor, FiTablet, FiSmartphone, FiArrowUp,
   FiArrowDown, FiGrid, FiZap, FiStar, FiTag, FiClock, FiVideo,
   FiLayers, FiSliders, FiCrop, FiCalendar, FiSettings, FiLayout,
-  FiType, FiLink, FiChevronDown, FiChevronUp, FiExternalLink
+  FiType, FiLink, FiChevronDown, FiChevronUp, FiExternalLink, FiMenu
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import FlashSaleManager from '../Offers/FlashSaleManager';
