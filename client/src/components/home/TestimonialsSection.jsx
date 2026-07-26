@@ -10,19 +10,36 @@ const DEFAULT_TESTIMONIALS = [
 ];
 
 const TestimonialsSection = () => {
-  const [testimonials, setTestimonials] = useState(DEFAULT_TESTIMONIALS);
+  const [reviews, setReviews] = useState([]);
+  const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
-    const fetchTestimonials = async () => {
+    const fetchData = async () => {
       try {
-        const { data } = await api.get('/cms/testimonials');
-        if (data?.success && data.data?.length > 0) setTestimonials(data.data);
+        const [revRes, setRes] = await Promise.allSettled([
+          api.get('/cms/reviews/public'),
+          api.get('/cms/settings'),
+        ]);
+
+        if (setRes.status === 'fulfilled') {
+          const cfg = setRes.value.data?.data || {};
+          if (cfg.enableCustomerReviews === false) {
+            setEnabled(false);
+            return;
+          }
+        }
+
+        if (revRes.status === 'fulfilled' && revRes.value.data?.success) {
+          setReviews(revRes.value.data.data || []);
+        }
       } catch (err) {
         console.error('Testimonials error:', err);
       }
     };
-    fetchTestimonials();
+    fetchData();
   }, []);
+
+  if (!enabled || reviews.length === 0) return null;
 
   return (
     <section className="py-12 lg:py-16 bg-white">
@@ -37,7 +54,7 @@ const TestimonialsSection = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {testimonials.map((t) => (
+          {reviews.map((t) => (
             <motion.div
               key={t.id}
               whileHover={{ y: -4 }}
@@ -49,15 +66,18 @@ const TestimonialsSection = () => {
                     <FiStar key={i} className="w-4 h-4 fill-gold-500 text-gold-500" />
                   ))}
                 </div>
+                {t.heading && <h4 className="font-bold text-gray-900 text-sm mb-1">&quot;{t.heading}&quot;</h4>}
                 <p className="text-gray-700 text-sm italic mb-6">&ldquo;{t.comment}&rdquo;</p>
               </div>
 
               <div className="flex items-center gap-3 pt-4 border-t border-gray-200/60">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold text-base shadow">
-                  {t.name[0]}
-                </div>
+                <img
+                  src={t.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(t.customerName)}&background=D4AF37&color=fff`}
+                  alt={t.customerName}
+                  className="w-10 h-10 rounded-full object-cover border"
+                />
                 <div>
-                  <h4 className="text-sm font-semibold text-charcoal-900">{t.name}</h4>
+                  <h4 className="text-sm font-semibold text-charcoal-900">{t.customerName}</h4>
                   <p className="text-xs text-gray-400">{t.location || 'Verified Buyer'}</p>
                 </div>
               </div>

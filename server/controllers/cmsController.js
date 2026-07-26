@@ -735,3 +735,228 @@ exports.deleteFAQ = asyncHandler(async (req, res) => {
     await prisma.fAQ.delete({ where: { id: req.params.id } });
     res.status(200).json({ success: true, message: 'FAQ deleted' });
 });
+
+// ==================== Customer Reviews Manager ====================
+exports.getReviewsPublic = asyncHandler(async (req, res) => {
+    const reviews = await prisma.customerReview.findMany({
+        where: { isActive: true, status: 'PUBLISHED' },
+        orderBy: { sortOrder: 'asc' }
+    });
+    res.status(200).json({ success: true, data: reviews });
+});
+
+exports.getAllReviewsAdmin = asyncHandler(async (req, res) => {
+    const reviews = await prisma.customerReview.findMany({ orderBy: { createdAt: 'desc' } });
+    res.status(200).json({ success: true, data: reviews });
+});
+
+exports.createReview = asyncHandler(async (req, res) => {
+    const { customerName, avatarUrl, productPurchased, rating, heading, comment, isVerified, location, status, isActive } = req.body;
+    const review = await prisma.customerReview.create({
+        data: {
+            customerName: customerName || 'Valued Customer',
+            avatarUrl: avatarUrl || null,
+            productPurchased: productPurchased || null,
+            rating: parseInt(rating || 5),
+            heading: heading || null,
+            comment,
+            isVerified: isVerified !== false,
+            location: location || null,
+            status: status || 'PUBLISHED',
+            isActive: isActive !== false
+        }
+    });
+    res.status(201).json({ success: true, message: 'Review created', data: review });
+});
+
+exports.updateReview = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    if (updateData.rating) updateData.rating = parseInt(updateData.rating);
+    const review = await prisma.customerReview.update({ where: { id }, data: updateData });
+    res.status(200).json({ success: true, message: 'Review updated', data: review });
+});
+
+exports.duplicateReview = asyncHandler(async (req, res) => {
+    const source = await prisma.customerReview.findUnique({ where: { id: req.params.id } });
+    if (!source) return res.status(404).json({ success: false, message: 'Review not found' });
+    const { id, createdAt, updatedAt, ...rest } = source;
+    const duplicate = await prisma.customerReview.create({
+        data: { ...rest, customerName: `${rest.customerName} (Copy)`, status: 'DRAFT', isActive: false }
+    });
+    res.status(201).json({ success: true, message: 'Review duplicated', data: duplicate });
+});
+
+exports.deleteReview = asyncHandler(async (req, res) => {
+    await prisma.customerReview.delete({ where: { id: req.params.id } });
+    res.status(200).json({ success: true, message: 'Review deleted' });
+});
+
+// ==================== Social Media Follow Manager ====================
+exports.getSocialFollowPublic = asyncHandler(async (req, res) => {
+    const buttons = await prisma.socialFollowButton.findMany({
+        where: { isActive: true, status: 'PUBLISHED' },
+        orderBy: { sortOrder: 'asc' }
+    });
+    res.status(200).json({ success: true, data: buttons });
+});
+
+exports.getAllSocialFollowAdmin = asyncHandler(async (req, res) => {
+    const buttons = await prisma.socialFollowButton.findMany({ orderBy: { sortOrder: 'asc' } });
+    res.status(200).json({ success: true, data: buttons });
+});
+
+exports.createSocialFollow = asyncHandler(async (req, res) => {
+    const { platform, accountName, username, profileUrl, buttonText, customIconUrl, bgColor, textColor, hoverColor, status, isActive, sortOrder } = req.body;
+    const button = await prisma.socialFollowButton.create({
+        data: {
+            platform: platform || 'INSTAGRAM',
+            accountName: accountName || null,
+            username: username || null,
+            profileUrl: profileUrl || '#',
+            buttonText: buttonText || `Follow on ${platform}`,
+            customIconUrl: customIconUrl || null,
+            bgColor: bgColor || '#111827',
+            textColor: textColor || '#FFFFFF',
+            hoverColor: hoverColor || '#D4AF37',
+            status: status || 'PUBLISHED',
+            isActive: isActive !== false,
+            sortOrder: parseInt(sortOrder || 0)
+        }
+    });
+    res.status(201).json({ success: true, message: 'Social follow button created', data: button });
+});
+
+exports.updateSocialFollow = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    if (updateData.sortOrder !== undefined) updateData.sortOrder = parseInt(updateData.sortOrder);
+    const button = await prisma.socialFollowButton.update({ where: { id }, data: updateData });
+    res.status(200).json({ success: true, message: 'Social follow button updated', data: button });
+});
+
+exports.duplicateSocialFollow = asyncHandler(async (req, res) => {
+    const source = await prisma.socialFollowButton.findUnique({ where: { id: req.params.id } });
+    if (!source) return res.status(404).json({ success: false, message: 'Button not found' });
+    const { id, createdAt, updatedAt, ...rest } = source;
+    const duplicate = await prisma.socialFollowButton.create({
+        data: { ...rest, platform: `${rest.platform}_COPY`, status: 'DRAFT', isActive: false }
+    });
+    res.status(201).json({ success: true, message: 'Button duplicated', data: duplicate });
+});
+
+exports.deleteSocialFollow = asyncHandler(async (req, res) => {
+    await prisma.socialFollowButton.delete({ where: { id: req.params.id } });
+    res.status(200).json({ success: true, message: 'Social button deleted' });
+});
+
+// ==================== Heritage Brands Manager ====================
+exports.getHeritageBrandsPublic = asyncHandler(async (req, res) => {
+    const brands = await prisma.heritageBrand.findMany({
+        where: { isActive: true, status: 'PUBLISHED' },
+        orderBy: { priority: 'desc' }
+    });
+    res.status(200).json({ success: true, data: brands });
+});
+
+exports.getAllHeritageBrandsAdmin = asyncHandler(async (req, res) => {
+    const brands = await prisma.heritageBrand.findMany({ orderBy: { createdAt: 'desc' } });
+    res.status(200).json({ success: true, data: brands });
+});
+
+exports.createHeritageBrand = asyncHandler(async (req, res) => {
+    const { name, logoUrl, bannerUrl, description, brandStory, website, category, buttonText, priority, status, isActive } = req.body;
+    const brand = await prisma.heritageBrand.create({
+        data: {
+            name,
+            logoUrl: logoUrl || null,
+            bannerUrl: bannerUrl || null,
+            description: description || null,
+            brandStory: brandStory || null,
+            website: website || null,
+            category: category || null,
+            buttonText: buttonText || 'Shop Now',
+            priority: parseInt(priority || 0),
+            status: status || 'PUBLISHED',
+            isActive: isActive !== false
+        }
+    });
+    res.status(201).json({ success: true, message: 'Heritage Brand created', data: brand });
+});
+
+exports.updateHeritageBrand = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    if (updateData.priority !== undefined) updateData.priority = parseInt(updateData.priority);
+    const brand = await prisma.heritageBrand.update({ where: { id }, data: updateData });
+    res.status(200).json({ success: true, message: 'Heritage Brand updated', data: brand });
+});
+
+exports.duplicateHeritageBrand = asyncHandler(async (req, res) => {
+    const source = await prisma.heritageBrand.findUnique({ where: { id: req.params.id } });
+    if (!source) return res.status(404).json({ success: false, message: 'Brand not found' });
+    const { id, createdAt, updatedAt, ...rest } = source;
+    const duplicate = await prisma.heritageBrand.create({
+        data: { ...rest, name: `${rest.name} (Copy)`, status: 'DRAFT', isActive: false }
+    });
+    res.status(201).json({ success: true, message: 'Brand duplicated', data: duplicate });
+});
+
+exports.deleteHeritageBrand = asyncHandler(async (req, res) => {
+    await prisma.heritageBrand.delete({ where: { id: req.params.id } });
+    res.status(200).json({ success: true, message: 'Heritage Brand deleted' });
+});
+
+// ==================== Trending Products Manager ====================
+exports.getTrendingSelectionPublic = asyncHandler(async (req, res) => {
+    const selection = await prisma.trendingSelection.findFirst({
+        where: { isActive: true, status: 'PUBLISHED' }
+    });
+
+    if (!selection) return res.status(200).json({ success: true, data: null });
+
+    let pIds = [];
+    try { pIds = JSON.parse(selection.productIds || '[]'); } catch (e) { pIds = []; }
+
+    let products = [];
+    if (pIds.length > 0) {
+        products = await prisma.product.findMany({
+            where: { id: { in: pIds }, status: 'PUBLISHED', isVisible: true },
+            include: { images: true, category: { select: { name: true, slug: true } } }
+        });
+    }
+
+    res.status(200).json({ success: true, data: { ...selection, products } });
+});
+
+exports.getTrendingSelectionAdmin = asyncHandler(async (req, res) => {
+    let selection = await prisma.trendingSelection.findFirst();
+    if (!selection) {
+        selection = await prisma.trendingSelection.create({ data: { title: 'Trending Products' } });
+    }
+    res.status(200).json({ success: true, data: selection });
+});
+
+exports.updateTrendingSelection = asyncHandler(async (req, res) => {
+    const { title, productIds, layout, productsPerRow, limit, status, isActive } = req.body;
+    let existing = await prisma.trendingSelection.findFirst();
+    
+    const payload = {
+        title: title || 'Trending Products',
+        productIds: typeof productIds === 'string' ? productIds : JSON.stringify(productIds || []),
+        layout: layout || 'GRID',
+        productsPerRow: parseInt(productsPerRow || 4),
+        limit: parseInt(limit || 8),
+        status: status || 'PUBLISHED',
+        isActive: isActive !== false
+    };
+
+    let selection;
+    if (existing) {
+        selection = await prisma.trendingSelection.update({ where: { id: existing.id }, data: payload });
+    } else {
+        selection = await prisma.trendingSelection.create({ data: payload });
+    }
+
+    res.status(200).json({ success: true, message: 'Trending products selection updated', data: selection });
+});

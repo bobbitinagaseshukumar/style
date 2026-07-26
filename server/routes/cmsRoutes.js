@@ -11,6 +11,10 @@ router.get('/banners', cmsController.getBanners);
 router.get('/flash-sale', cmsController.getFlashSale);
 router.get('/special-deals/public', cmsController.getSpecialDealsPublic);
 router.get('/collections/public', cmsController.getCollectionsPublic);
+router.get('/reviews/public', cmsController.getReviewsPublic);
+router.get('/social-follow/public', cmsController.getSocialFollowPublic);
+router.get('/heritage-brands/public', cmsController.getHeritageBrandsPublic);
+router.get('/trending-selection/public', cmsController.getTrendingSelectionPublic);
 router.get('/brands', cmsController.getBrands);
 router.get('/testimonials', cmsController.getTestimonials);
 router.get('/instagram', cmsController.getInstagramPosts);
@@ -36,6 +40,31 @@ router.post('/banners/:id/duplicate', ...adminOnly, cmsController.duplicateBanne
 router.delete('/banners/:id', ...adminOnly, cmsController.deleteBanner);
 router.post('/banners/:id/view', cmsController.trackBannerView);
 router.post('/banners/:id/click', cmsController.trackBannerClick);
+
+// Customer Reviews Admin Routes
+router.get('/reviews/admin/all', ...adminOnly, cmsController.getAllReviewsAdmin);
+router.post('/reviews', ...adminOnly, cmsController.createReview);
+router.put('/reviews/:id', ...adminOnly, cmsController.updateReview);
+router.post('/reviews/:id/duplicate', ...adminOnly, cmsController.duplicateReview);
+router.delete('/reviews/:id', ...adminOnly, cmsController.deleteReview);
+
+// Social Media Follow Admin Routes
+router.get('/social-follow/admin/all', ...adminOnly, cmsController.getAllSocialFollowAdmin);
+router.post('/social-follow', ...adminOnly, cmsController.createSocialFollow);
+router.put('/social-follow/:id', ...adminOnly, cmsController.updateSocialFollow);
+router.post('/social-follow/:id/duplicate', ...adminOnly, cmsController.duplicateSocialFollow);
+router.delete('/social-follow/:id', ...adminOnly, cmsController.deleteSocialFollow);
+
+// Heritage Brands Admin Routes
+router.get('/heritage-brands/admin/all', ...adminOnly, cmsController.getAllHeritageBrandsAdmin);
+router.post('/heritage-brands', ...adminOnly, cmsController.createHeritageBrand);
+router.put('/heritage-brands/:id', ...adminOnly, cmsController.updateHeritageBrand);
+router.post('/heritage-brands/:id/duplicate', ...adminOnly, cmsController.duplicateHeritageBrand);
+router.delete('/heritage-brands/:id', ...adminOnly, cmsController.deleteHeritageBrand);
+
+// Trending Products Selection Admin Routes
+router.get('/trending-selection/admin', ...adminOnly, cmsController.getTrendingSelectionAdmin);
+router.put('/trending-selection/admin', ...adminOnly, cmsController.updateTrendingSelection);
 
 // Flash Sale Admin Routes
 router.get('/flash-sales/admin/all', ...adminOnly, cmsController.getAllFlashSalesAdmin);

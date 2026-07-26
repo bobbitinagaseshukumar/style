@@ -16,6 +16,10 @@ import { toast } from 'react-toastify';
 import FlashSaleManager from '../Offers/FlashSaleManager';
 import SpecialDealsManager from '../Offers/SpecialDealsManager';
 import ProductCollectionsManager from '../Offers/ProductCollectionsManager';
+import CustomerReviewsManager from '../Offers/CustomerReviewsManager';
+import SocialFollowManager from '../Offers/SocialFollowManager';
+import HeritageBrandsManager from '../Offers/HeritageBrandsManager';
+import TrendingProductsManager from '../Offers/TrendingProductsManager';
 
 /* ─── Animation variants ──────────────────────────────────── */
 const fadeInUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -16 } };
@@ -446,9 +450,13 @@ const AdminHomepage = () => {
       <div className="flex items-center gap-2 border-b border-gray-200 overflow-x-auto pb-1">
         {[
           { id: 'LAYOUT', label: '📐 Layout & Page Builder', icon: FiLayout },
-          { id: 'FLASH_SALE', label: '⚡ Midnight Flash Sale Manager', icon: FiZap },
-          { id: 'SPECIAL_DEALS', label: '🎁 Special Deals Manager', icon: FiTag },
-          { id: 'COLLECTIONS', label: '📦 Product Collections', icon: FiLayers },
+          { id: 'TRENDING', label: '🔥 Trending Products', icon: FiZap },
+          { id: 'REVIEWS', label: '⭐ Customer Reviews', icon: FiStar },
+          { id: 'HERITAGE', label: '👑 Heritage Brands', icon: FiTag },
+          { id: 'SOCIAL', label: '📱 Social Media Follow', icon: FiLayout },
+          { id: 'FLASH_SALE', label: '⚡ Midnight Flash Sales', icon: FiZap },
+          { id: 'SPECIAL_DEALS', label: '🎁 Special Deals', icon: FiTag },
+          { id: 'COLLECTIONS', label: '📦 Collections', icon: FiLayers },
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2.5 text-xs font-extrabold rounded-t-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 border-b-2 ${
@@ -462,6 +470,10 @@ const AdminHomepage = () => {
       </div>
 
       {/* ── TAB CONTENTS ──────────────────────────────────── */}
+      {activeTab === 'TRENDING' && <TrendingProductsManager />}
+      {activeTab === 'REVIEWS' && <CustomerReviewsManager />}
+      {activeTab === 'HERITAGE' && <HeritageBrandsManager />}
+      {activeTab === 'SOCIAL' && <SocialFollowManager />}
       {activeTab === 'FLASH_SALE' && <FlashSaleManager />}
       {activeTab === 'SPECIAL_DEALS' && <SpecialDealsManager />}
       {activeTab === 'COLLECTIONS' && <ProductCollectionsManager />}
