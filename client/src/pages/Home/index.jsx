@@ -11,7 +11,7 @@ import { FiArrowRight, FiTruck, FiShield, FiRefreshCw, FiHeadphones, FiZap } fro
 import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
 import ProductCard from '../../components/common/ProductCard';
-
+import PersonalizedSections from '../../components/common/PersonalizedSections';
 import AnnouncementBar from '../../components/home/AnnouncementBar';
 import FlashSaleSection from '../../components/home/FlashSaleSection';
 import CollectionShowcase from '../../components/home/CollectionShowcase';
@@ -224,6 +224,11 @@ const Home = () => {
           </div>
         </section>
       )}
+
+      {/* AI PERSONALIZED RECOMMENDATIONS */}
+      <div className="max-w-7xl mx-auto px-4">
+        <PersonalizedSections />
+      </div>
 
       {/* 6. FLASH SALE */}
       <FlashSaleSection />
