@@ -108,19 +108,32 @@ const Home = () => {
     newArrivals: [],
     todaysDeals: []
   });
+  const [trendingData, setTrendingData] = useState(null);
+  const [enableTrending, setEnableTrending] = useState(true);
 
   useEffect(() => {
     const fetchHomeData = async () => {
       try {
-        const [bannersRes, categoriesRes, featuredRes, trendingRes, newRes, dealsRes, allProdsRes] = await Promise.allSettled([
-          api.get('/cms/banners'),
-          api.get('/categories'),
+        const [bannersRes, categoriesRes, featuredRes, trendingRes, newRes, dealsRes, allProdsRes, trendSelRes, settingsRes] = await Promise.allSettled([
+          api.get('/cms/banners?activeOnly=true'),
+          api.get('/categories?limit=8'),
           api.get('/products?showOnHomepage=true&featured=true&limit=8'),
           api.get('/products?showOnHomepage=true&trending=true&limit=8'),
           api.get('/products?showOnHomepage=true&newArrival=true&limit=8'),
           api.get('/products?showOnHomepage=true&bestSeller=true&limit=8'),
-          api.get('/products?limit=8')
+          api.get('/products?limit=8'),
+          api.get('/cms/trending-selection/public'),
+          api.get('/cms/settings'),
         ]);
+
+        if (settingsRes.status === 'fulfilled') {
+          const cfg = settingsRes.value.data?.data || {};
+          if (cfg.enableTrendingProducts === false) setEnableTrending(false);
+        }
+
+        if (trendSelRes.status === 'fulfilled' && trendSelRes.value.data?.data) {
+          setTrendingData(trendSelRes.value.data.data);
+        }
 
         if (bannersRes.status === 'fulfilled' && bannersRes.value.data?.data?.length > 0) {
           setBanners(bannersRes.value.data.data);
@@ -316,18 +329,18 @@ const Home = () => {
         bgLight={false}
       />
 
-      {/* 8. TRENDING PRODUCTS */}
-      {products.trending.length > 0 && (
-        <section className="py-12 lg:py-16 bg-gray-50">
+      {/* 8. TRENDING PRODUCTS (ADMIN MANUAL SELECTION ONLY) */}
+      {enableTrending && trendingData && trendingData.products?.length > 0 && (
+        <section className="py-12 lg:py-16 bg-gray-50 border-t border-gray-100">
           <div className="max-w-7xl mx-auto px-4">
             <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">Trending Now 🔥</h2>
-                <p className="text-gray-500 mt-1">Most loved by our fashion community</p>
+                <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">{trendingData.title || 'Trending Products'} 🔥</h2>
+                <p className="text-gray-500 mt-1">Handpicked trending styles curated by our fashion editors</p>
               </div>
             </motion.div>
             <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
-              {products.trending.map((product) => (
+              {trendingData.products.slice(0, trendingData.limit || 8).map((product) => (
                 <HomeProductCard key={product.id} product={product} />
               ))}
             </motion.div>

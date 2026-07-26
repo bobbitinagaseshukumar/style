@@ -476,6 +476,74 @@ model ProductCollection {
   updatedAt       DateTime  @default(now()) @updatedAt
 }
 
+model CustomerReview {
+  id               String    @id @default(uuid())
+  customerName     String
+  avatarUrl        String?
+  productPurchased String?
+  rating           Int       @default(5)
+  heading          String?
+  comment          String
+  isVerified       Boolean   @default(true)
+  reviewDate       DateTime  @default(now())
+  location         String?
+  status           String    @default("PUBLISHED") // DRAFT | PUBLISHED | HIDDEN
+  isActive         Boolean   @default(true)
+  sortOrder        Int       @default(0)
+  startDate        DateTime?
+  endDate          DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now()) @updatedAt
+}
+
+model SocialFollowButton {
+  id            String    @id @default(uuid())
+  platform      String    // INSTAGRAM | FACEBOOK | WHATSAPP | WHATSAPP_CHANNEL | TELEGRAM | YOUTUBE | X | PINTEREST | THREADS | SNAPCHAT | LINKEDIN | CUSTOM
+  accountName   String?
+  username      String?
+  profileUrl    String
+  buttonText    String?
+  customIconUrl String?
+  bgColor       String    @default("#111827")
+  textColor     String    @default("#FFFFFF")
+  hoverColor    String    @default("#D4AF37")
+  status        String    @default("PUBLISHED") // PUBLISHED | DRAFT | HIDDEN
+  isActive      Boolean   @default(true)
+  sortOrder     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+}
+
+model HeritageBrand {
+  id            String    @id @default(uuid())
+  name          String
+  logoUrl       String?
+  bannerUrl     String?
+  description   String?
+  brandStory    String?
+  website       String?
+  category      String?
+  buttonText    String?   @default("Shop Now")
+  priority      Int       @default(0)
+  sortOrder     Int       @default(0)
+  status        String    @default("PUBLISHED") // PUBLISHED | DRAFT | HIDDEN
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+}
+
+model TrendingSelection {
+  id            String    @id @default(uuid())
+  title         String    @default("Trending Products")
+  productIds    String    @default("[]") // JSON string of selected product IDs
+  layout        String    @default("GRID") // GRID | SLIDER | CAROUSEL
+  productsPerRow Int      @default(4) // 2 | 3 | 4 | 5 | 6
+  limit         Int       @default(8) // 4 | 8 | 12 | 16 | 24
+  status        String    @default("PUBLISHED")
+  isActive      Boolean   @default(true)
+  updatedAt     DateTime  @default(now()) @updatedAt
+}
+
 model BrandShowcase {
   id        String   @id @default(uuid())
   name      String

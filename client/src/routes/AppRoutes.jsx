@@ -67,6 +67,10 @@ const AdminEmail = lazy(() => import('../admin/Email'));
 const AdminFlashSale = lazy(() => import('../admin/Offers/FlashSaleManager'));
 const AdminSpecialDeals = lazy(() => import('../admin/Offers/SpecialDealsManager'));
 const AdminCollections = lazy(() => import('../admin/Offers/ProductCollectionsManager'));
+const AdminReviews = lazy(() => import('../admin/Offers/CustomerReviewsManager'));
+const AdminSocial = lazy(() => import('../admin/Offers/SocialFollowManager'));
+const AdminHeritageBrands = lazy(() => import('../admin/Offers/HeritageBrandsManager'));
+const AdminTrending = lazy(() => import('../admin/Offers/TrendingProductsManager'));
 
 const SuspenseLoader = () => (
   <div className="h-screen w-full flex items-center justify-center">
@@ -139,6 +143,10 @@ const AppRoutes = () => {
           <Route path="flash-sale" element={<AdminFlashSale />} />
           <Route path="special-deals" element={<AdminSpecialDeals />} />
           <Route path="collections" element={<AdminCollections />} />
+          <Route path="reviews" element={<AdminReviews />} />
+          <Route path="social" element={<AdminSocial />} />
+          <Route path="heritage-brands" element={<AdminHeritageBrands />} />
+          <Route path="trending" element={<AdminTrending />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="cms" element={<AdminCMS />} />
           <Route path="banners" element={<AdminBanner />} />
