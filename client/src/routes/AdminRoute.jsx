@@ -4,11 +4,12 @@ import { useAuth } from '../hooks/useAuth';
 
 const AdminRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
+  const adminToken = localStorage.getItem('adminToken');
 
-  // TODO: REVERT THIS BEFORE PRODUCTION — bypassed for UI preview
-  // if (!isAuthenticated || (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN')) {
-  //   return <Navigate to="/" replace />;
-  // }
+  // If unauthenticated or token missing, redirect to dedicated Admin Login page
+  if (!isAuthenticated && !adminToken) {
+    return <Navigate to="/admin/login" replace />;
+  }
 
   return children;
 };
