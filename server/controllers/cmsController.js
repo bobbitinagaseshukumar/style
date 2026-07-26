@@ -344,23 +344,101 @@ exports.updateHomepageSections = asyncHandler(async (req, res) => {
 
 
 // ==================== CMS Pages ====================
+exports.getAllCMSPages = asyncHandler(async (req, res) => {
+    const pages = await prisma.cMSPage.findMany({ orderBy: { updatedAt: 'desc' } });
+    res.status(200).json({ success: true, data: pages });
+});
+
 exports.getCMSPage = asyncHandler(async (req, res, next) => {
     const page = await prisma.cMSPage.findUnique({ where: { slug: req.params.slug } });
     if (!page) return next(new ApiError(404, 'Page not found'));
     res.status(200).json({ success: true, data: page });
 });
 
+exports.createCMSPage = asyncHandler(async (req, res) => {
+    const { title, slug, content, seoTitle, metaDescription, keywords, isPublished } = req.body;
+    const finalSlug = (slug || title || 'page').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+    const existing = await prisma.cMSPage.findUnique({ where: { slug: finalSlug } });
+    if (existing) return res.status(400).json({ success: false, message: 'A page with this slug already exists' });
+
+    const page = await prisma.cMSPage.create({
+        data: {
+            title: title || 'New Page',
+            slug: finalSlug,
+            content: content || '',
+            seoTitle: seoTitle || null,
+            metaDescription: metaDescription || null,
+            keywords: keywords || null,
+            isPublished: isPublished !== false,
+        }
+    });
+    res.status(201).json({ success: true, message: 'Page created', data: page });
+});
+
 exports.updateCMSPage = asyncHandler(async (req, res) => {
-    const { title, content } = req.body;
+    const { title, content, seoTitle, metaDescription, keywords, isPublished } = req.body;
     const slug = req.params.slug;
-    
+
+    const updateData = {};
+    if (title !== undefined) updateData.title = title;
+    if (content !== undefined) updateData.content = content;
+    if (seoTitle !== undefined) updateData.seoTitle = seoTitle;
+    if (metaDescription !== undefined) updateData.metaDescription = metaDescription;
+    if (keywords !== undefined) updateData.keywords = keywords;
+    if (isPublished !== undefined) updateData.isPublished = Boolean(isPublished);
+
     const page = await prisma.cMSPage.upsert({
         where: { slug },
-        update: { title, content },
-        create: { title: title || slug, slug, content: content || '' }
+        update: updateData,
+        create: { title: title || slug, slug, content: content || '', seoTitle, metaDescription, keywords, isPublished: isPublished !== false }
     });
-    
+
     res.status(200).json({ success: true, message: 'Page updated', data: page });
+});
+
+exports.duplicateCMSPage = asyncHandler(async (req, res) => {
+    const source = await prisma.cMSPage.findUnique({ where: { slug: req.params.slug } });
+    if (!source) return res.status(404).json({ success: false, message: 'Page not found' });
+
+    const newSlug = `${source.slug}-copy-${Date.now().toString(36)}`;
+    const page = await prisma.cMSPage.create({
+        data: {
+            title: `${source.title} (Copy)`,
+            slug: newSlug,
+            content: source.content,
+            seoTitle: source.seoTitle,
+            metaDescription: source.metaDescription,
+            keywords: source.keywords,
+            isPublished: false,
+        }
+    });
+    res.status(201).json({ success: true, message: 'Page duplicated', data: page });
+});
+
+exports.deleteCMSPage = asyncHandler(async (req, res) => {
+    await prisma.cMSPage.delete({ where: { slug: req.params.slug } });
+    res.status(200).json({ success: true, message: 'Page deleted' });
+});
+
+// ==================== Contact Message Management ====================
+exports.markContactMessageRead = asyncHandler(async (req, res) => {
+    const msg = await prisma.contactMessage.update({
+        where: { id: req.params.id },
+        data: { isRead: true }
+    });
+    res.status(200).json({ success: true, data: msg });
+});
+
+exports.deleteContactMessage = asyncHandler(async (req, res) => {
+    await prisma.contactMessage.delete({ where: { id: req.params.id } });
+    res.status(200).json({ success: true, message: 'Message deleted' });
+});
+
+// ==================== Newsletter Subscriber Management ====================
+exports.deleteNewsletterSubscriber = asyncHandler(async (req, res) => {
+    await prisma.newsletterSubscriber.delete({ where: { id: req.params.id } });
+    res.status(200).json({ success: true, message: 'Subscriber removed' });
 });
 
 // ==================== FAQs ====================

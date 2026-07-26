@@ -326,12 +326,19 @@ model Review {
 model StoreSettings {
   id             String   @id @default("default")
   storeName      String   @default("StyleVerse")
+  storeTagline   String   @default("Enterprise Luxury Clothing & Jewellery Platform")
   logoUrl        String?
   faviconUrl     String?
   contactEmail   String   @default("support@styleverse.com")
   contactPhone   String   @default("+91 98765 43210")
+  alternatePhone String   @default("")
+  supportEmail   String   @default("")
   address        String   @default("123 Fashion Street, Cyber City, Hyderabad, India")
+  googleMapsLink String   @default("")
+  businessHours  String   @default("Mon-Sat 9AM-7PM")
   currencySymbol String   @default("₹")
+  language       String   @default("English")
+  timeZone       String   @default("Asia/Kolkata")
   primaryColor   String   @default("#D4AF37")
   secondaryColor String   @default("#1A1A1A")
   shippingFee    Float    @default(0)
@@ -343,7 +350,31 @@ model StoreSettings {
   whatsappBusinessName String @default("KVLR Styles")
   whatsappWorkingHours String @default("Mon-Sat 9AM-7PM")
   whatsappAutoReply String @default("Thank you for contacting us! We will respond within 24 hours.")
-  updatedAt      DateTime @updatedAt
+  whatsappCountryCode String @default("+91")
+  whatsappDefaultMessage String @default("Hi! I'd like to place an order.")
+  whatsappGreeting String @default("Welcome to KVLR Styles! How can we help you?")
+  whatsappThankYou String @default("Thank you for your order! We will process it shortly.")
+  // Social Media
+  instagramUrl   String   @default("")
+  facebookUrl    String   @default("")
+  youtubeUrl     String   @default("")
+  twitterUrl     String   @default("")
+  telegramUrl    String   @default("")
+  pinterestUrl   String   @default("")
+  linkedinUrl    String   @default("")
+  // Footer
+  footerDescription String @default("Discover the finest handcrafted ethnic fashion and royal jewellery.")
+  copyrightText  String   @default("© 2026 KVLR Styles. All Rights Reserved.")
+  footerQuickLinks String @default("[]")
+  showPaymentIcons Boolean @default(true)
+  showTrustBadges Boolean @default(true)
+  // SEO
+  metaTitle      String   @default("StyleVerse | Enterprise Luxury Clothing & Jewellery Platform")
+  metaDescription String  @default("Shop handcrafted sarees, kundan jewellery, designer lehengas, and ethnic fashion.")
+  metaKeywords   String   @default("sarees, jewellery, kurtis, lehengas, silk, fashion")
+  ogImageUrl     String?
+  robotsTxt      String   @default("User-agent: *\nAllow: /")
+  updatedAt      DateTime @default(now()) @updatedAt
 }
 
 model Announcement {
@@ -443,11 +474,16 @@ model HomepageSection {
 }
 
 model CMSPage {
-  id        String   @id @default(uuid())
-  slug      String   @unique
-  title     String
-  content   String
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(uuid())
+  slug            String   @unique
+  title           String
+  content         String
+  seoTitle        String?
+  metaDescription String?
+  keywords        String?
+  isPublished     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
 }
 
 model FAQ {
