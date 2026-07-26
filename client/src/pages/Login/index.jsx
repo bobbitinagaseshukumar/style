@@ -234,8 +234,12 @@ const AuthPage = ({ initialMode = 'login' }) => {
         const { data } = await api.post('/auth/login', { email: loginEmail, password: loginPassword });
         dispatch(setCredentials(data.data));
         setLoginSuccess(true);
-        toast.success(`Welcome back, ${data.data?.user?.fullName || 'Customer'}!`);
-        setTimeout(() => navigate('/'), 1200);
+        const user = data.data?.user;
+        const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+        toast.success(isAdmin
+          ? `Welcome, Admin ${user?.fullName || ''}! Redirecting to dashboard...`
+          : `Welcome back, ${user?.fullName || 'Customer'}!`);
+        setTimeout(() => navigate(isAdmin ? '/admin/dashboard' : '/'), 1200);
       }
     } catch (err) {
       setLoginError(err.response?.data?.message || 'Login failed. Please check your credentials.');
