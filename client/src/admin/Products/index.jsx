@@ -691,23 +691,23 @@ const AdminProducts = () => {
                   <FiAlertTriangle className="text-red-600 w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900 text-base">Remove Product</h3>
-                  <p className="text-xs text-gray-500">Choose Soft Delete or Permanent Delete</p>
+                  <h3 className="font-bold text-gray-900 text-base">Delete Product</h3>
+                  <p className="text-xs text-gray-500">Are you sure you want to permanently delete this product?</p>
                 </div>
               </div>
 
               {getImage(deleteTarget) && <img src={getImage(deleteTarget)} alt="" className="w-full h-24 object-cover rounded-2xl mb-3 border" />}
 
               <p className="text-xs text-gray-700 mb-5 bg-red-50 border border-red-100 rounded-xl p-3">
-                Are you sure you want to remove <strong>&quot;{deleteTarget.name}&quot;</strong>?
+                Permanently delete <strong>&quot;{deleteTarget.name}&quot;</strong>? This will remove it immediately from the website and database.
               </p>
 
               <div className="flex flex-col gap-2">
-                <button onClick={() => handleDelete(false)} disabled={deleting} className="w-full py-2.5 rounded-xl bg-amber-500 text-black text-xs font-bold hover:bg-amber-400 transition shadow-sm cursor-pointer">
-                  📦 Soft Delete (Hide & Archive)
-                </button>
                 <button onClick={() => handleDelete(true)} disabled={deleting} className="w-full py-2.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition shadow-sm cursor-pointer">
-                  🗑️ Permanent Delete from Database
+                  {deleting ? 'Deleting...' : 'Delete Permanently'}
+                </button>
+                <button onClick={() => handleDelete(false)} disabled={deleting} className="w-full py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-semibold hover:bg-gray-200 transition cursor-pointer">
+                  📦 Soft Delete (Hide Only)
                 </button>
                 <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="w-full py-2 rounded-xl text-gray-500 text-xs font-semibold hover:bg-gray-100 transition mt-1 cursor-pointer">
                   Cancel
