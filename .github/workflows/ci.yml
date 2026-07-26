@@ -13,24 +13,23 @@ jobs:
 
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js Environment
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Install Server Dependencies & Generate Prisma Client
         run: |
           cd server
-          npm ci || npm install
-          npx prisma generate
+          npm install
+          ./node_modules/.bin/prisma generate
 
       - name: Install Client Dependencies & Verify Production Build
         run: |
           cd client
-          npm ci || npm install
+          npm install --legacy-peer-deps
           npx vite build
 
       - name: Code Quality & Security Audit
