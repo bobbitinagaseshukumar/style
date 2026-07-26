@@ -375,8 +375,9 @@ const ProductDetails = () => {
         if (sizes.length > 0) setSelectedSize(sizes[0]);
         setSelectedImgIdx(0);
 
-        // Save recently viewed
+        // Save recently viewed to DB & local storage
         try {
+          api.post('/recently-viewed', { productId: prod.id }).catch(() => {});
           const saved = safeJSON(localStorage.getItem('styleverse_recently_viewed'));
           const item = { id: prod.id, name: prod.name, slug: prod.slug, price: prod.discountPrice || prod.price, image: prod.images?.[0]?.url };
           const next = [item, ...saved.filter(p => p.id !== prod.id)].slice(0, 10);

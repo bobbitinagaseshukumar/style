@@ -12,6 +12,7 @@ import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
 import ProductCard from '../../components/common/ProductCard';
 import PersonalizedSections from '../../components/common/PersonalizedSections';
+import RecentlyViewedSection from '../../components/home/RecentlyViewedSection';
 import AnnouncementBar from '../../components/home/AnnouncementBar';
 import FlashSaleSection from '../../components/home/FlashSaleSection';
 import CollectionShowcase from '../../components/home/CollectionShowcase';
@@ -225,8 +226,9 @@ const Home = () => {
         </section>
       )}
 
-      {/* AI PERSONALIZED RECOMMENDATIONS */}
+      {/* AI PERSONALIZED RECOMMENDATIONS & RECENTLY VIEWED */}
       <div className="max-w-7xl mx-auto px-4">
+        <RecentlyViewedSection />
         <PersonalizedSections />
       </div>
 
