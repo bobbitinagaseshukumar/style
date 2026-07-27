@@ -5,6 +5,7 @@ import Footer from '../components/footer/Footer';
 import ParticleCanvas from '../components/common/ParticleCanvas';
 import CustomCursor from '../components/common/CustomCursor';
 import WhatsAppFloat from '../components/common/WhatsAppFloat';
+import MobileBottomNav from '../components/common/MobileBottomNav';
 
 const MainLayout = () => {
   return (
@@ -12,11 +13,12 @@ const MainLayout = () => {
       <CustomCursor />
       <ParticleCanvas />
       <Navbar />
-      <main className="flex-grow w-full relative z-10 pt-16 sm:pt-20">
+      <main className="flex-grow w-full relative z-10 pt-16 sm:pt-20 pb-16 md:pb-0">
         <Outlet />
       </main>
       <Footer />
       <WhatsAppFloat />
+      <MobileBottomNav />
     </div>
   );
 };

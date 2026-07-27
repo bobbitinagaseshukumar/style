@@ -1200,4 +1200,114 @@ exports.deleteHeaderMenu = asyncHandler(async (req, res) => {
     res.status(200).json({ success: true, message: 'Header menu deleted' });
 });
 
+// ==================== Mobile Navigation Management ====================
+exports.getMobileNavItems = asyncHandler(async (req, res) => {
+    const items = await prisma.mobileNavItem.findMany({
+        orderBy: { sortOrder: 'asc' }
+    });
+    if (items.length === 0) {
+        const defaultItems = [
+            { label: 'Home', path: '/', icon: 'FiHome', activeIcon: 'FiHome', badgeType: 'NONE', sortOrder: 0, isActive: true },
+            { label: 'Categories', path: '/categories', icon: 'FiGrid', activeIcon: 'FiGrid', badgeType: 'NONE', sortOrder: 1, isActive: true },
+            { label: 'Search', path: '/search', icon: 'FiSearch', activeIcon: 'FiSearch', badgeType: 'NONE', sortOrder: 2, isActive: true },
+            { label: 'Wishlist', path: '/wishlist', icon: 'FiHeart', activeIcon: 'FiHeart', badgeType: 'WISHLIST', sortOrder: 3, isActive: true },
+            { label: 'Cart', path: '/cart', icon: 'FiShoppingBag', activeIcon: 'FiShoppingBag', badgeType: 'CART', sortOrder: 4, isActive: true },
+            { label: 'Orders', path: '/orders', icon: 'FiPackage', activeIcon: 'FiPackage', badgeType: 'NONE', sortOrder: 5, isActive: true },
+            { label: 'Profile', path: '/profile', icon: 'FiUser', activeIcon: 'FiUser', badgeType: 'NONE', sortOrder: 6, isActive: true }
+        ];
+        await prisma.mobileNavItem.createMany({ data: defaultItems });
+        const seeded = await prisma.mobileNavItem.findMany({ orderBy: { sortOrder: 'asc' } });
+        return res.status(200).json({ success: true, data: seeded });
+    }
+    res.status(200).json({ success: true, data: items });
+});
+
+exports.createMobileNavItem = asyncHandler(async (req, res) => {
+    const { label, path, icon, activeIcon, badgeType, sortOrder, isActive } = req.body;
+    if (!label || !path) return res.status(400).json({ success: false, message: 'Label and path are required' });
+
+    const item = await prisma.mobileNavItem.create({
+        data: {
+            label,
+            path,
+            icon: icon || 'FiHome',
+            activeIcon: activeIcon || null,
+            badgeType: badgeType || 'NONE',
+            sortOrder: parseInt(sortOrder || 0),
+            isActive: isActive !== false
+        }
+    });
+    res.status(201).json({ success: true, message: 'Mobile nav item created', data: item });
+});
+
+exports.updateMobileNavItem = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    if (updateData.sortOrder !== undefined) updateData.sortOrder = parseInt(updateData.sortOrder);
+
+    const item = await prisma.mobileNavItem.update({
+        where: { id },
+        data: updateData
+    });
+    res.status(200).json({ success: true, message: 'Mobile nav item updated', data: item });
+});
+
+exports.reorderMobileNavItems = asyncHandler(async (req, res) => {
+    const { items } = req.body;
+    if (!Array.isArray(items)) return res.status(400).json({ success: false, message: 'Items array required' });
+
+    await Promise.all(items.map(item =>
+        prisma.mobileNavItem.update({
+            where: { id: item.id },
+            data: { sortOrder: parseInt(item.sortOrder) }
+        })
+    ));
+    res.status(200).json({ success: true, message: 'Mobile nav items reordered' });
+});
+
+exports.deleteMobileNavItem = asyncHandler(async (req, res) => {
+    await prisma.mobileNavItem.delete({ where: { id: req.params.id } });
+    res.status(200).json({ success: true, message: 'Mobile nav item deleted' });
+});
+
+// ==================== Header Settings ====================
+exports.getHeaderSettings = asyncHandler(async (req, res) => {
+    let settings = await prisma.headerSetting.findFirst();
+    if (!settings) {
+        settings = await prisma.headerSetting.create({
+            data: {
+                logoUrl: null,
+                announcementText: '✨ FREE EXPRESS SHIPPING ON ALL LUXURY ORDERS ABOVE ₹2,999 | USE CODE: KVLR10 FOR 10% OFF',
+                announcementBgColor: '#121212',
+                announcementTextColor: '#D4AF37',
+                announcementLink: '/offers',
+                announcementEnabled: true,
+                stickyHeader: true,
+                searchVisible: true,
+                notificationVisible: true,
+                wishlistVisible: true,
+                cartVisible: true,
+                profileVisible: true,
+                headerBgColor: '#0D0D0D',
+                headerTextColor: '#FFFFFF'
+            }
+        });
+    }
+    res.status(200).json({ success: true, data: settings });
+});
+
+exports.updateHeaderSettings = asyncHandler(async (req, res) => {
+    let settings = await prisma.headerSetting.findFirst();
+    if (!settings) {
+        settings = await prisma.headerSetting.create({ data: req.body });
+    } else {
+        settings = await prisma.headerSetting.update({
+            where: { id: settings.id },
+            data: req.body
+        });
+    }
+    res.status(200).json({ success: true, message: 'Header settings updated', data: settings });
+});
+
+
 

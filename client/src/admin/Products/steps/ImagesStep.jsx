@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiUpload, FiX, FiStar, FiMove, FiEdit2 } from 'react-icons/fi';
 import ImageCropModal from '../ImageCropModal';
 
-const MAX_IMAGES = 10;
+const MAX_IMAGES = 20;
 const ACCEPTED = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 const ImagesStep = ({ images, setImages }) => {
