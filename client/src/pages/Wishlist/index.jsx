@@ -46,10 +46,10 @@ const Wishlist = () => {
   }
 
   return (
-    <div className="py-8">
-      <h1 className="text-3xl font-playfair font-bold text-charcoal-900 mb-8">My Wishlist</h1>
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-8">
+      <h1 className="text-2xl sm:text-3xl font-serif font-bold text-charcoal-900 mb-8">My Wishlist</h1>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         {items.map((item) => (
           <div key={item._id} className="bg-white border border-gray-100 rounded-lg overflow-hidden group">
             <div className="relative aspect-[3/4] bg-gray-100">

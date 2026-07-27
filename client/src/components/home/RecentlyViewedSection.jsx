@@ -42,7 +42,7 @@ const RecentlyViewedSection = ({ currentId }) => {
   if (loading || products.length === 0) return null;
 
   return (
-    <section className="my-12 py-8 bg-gray-50/80 rounded-3xl border border-gray-100 p-6">
+    <section className="my-12 py-8 bg-gray-50/80 rounded-3xl border border-gray-100 p-4 sm:p-6">
       <div className="flex items-center justify-between border-b border-gray-200/60 pb-4 mb-6">
         <div className="flex items-center gap-2">
           <FiClock className="w-5 h-5 text-gold-600" />
@@ -59,7 +59,7 @@ const RecentlyViewedSection = ({ currentId }) => {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
         {products.slice(0, 8).map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}

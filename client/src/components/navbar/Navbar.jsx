@@ -119,7 +119,7 @@ const Navbar = () => {
         }
       `}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className={`flex items-center justify-between transition-all duration-300 ${scrolled ? 'h-16' : 'h-20'}`}>
+          <div className={`flex items-center justify-between transition-all duration-300 ${scrolled ? 'h-14 sm:h-16' : 'h-16 sm:h-20'}`}>
 
             {/* Mobile Hamburger */}
             <button
@@ -133,8 +133,7 @@ const Navbar = () => {
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 group">
               <motion.span
-                className="font-serif text-2xl font-bold text-white"
-                whileHover={{ scale: 1.02 }}
+                className="font-serif text-xl sm:text-2xl font-bold text-white"
               >
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600">
                   Style
@@ -176,7 +175,7 @@ const Navbar = () => {
             </div>
 
             {/* Right Icons */}
-            <div className="flex items-center gap-1 sm:gap-2">
+            <div className="flex items-center gap-0.5 sm:gap-2">
 
               {/* Live Search Icon Button */}
               <motion.button

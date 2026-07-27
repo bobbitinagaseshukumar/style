@@ -43,7 +43,7 @@ const TestimonialsSection = () => {
 
   return (
     <section className="py-12 lg:py-16 bg-white">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4">
         <div className="text-center max-w-xl mx-auto mb-10">
           <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900 mb-2">
             What Our Customers Say
@@ -53,7 +53,7 @@ const TestimonialsSection = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {reviews.map((t) => (
             <motion.div
               key={t.id}

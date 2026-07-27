@@ -146,7 +146,7 @@ const Home = () => {
       {heroSliders.length > 0 && (
         <section className="relative">
           <Swiper modules={[Autoplay, Pagination, EffectFade]} effect="fade" autoplay={{ delay: 5000, disableOnInteraction: false }}
-            pagination={{ clickable: true }} loop className="w-full h-[350px] sm:h-[450px] lg:h-[550px]">
+            pagination={{ clickable: true }} loop className="w-full h-[240px] sm:h-[400px] lg:h-[550px]">
             {heroSliders.map((banner) => (
               <SwiperSlide key={banner.id}>
                 <div className="relative w-full h-full">
@@ -155,10 +155,10 @@ const Home = () => {
                   <div className="absolute inset-0 flex items-center">
                     <div className="max-w-7xl mx-auto px-6 lg:px-8 w-full">
                       <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                        {banner.title && <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-bold text-white mb-3 max-w-lg">{banner.title}</h2>}
-                        {banner.subtitle && <p className="text-lg text-white/80 mb-6 max-w-md">{banner.subtitle}</p>}
+                        {banner.title && <h2 className="text-2xl sm:text-3xl lg:text-5xl font-serif font-bold text-white mb-3 max-w-lg">{banner.title}</h2>}
+                        {banner.subtitle && <p className="text-sm sm:text-lg text-white/80 mb-6 max-w-md">{banner.subtitle}</p>}
                         {banner.linkUrl && (
-                          <Link to={banner.linkUrl} className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-full font-semibold transition-colors shadow-lg">
+                          <Link to={banner.linkUrl} className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-5 py-2 sm:px-6 sm:py-3 text-sm sm:text-base rounded-full font-semibold transition-colors shadow-lg">
                             Shop Collection <FiArrowRight />
                           </Link>
                         )}
@@ -174,8 +174,8 @@ const Home = () => {
 
       {/* 20. STORE FEATURES / BADGES */}
       <section className="border-b border-gray-100 bg-white">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {[
               { icon: FiTruck, label: 'Free Shipping', desc: 'On orders above ₹999' },
               { icon: FiShield, label: '100% Authentic', desc: 'Certified purity & quality' },
@@ -199,7 +199,7 @@ const Home = () => {
       {/* 5. FEATURED CATEGORIES GRID */}
       {categories.length > 0 && (
         <section className="py-12 lg:py-16 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4">
             <motion.div {...fadeInUp} className="text-center mb-10">
               <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900 mb-2">Shop by Category</h2>
               <p className="text-gray-500">Explore our handcrafted luxury collections</p>
@@ -227,7 +227,7 @@ const Home = () => {
       )}
 
       {/* AI PERSONALIZED RECOMMENDATIONS & RECENTLY VIEWED */}
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4">
         <RecentlyViewedSection />
         <PersonalizedSections />
       </div>
@@ -238,7 +238,7 @@ const Home = () => {
       {/* 7. FEATURED PRODUCTS */}
       {products.featured.length > 0 && (
         <section className="py-12 lg:py-16">
-          <div className="max-w-7xl mx-auto px-4">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4">
             <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">Featured Products</h2>
@@ -248,7 +248,7 @@ const Home = () => {
                 View All <FiArrowRight className="w-4 h-4" />
               </Link>
             </motion.div>
-            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-7">
+            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
               {products.featured.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
@@ -268,12 +268,12 @@ const Home = () => {
       {/* 15. TODAY'S DEAL */}
       {products.todaysDeals.length > 0 && (
         <section className="py-12 bg-amber-50/50 border-y border-amber-100">
-          <div className="max-w-7xl mx-auto px-4">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4">
             <div className="flex items-center gap-2 mb-6">
               <FiZap className="w-6 h-6 text-amber-600 fill-amber-600" />
               <h2 className="text-2xl font-serif font-bold text-charcoal-900">Today&apos;s Special Deals</h2>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-7">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
               {products.todaysDeals.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
@@ -287,14 +287,14 @@ const Home = () => {
       {/* 8. TRENDING PRODUCTS (ADMIN MANUAL SELECTION ONLY) */}
       {enableTrending && trendingData && trendingData.products?.length > 0 && (
         <section className="py-12 lg:py-16 bg-gray-50 border-t border-gray-100">
-          <div className="max-w-7xl mx-auto px-4">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4">
             <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">{trendingData.title || 'Trending Products'} 🔥</h2>
                 <p className="text-gray-500 mt-1">Handpicked trending styles curated by our fashion editors</p>
               </div>
             </motion.div>
-            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-7">
+            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
               {trendingData.products.slice(0, trendingData.limit || 8).map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
@@ -306,14 +306,14 @@ const Home = () => {
       {/* 9. NEW ARRIVALS */}
       {products.newArrivals.length > 0 && (
         <section className="py-12 lg:py-16">
-          <div className="max-w-7xl mx-auto px-4">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4">
             <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">New Arrivals ✨</h2>
                 <p className="text-gray-500 mt-1">Just arrived in our catalogue</p>
               </div>
             </motion.div>
-            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-7">
+            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
               {products.newArrivals.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
@@ -342,7 +342,7 @@ const Home = () => {
             style={{ backgroundColor: sec.bgColor || '#FFFFFF', color: sec.textColor || '#111827' }}
             className="py-12 lg:py-16 border-t border-gray-100 transition-colors"
           >
-            <div className="max-w-7xl mx-auto px-4">
+            <div className="max-w-7xl mx-auto px-3 sm:px-4">
               {/* Optional Section Banner */}
               {sec.bannerUrl && (
                 <div className="relative rounded-2xl overflow-hidden mb-8 h-48 sm:h-64 shadow-md">
@@ -378,7 +378,7 @@ const Home = () => {
               )}
 
               {/* Products Grid */}
-              <motion.div {...stagger} className={`grid ${gridCols} gap-4 sm:gap-5 lg:gap-7`}>
+              <motion.div {...stagger} className={`grid ${gridCols} gap-3 sm:gap-4 lg:gap-6`}>
                 {sec.products.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
@@ -402,14 +402,14 @@ const Home = () => {
 
       {/* 19. NEWSLETTER SECTION */}
       <section className="py-12 lg:py-16 bg-charcoal-900">
-        <div className="max-w-2xl mx-auto px-4 text-center">
+        <div className="max-w-2xl mx-auto px-3 sm:px-4 text-center">
           <motion.div {...fadeInUp}>
             <h2 className="text-2xl lg:text-3xl font-serif font-bold text-white mb-3">Stay in Style</h2>
             <p className="text-gray-400 mb-6">Subscribe for exclusive festive offers, new arrival alerts, and style updates.</p>
-            <div className="flex gap-2 max-w-md mx-auto">
+            <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
               <input type="email" placeholder="Enter your email"
-                className="flex-1 px-4 py-3 rounded-full bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-gold-500 transition-colors" />
-              <button className="px-6 py-3 rounded-full bg-gold-500 hover:bg-gold-600 text-white font-semibold transition-colors shrink-0">
+                className="flex-1 px-4 py-3 rounded-full bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-gold-500 transition-colors w-full" />
+              <button className="px-6 py-3 rounded-full bg-gold-500 hover:bg-gold-600 text-white font-semibold transition-colors shrink-0 w-full sm:w-auto">
                 Subscribe
               </button>
             </div>

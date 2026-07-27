@@ -516,7 +516,7 @@ export default function ProductDetails() {
   /* ═══ LOADING SKELETON ═══ */
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-10 animate-pulse">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-10 animate-pulse">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-12">
           <div className="aspect-[3/4] rounded-3xl bg-gray-100" />
           <div className="space-y-5 pt-4">
@@ -537,7 +537,7 @@ export default function ProductDetails() {
 
       {/* ── Breadcrumbs ──────────────────────────────────────── */}
       <div className="bg-gray-50 border-b border-gray-100 py-3">
-        <div className="max-w-7xl mx-auto px-4 text-xs text-gray-500 flex items-center gap-1.5 flex-wrap">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 text-xs text-gray-500 flex items-center gap-1.5 flex-wrap">
           <Link to="/" className="hover:text-amber-600 transition font-medium">Home</Link>
           <FiChevronRight size={10} />
           <Link to="/categories" className="hover:text-amber-600 transition font-medium">{product.category?.name || 'Store'}</Link>
@@ -552,7 +552,7 @@ export default function ProductDetails() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8 lg:py-12">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-8 lg:py-12">
 
         {/* ═══════════════════════════════════════════════════
             TOP SECTION: GALLERY + PRODUCT INFO

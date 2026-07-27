@@ -94,7 +94,7 @@ const Categories = () => {
     <div className="min-h-screen bg-white">
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-charcoal-900 via-charcoal-800 to-charcoal-900 text-white py-12 px-4 text-center relative overflow-hidden">
-        <div className="max-w-7xl mx-auto relative z-10">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 relative z-10">
           <h1 className="text-3xl sm:text-4xl font-serif font-bold text-white mb-2">
             {activeCategoryObj ? activeCategoryObj.name : 'Explore All Collections'}
           </h1>
@@ -105,7 +105,7 @@ const Categories = () => {
       {/* ── Subcategories Carousel / Cards Showcase Grid ──────── */}
       {subcategories.length > 0 && (
         <div className="bg-gray-50 border-b border-gray-100 py-6 px-4">
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
                 <FiLayers className="text-amber-500" /> Subcategory Collections ({subcategories.length})
@@ -163,7 +163,7 @@ const Categories = () => {
       )}
 
       {/* Main Catalog Workspace */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
           <div className="text-xs text-gray-500">
             Showing <strong className="text-charcoal-900">{filteredProducts.length}</strong> products
@@ -293,6 +293,77 @@ const Categories = () => {
               </label>
             </div>
           </div>
+
+          {/* MOBILE FILTER MODAL */}
+          {mobileFilterOpen && (
+            <div className="fixed inset-0 z-[100] flex lg:hidden">
+              <div className="fixed inset-0 bg-black/50" onClick={() => setMobileFilterOpen(false)} />
+              <div className="relative w-[85%] max-w-sm bg-white h-full overflow-y-auto p-6 shadow-xl z-[101]">
+                <div className="flex justify-between items-center mb-6 border-b pb-4">
+                  <h2 className="font-serif font-bold text-lg flex items-center gap-2"><FiFilter /> Filters</h2>
+                  <button onClick={() => setMobileFilterOpen(false)} className="p-2 bg-gray-100 rounded-full text-gray-600">
+                    <FiX size={18} />
+                  </button>
+                </div>
+                
+                <div className="space-y-6">
+                  {/* Copy of desktop filters for mobile */}
+                  <div>
+                    <h3 className="font-serif font-bold text-sm text-charcoal-900 mb-3 uppercase tracking-wider">Categories</h3>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                        <input type="radio" checked={!selectedCategory} onChange={() => { setSelectedCategory(''); setSelectedSubcategory(''); }} className="text-gold-500" />
+                        All Categories
+                      </label>
+                      {categories.map((cat) => (
+                        <label key={cat.id} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                          <input type="radio" checked={selectedCategory === cat.slug || selectedCategory === cat.id} onChange={() => { setSelectedCategory(cat.slug); setSelectedSubcategory(''); }} className="text-gold-500" />
+                          {cat.name}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {subcategories.length > 0 && (
+                    <div className="pt-4 border-t border-gray-200">
+                      <h3 className="font-serif font-bold text-sm text-charcoal-900 mb-3 uppercase tracking-wider">Subcategories</h3>
+                      <div className="space-y-2">
+                        {subcategories.map((sub) => (
+                          <label key={sub.id} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                            <input type="radio" checked={selectedSubcategory === sub.id} onChange={() => setSelectedSubcategory(sub.id)} className="text-gold-500" />
+                            {sub.name}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-4 border-t border-gray-200">
+                    <div className="flex justify-between items-center mb-2 text-xs font-bold text-charcoal-900">
+                      <span>Max Price</span>
+                      <span className="text-gold-600">{formatCurrency(maxPrice)}</span>
+                    </div>
+                    <input type="range" min={500} max={50000} step={500} value={maxPrice} onChange={(e) => setMaxPrice(Number(e.target.value))} className="w-full accent-gold-500" />
+                  </div>
+
+                  <div className="space-y-2 pt-4 border-t border-gray-200 pb-8">
+                    <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                      <input type="checkbox" checked={filterFeatured} onChange={(e) => setFilterFeatured(e.target.checked)} className="rounded text-gold-500" />
+                      Featured Products
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                      <input type="checkbox" checked={filterTrending} onChange={(e) => setFilterTrending(e.target.checked)} className="rounded text-gold-500" />
+                      Trending Now 🔥
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="sticky bottom-0 bg-white pt-4 pb-2 border-t">
+                  <button onClick={() => setMobileFilterOpen(false)} className="w-full bg-charcoal-900 text-gold-400 py-3 rounded-xl font-bold text-sm">Apply Filters</button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* PRODUCT GRID */}
           <div className="lg:col-span-3">

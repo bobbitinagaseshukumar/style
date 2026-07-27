@@ -111,7 +111,7 @@ const UserProfile = () => {
   if (loading) return <div className="p-12 text-center text-gray-500">Loading user portal...</div>;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-8">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Sidebar Tabs */}
         <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm h-fit space-y-2">
@@ -267,7 +267,7 @@ const UserProfile = () => {
           <Input label="Full Name" value={addressForm.fullName} onChange={e => setAddressForm({ ...addressForm, fullName: e.target.value })} required />
           <Input label="Phone Number" value={addressForm.phone} onChange={e => setAddressForm({ ...addressForm, phone: e.target.value })} required />
           <Input label="Flat, House no., Building, Street" value={addressForm.street} onChange={e => setAddressForm({ ...addressForm, street: e.target.value })} required />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="City" value={addressForm.city} onChange={e => setAddressForm({ ...addressForm, city: e.target.value })} required />
             <Input label="State" value={addressForm.state} onChange={e => setAddressForm({ ...addressForm, state: e.target.value })} required />
           </div>
