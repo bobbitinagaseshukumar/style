@@ -43,6 +43,7 @@ const Error500 = lazy(() => import('../pages/Error500'));
 
 // Lazy loading auth pages
 const VerifyOTP = lazy(() => import('../pages/VerifyOTP'));
+const VerifyEmail = lazy(() => import('../pages/VerifyEmail'));
 const ForgotPassword = lazy(() => import('../pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('../pages/ResetPassword'));
 
@@ -133,9 +134,10 @@ const AppRoutes = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Auth Layout Routes (OTP, Forgot, Reset) */}
+        {/* Auth Layout Routes (OTP, Verify Email, Forgot, Reset) */}
         <Route element={<AuthLayout />}>
           <Route path="/verify-otp" element={<VerifyOTP />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
         </Route>

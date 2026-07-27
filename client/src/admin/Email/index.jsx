@@ -1,417 +1,453 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FiSend, FiMail, FiUsers, FiEye, FiZap, FiCalendar,
-  FiEdit3, FiCheckCircle, FiAlertCircle, FiLoader, FiX
+  FiMail, FiPlus, FiSend, FiTrash2, FiEdit2, FiCopy, FiCheck,
+  FiX, FiEye, FiFilter, FiSearch, FiRefreshCw, FiGrid, FiUsers,
+  FiZap, FiTag, FiGift, FiStar, FiClock, FiCheckCircle, FiAlertCircle
 } from 'react-icons/fi';
-import { toast } from 'react-toastify';
 import api from '../../config/api';
+import { toast } from 'react-toastify';
 
-/* ─── Campaign type presets ─────────────────────────────────── */
 const CAMPAIGN_TYPES = [
-  { id: 'offer', label: 'Offer / Promo', emoji: '🎁', desc: 'Discount offers with coupon codes' },
-  { id: 'new_arrivals', label: 'New Arrivals', emoji: '✨', desc: 'Announce new product collections' },
-  { id: 'newsletter', label: 'Newsletter', emoji: '📰', desc: 'Regular newsletter & fashion tips' },
-  { id: 'custom', label: 'Custom Email', emoji: '✉️', desc: 'Write custom HTML email body' },
+  { id: 'FESTIVAL_SALE', label: 'Festival Sale Offers', icon: '🎆' },
+  { id: 'MEGA_SALE', label: 'Mega Sale Promotion', icon: '🔥' },
+  { id: 'FLASH_SALE', label: 'Flash Sale (Limited Time)', icon: '⚡' },
+  { id: 'NEW_ARRIVALS', label: 'New Arrivals Collection', icon: '✨' },
+  { id: 'TRENDING', label: 'Latest Trending Products', icon: '🌟' },
+  { id: 'EXCLUSIVE_OFFER', label: 'Exclusive VIP Member Offers', icon: '💎' },
+  { id: 'CLEARANCE', label: 'Clearance Discount Sale', icon: '🏷️' },
+  { id: 'NEWSLETTER', label: 'Weekly Fashion Newsletter', icon: '📰' },
 ];
 
-const TEST_TYPES = [
-  { id: 'otp', label: 'OTP Verification' },
-  { id: 'welcome', label: 'Welcome Email' },
-  { id: 'order_placed', label: 'Order Placed' },
-  { id: 'offer', label: 'Offer / Promo' },
-  { id: 'abandoned_cart', label: 'Abandoned Cart' },
-  { id: 'newsletter', label: 'Newsletter' },
+const AUDIENCE_OPTIONS = [
+  { id: 'ALL', label: 'All Customers (Opted-in)' },
+  { id: 'NEWSLETTER', label: 'Newsletter Subscribers Only' },
+  { id: 'CATEGORY_INTEREST', label: 'Customers by Category Interest' },
+  { id: 'PURCHASE_HISTORY', label: 'Customers with Past Purchases' },
+  { id: 'WISHLIST', label: 'Customers with Items in Wishlist' },
+  { id: 'ACTIVE_USERS', label: 'Active Users (Logged in last 30 days)' },
 ];
 
-const TARGET_OPTIONS = [
-  { id: 'all', label: 'All Registered Users' },
-  { id: 'verified', label: 'Verified Customers Only' },
-  { id: 'subscribed', label: 'Subscribed to Emails' },
-];
+const AdminEmailManagement = () => {
+  const [activeTab, setActiveTab] = useState('campaigns'); // 'campaigns' | 'history'
+  const [campaigns, setCampaigns] = useState([]);
+  const [emailLogs, setEmailLogs] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sendingId, setSendingId] = useState(null);
 
-/* ─── Input helper ──────────────────────────────────────────── */
-const Field = ({ label, children, hint }) => (
-  <div>
-    <label className="block text-sm font-semibold text-gray-700 mb-1.5">{label}</label>
-    {children}
-    {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
-  </div>
-);
+  // Campaign Create/Edit Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState(null);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
 
-const Input = (props) => (
-  <input {...props} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none" />
-);
-
-const Textarea = (props) => (
-  <textarea {...props} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none resize-none" />
-);
-
-/* ─── Quick stats ─────────────────────────────────────────────── */
-const StatCard = ({ label, value, icon: Icon, color = 'yellow' }) => {
-  const colors = {
-    yellow: 'bg-yellow-50 border-yellow-200 text-yellow-700',
-    green: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-    blue: 'bg-blue-50 border-blue-200 text-blue-700',
-    purple: 'bg-purple-50 border-purple-200 text-purple-700',
-  };
-  return (
-    <div className={`flex items-center gap-4 p-4 rounded-2xl border ${colors[color]}`}>
-      <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0">
-        <Icon size={18} />
-      </div>
-      <div>
-        <p className="text-xs font-semibold opacity-70 uppercase tracking-widest">{label}</p>
-        <p className="text-xl font-black">{value}</p>
-      </div>
-    </div>
-  );
-};
-
-/* ─── Main Email Dashboard ──────────────────────────────────── */
-const AdminEmail = () => {
-  const [activeTab, setActiveTab] = useState('campaign');
-
-  // Campaign state
-  const [campaignType, setCampaignType] = useState('offer');
-  const [form, setForm] = useState({
+  const [formData, setFormData] = useState({
     title: '',
     subject: '',
-    target: 'all',
-    sendNow: true,
-    scheduledAt: '',
-    // Offer fields
-    offerTitle: '',
-    discount: '',
-    couponCode: '',
-    endDate: '',
+    bannerImage: '',
     description: '',
-    // Newsletter
-    bodyHtml: '',
+    buttonText: 'Explore Collection Now',
+    buttonUrl: '/offers',
+    campaignType: 'FESTIVAL_SALE',
+    targetAudience: 'ALL',
+    productIds: [],
   });
-  const [sending, setSending] = useState(false);
 
-  // Test email state
-  const [testEmail, setTestEmail] = useState('');
-  const [testType, setTestType] = useState('otp');
-  const [testSending, setTestSending] = useState(false);
-
-  const handleChange = (key) => (e) =>
-    setForm(f => ({ ...f, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
-
-  const handleSendCampaign = async () => {
-    if (!form.title || !form.subject || !campaignType) {
-      toast.error('Please fill in Title and Subject');
-      return;
-    }
-    if (!form.sendNow && !form.scheduledAt) {
-      toast.error('Please choose Send Now or set a scheduled date');
-      return;
-    }
+  const fetchData = async () => {
     try {
-      setSending(true);
-      const payload = {
-        ...form,
-        type: campaignType,
-        discount: parseFloat(form.discount) || 0,
-      };
-      const { data } = await api.post('/email/campaign', payload);
-      toast.success(data.message || 'Campaign launched!');
-      // Reset form
-      setForm(f => ({ ...f, title: '', subject: '', couponCode: '', offerTitle: '', discount: '', description: '', bodyHtml: '' }));
+      setLoading(true);
+      const [campRes, logsRes, prodRes] = await Promise.allSettled([
+        api.get('/email/campaigns'),
+        api.get('/email/history'),
+        api.get('/products?limit=50')
+      ]);
+
+      if (campRes.status === 'fulfilled' && campRes.value.data?.data) {
+        setCampaigns(campRes.value.data.data);
+      }
+      if (logsRes.status === 'fulfilled' && logsRes.value.data?.data?.logs) {
+        setEmailLogs(logsRes.value.data.data.logs);
+      }
+      if (prodRes.status === 'fulfilled' && prodRes.value.data?.data?.products) {
+        setProducts(prodRes.value.data.data.products);
+      }
+    } catch (err) {
+      toast.error('Failed to load email data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleOpenAddModal = () => {
+    setEditingCampaign(null);
+    setFormData({
+      title: '',
+      subject: '',
+      bannerImage: '',
+      description: '',
+      buttonText: 'Explore Collection Now',
+      buttonUrl: '/offers',
+      campaignType: 'FESTIVAL_SALE',
+      targetAudience: 'ALL',
+      productIds: [],
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleSaveCampaign = async (e) => {
+    e.preventDefault();
+    if (!formData.title || !formData.subject || !formData.description) {
+      toast.error('Title, subject, and description are required.');
+      return;
+    }
+
+    try {
+      if (editingCampaign) {
+        await api.put(`/email/campaigns/${editingCampaign.id}`, formData);
+        toast.success('Campaign updated!');
+      } else {
+        await api.post('/email/campaigns', formData);
+        toast.success('Email campaign created!');
+      }
+      setIsModalOpen(false);
+      fetchData();
+    } catch (err) {
+      toast.error('Failed to save campaign');
+    }
+  };
+
+  const handleSendCampaignNow = async (id) => {
+    if (!window.confirm('Send this email campaign to target customers now?')) return;
+    try {
+      setSendingId(id);
+      const res = await api.post(`/email/campaigns/${id}/send`);
+      toast.success(res.data?.message || 'Campaign emails queued & sent!');
+      fetchData();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send campaign');
     } finally {
-      setSending(false);
+      setSendingId(null);
     }
   };
 
-  const handleSendTest = async () => {
-    if (!testEmail) { toast.error('Enter a recipient email'); return; }
+  const handleDeleteCampaign = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this campaign?')) return;
     try {
-      setTestSending(true);
-      await api.post('/email/test', { to: testEmail, type: testType });
-      toast.success(`Test "${testType}" email sent to ${testEmail}!`);
+      await api.delete(`/email/campaigns/${id}`);
+      toast.success('Campaign deleted');
+      fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send test email');
-    } finally {
-      setTestSending(false);
+      toast.error('Failed to delete campaign');
     }
   };
 
-  const tabs = [
-    { id: 'campaign', label: 'Send Campaign', icon: FiSend },
-    { id: 'test', label: 'Test Emails', icon: FiZap },
-    { id: 'guide', label: 'Email Guide', icon: FiMail },
-  ];
+  const toggleProductSelect = (prodId) => {
+    setFormData((prev) => {
+      const exists = prev.productIds.includes(prodId);
+      return {
+        ...prev,
+        productIds: exists ? prev.productIds.filter((i) => i !== prodId) : [...prev.productIds, prodId],
+      };
+    });
+  };
 
   return (
-    <div className="space-y-6" style={{ fontFamily: "'Inter', sans-serif" }}>
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-black text-gray-900">Email Campaign Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Send premium email campaigns and manage customer notifications</p>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-charcoal-900 border border-gold-500/20 p-6 rounded-2xl shadow-xl">
+        <div>
+          <div className="flex items-center gap-2.5 text-gold-400 font-bold text-lg">
+            <FiMail className="w-6 h-6" />
+            <span>Email Campaigns & Promotional Notifications</span>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">
+            Create promotional sales campaigns, target specific customer segments, promote products, and view delivery history.
+          </p>
+        </div>
+        <button
+          onClick={handleOpenAddModal}
+          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-gold-500 to-amber-600 text-black font-bold text-sm hover:from-gold-400 shadow-lg flex items-center gap-2 transition"
+        >
+          <FiPlus className="w-4 h-4" /> Create Email Campaign
+        </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Automated Emails" value="9 Types" icon={FiCheckCircle} color="green" />
-        <StatCard label="Queue System" value="Active" icon={FiLoader} color="blue" />
-        <StatCard label="Audience Options" value="3 Targets" icon={FiUsers} color="purple" />
-        <StatCard label="Test Previews" value="6 Templates" icon={FiEye} color="yellow" />
+      {/* Tabs Bar */}
+      <div className="flex border-b border-gray-200 gap-4 text-sm font-bold">
+        <button
+          onClick={() => setActiveTab('campaigns')}
+          className={`pb-3 px-1 border-b-2 transition ${
+            activeTab === 'campaigns' ? 'border-amber-600 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          Email Campaigns ({campaigns.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`pb-3 px-1 border-b-2 transition ${
+            activeTab === 'history' ? 'border-amber-600 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          Delivery History Logs ({emailLogs.length})
+        </button>
       </div>
 
-      {/* Tab Nav */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition
-              ${activeTab === t.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-            <t.icon size={14} /> {t.label}
-          </button>
-        ))}
-      </div>
+      {/* Tab Content */}
+      {loading ? (
+        <div className="flex items-center justify-center p-12">
+          <FiRefreshCw className="w-8 h-8 text-gold-400 animate-spin" />
+        </div>
+      ) : activeTab === 'campaigns' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {campaigns.map((c) => {
+            const typeObj = CAMPAIGN_TYPES.find((t) => t.id === c.campaignType);
+            const isSending = sendingId === c.id;
 
-      <AnimatePresence mode="wait">
-        <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
-
-          {/* ── CAMPAIGN TAB ──────────────────────────────── */}
-          {activeTab === 'campaign' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-              {/* Left: Campaign Builder */}
-              <div className="lg:col-span-2 bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-5">
-                <h2 className="text-lg font-black text-gray-900">Campaign Builder</h2>
-
-                {/* Type selector */}
-                <Field label="Campaign Type">
-                  <div className="grid grid-cols-2 gap-2 mt-1">
-                    {CAMPAIGN_TYPES.map(t => (
-                      <button key={t.id} onClick={() => setCampaignType(t.id)}
-                        className={`flex items-start gap-3 p-3 rounded-2xl border-2 text-left transition
-                          ${campaignType === t.id ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                        <span className="text-xl">{t.emoji}</span>
-                        <div>
-                          <p className="font-bold text-gray-800 text-sm">{t.label}</p>
-                          <p className="text-[10px] text-gray-500">{t.desc}</p>
-                        </div>
-                      </button>
-                    ))}
+            return (
+              <motion.div
+                key={c.id}
+                layout
+                className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4 hover:border-gold-500/50 transition flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold flex items-center gap-1">
+                      <span>{typeObj?.icon || '📢'}</span> {typeObj?.label || c.campaignType}
+                    </span>
+                    <span
+                      className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${
+                        c.status === 'SENT' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {c.status}
+                    </span>
                   </div>
-                </Field>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Campaign Name *">
-                    <Input value={form.title} onChange={handleChange('title')} placeholder="e.g. Diwali Sale 2026" />
-                  </Field>
-                  <Field label="Email Subject Line *">
-                    <Input value={form.subject} onChange={handleChange('subject')} placeholder="e.g. 🎁 40% OFF this Diwali!" />
-                  </Field>
+                  <h3 className="text-base font-bold text-gray-900">{c.title}</h3>
+                  <p className="text-xs text-gray-500 font-medium">Subject: &quot;{c.subject}&quot;</p>
+                  <p className="text-xs text-gray-600 line-clamp-2 mt-2">{c.description}</p>
                 </div>
 
-                {/* Type-specific fields */}
-                {(campaignType === 'offer') && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 space-y-3">
-                    <p className="text-xs font-bold text-yellow-700 uppercase tracking-widest">Offer Details</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Offer Title">
-                        <Input value={form.offerTitle} onChange={handleChange('offerTitle')} placeholder="e.g. Diwali Mega Sale" />
-                      </Field>
-                      <Field label="Discount %">
-                        <Input type="number" value={form.discount} onChange={handleChange('discount')} placeholder="e.g. 40" />
-                      </Field>
-                      <Field label="Coupon Code">
-                        <Input value={form.couponCode} onChange={handleChange('couponCode')} placeholder="e.g. DIWALI40" />
-                      </Field>
-                      <Field label="Valid Until">
-                        <Input type="date" value={form.endDate} onChange={handleChange('endDate')} />
-                      </Field>
-                    </div>
-                    <Field label="Offer Description">
-                      <Textarea rows={2} value={form.description} onChange={handleChange('description')} placeholder="Short message for the email body..." />
-                    </Field>
+                <div className="pt-4 border-t border-gray-100 space-y-3">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Audience: <strong>{c.targetAudience}</strong></span>
+                    <span>Sent: <strong className="text-emerald-600">{c.sentCount}</strong></span>
                   </div>
-                )}
 
-                {(campaignType === 'newsletter' || campaignType === 'custom') && (
-                  <Field label="Email Body (HTML allowed)" hint="You can use basic HTML tags for formatting">
-                    <Textarea rows={6} value={form.bodyHtml} onChange={handleChange('bodyHtml')}
-                      placeholder="<p>Hello! We have exciting news...</p><p>Check out our latest collections...</p>" />
-                  </Field>
-                )}
-
-                {/* Audience */}
-                <Field label="Target Audience">
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {TARGET_OPTIONS.map(t => (
-                      <button key={t.id} onClick={() => setForm(f => ({ ...f, target: t.id }))}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition
-                          ${form.target === t.id ? 'border-yellow-400 bg-yellow-50 text-yellow-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
-
-                {/* Timing */}
-                <Field label="Send Timing">
-                  <div className="flex gap-3 mt-1">
-                    <button onClick={() => setForm(f => ({ ...f, sendNow: true }))}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 text-sm font-bold transition
-                        ${form.sendNow ? 'border-yellow-400 bg-yellow-50 text-yellow-700' : 'border-gray-200 text-gray-600'}`}>
-                      <FiZap size={13} /> Send Now
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleSendCampaignNow(c.id)}
+                      disabled={isSending}
+                      className="flex-1 py-2 px-3 rounded-xl bg-charcoal-900 text-gold-400 font-bold text-xs hover:bg-black transition flex items-center justify-center gap-1.5 shadow"
+                    >
+                      {isSending ? <FiRefreshCw className="w-3.5 h-3.5 animate-spin" /> : <FiSend className="w-3.5 h-3.5" />}
+                      Send Now
                     </button>
-                    <button onClick={() => setForm(f => ({ ...f, sendNow: false }))}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 text-sm font-bold transition
-                        ${!form.sendNow ? 'border-yellow-400 bg-yellow-50 text-yellow-700' : 'border-gray-200 text-gray-600'}`}>
-                      <FiCalendar size={13} /> Schedule Later
+                    <button
+                      onClick={() => handleDeleteCampaign(c.id)}
+                      className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition"
+                      title="Delete Campaign"
+                    >
+                      <FiTrash2 className="w-4 h-4" />
                     </button>
                   </div>
-                  {!form.sendNow && (
-                    <Input type="datetime-local" className="mt-2 w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm"
-                      value={form.scheduledAt} onChange={handleChange('scheduledAt')} />
-                  )}
-                </Field>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      ) : (
+        /* History Logs Tab */
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-gray-700">
+              <thead className="bg-gray-50 text-gray-500 uppercase font-bold text-[10px] border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3">Recipient Email</th>
+                  <th className="px-4 py-3">Subject</th>
+                  <th className="px-4 py-3">Campaign</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Sent At</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 font-medium">
+                {emailLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-gray-50/50">
+                    <td className="px-4 py-3 font-mono font-bold text-gray-900">{log.recipientEmail}</td>
+                    <td className="px-4 py-3 text-gray-800">{log.subject}</td>
+                    <td className="px-4 py-3 text-gray-500">{log.campaign?.title || 'System Notification'}</td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold text-[10px]">
+                        {log.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-400">
+                      {new Date(log.sentAt).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
-                {/* Send button */}
-                <button
-                  onClick={handleSendCampaign}
-                  disabled={sending}
-                  className="w-full py-4 rounded-2xl bg-yellow-400 text-black font-black text-sm hover:bg-yellow-300 transition shadow-lg shadow-yellow-100 flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {sending
-                    ? <><span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> Launching Campaign...</>
-                    : <><FiSend size={15} /> {form.sendNow ? 'Launch Campaign Now' : 'Schedule Campaign'}</>
-                  }
+      {/* Create / Edit Campaign Modal */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl border border-gray-100 flex flex-col max-h-[90vh]"
+            >
+              <div className="px-6 py-4 bg-charcoal-900 border-b border-white/10 flex items-center justify-between text-white">
+                <h3 className="font-bold text-base text-gold-400">Create Email Campaign</h3>
+                <button onClick={() => setIsModalOpen(false)} className="text-white/60 hover:text-white">
+                  <FiX className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Right: Help panel */}
-              <div className="space-y-4">
-                <div className="bg-gray-50 border border-gray-100 rounded-3xl p-5">
-                  <h3 className="font-bold text-gray-800 mb-3 text-sm uppercase tracking-widest">Automated Emails</h3>
-                  <p className="text-xs text-gray-500 mb-3">These fire automatically without manual campaigns:</p>
-                  <div className="space-y-2">
-                    {[
-                      { emoji: '🔐', label: 'OTP Verification' },
-                      { emoji: '🎉', label: 'Welcome Email' },
-                      { emoji: '🔑', label: 'Forgot Password' },
-                      { emoji: '🔒', label: 'Password Changed' },
-                      { emoji: '✅', label: 'Order Placed' },
-                      { emoji: '🚚', label: 'Order Shipped' },
-                      { emoji: '📦', label: 'Order Delivered' },
-                      { emoji: '❌', label: 'Order Cancelled' },
-                      { emoji: '🔔', label: 'Back in Stock' },
-                    ].map(e => (
-                      <div key={e.label} className="flex items-center gap-2 text-sm">
-                        <span>{e.emoji}</span>
-                        <span className="text-gray-700">{e.label}</span>
-                        <span className="ml-auto text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">Auto</span>
-                      </div>
-                    ))}
+              <form onSubmit={handleSaveCampaign} className="p-6 space-y-4 overflow-y-auto flex-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                      Campaign Title
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Diwali Heritage Sale 2026"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl border border-gray-300 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                      Email Subject Line
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. ⚡ Flat 50% Off on Heritage Collections"
+                      value={formData.subject}
+                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl border border-gray-300 text-xs"
+                    />
                   </div>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-100 rounded-3xl p-5">
-                  <h3 className="font-bold text-blue-800 mb-2 text-sm">SMTP Setup</h3>
-                  <p className="text-xs text-blue-700 leading-relaxed">
-                    Configure your .env file:<br/><br/>
-                    <code className="bg-blue-100 px-1 rounded">SMTP_HOST=smtp.gmail.com</code><br/>
-                    <code className="bg-blue-100 px-1 rounded">SMTP_USER=your@gmail.com</code><br/>
-                    <code className="bg-blue-100 px-1 rounded">SMTP_PASS=app-password</code><br/>
-                    <code className="bg-blue-100 px-1 rounded">FROM_EMAIL=noreply@yourdomain.com</code><br/><br/>
-                    For production, use <strong>Resend</strong> with:<br/>
-                    <code className="bg-blue-100 px-1 rounded">RESEND_API_KEY=re_xxxxx</code>
-                  </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                      Campaign Type
+                    </label>
+                    <select
+                      value={formData.campaignType}
+                      onChange={(e) => setFormData({ ...formData, campaignType: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl border border-gray-300 text-xs"
+                    >
+                      {CAMPAIGN_TYPES.map((t) => (
+                        <option key={t.id} value={t.id}>{t.icon} {t.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                      Target Audience
+                    </label>
+                    <select
+                      value={formData.targetAudience}
+                      onChange={(e) => setFormData({ ...formData, targetAudience: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl border border-gray-300 text-xs"
+                    >
+                      {AUDIENCE_OPTIONS.map((a) => (
+                        <option key={a.id} value={a.id}>{a.label}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* ── TEST EMAIL TAB ────────────────────────────── */}
-          {activeTab === 'test' && (
-            <div className="max-w-lg bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-5">
-              <h2 className="text-lg font-black text-gray-900">Send Test Email</h2>
-              <p className="text-sm text-gray-500">Preview any email template before sending it to customers.</p>
-
-              <Field label="Template to Test">
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                  {TEST_TYPES.map(t => (
-                    <button key={t.id} onClick={() => setTestType(t.id)}
-                      className={`px-3 py-2.5 rounded-xl border-2 text-sm font-bold text-left transition
-                        ${testType === t.id ? 'border-yellow-400 bg-yellow-50 text-yellow-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
-                      {t.label}
-                    </button>
-                  ))}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                    Banner Image URL (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="https://..."
+                    value={formData.bannerImage}
+                    onChange={(e) => setFormData({ ...formData, bannerImage: e.target.value })}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-300 text-xs font-mono"
+                  />
                 </div>
-              </Field>
 
-              <Field label="Send To (Email Address)">
-                <Input
-                  type="email"
-                  value={testEmail}
-                  onChange={e => setTestEmail(e.target.value)}
-                  placeholder="your@email.com"
-                />
-              </Field>
-
-              <button
-                onClick={handleSendTest}
-                disabled={testSending}
-                className="w-full py-4 rounded-2xl bg-gray-900 text-yellow-400 font-black text-sm hover:bg-gray-800 transition flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {testSending
-                  ? <><span className="w-4 h-4 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" /> Sending...</>
-                  : <><FiZap size={15} /> Send Test Email</>
-                }
-              </button>
-            </div>
-          )}
-
-          {/* ── GUIDE TAB ────────────────────────────────── */}
-          {activeTab === 'guide' && (
-            <div className="max-w-3xl space-y-4">
-              {[
-                {
-                  title: '🔐 OTP & Security Emails',
-                  items: ['Email OTP fires on Register, Login (OTP mode), and Forgot Password', 'OTP is 6-digit, valid for 5 minutes, one-time use only', 'Max 5 attempts before OTP is invalidated', 'Password Changed email fires automatically on successful reset'],
-                },
-                {
-                  title: '📦 Order Lifecycle Emails',
-                  items: ['Order Placed: Sent immediately with full order summary and item table', 'Order Shipped: Triggered when admin marks as shipped (with tracking number)', 'Order Delivered: Sent on delivery confirmation with review prompt', 'Order Cancelled: Sent with reason and refund status'],
-                },
-                {
-                  title: '📣 Campaign Emails',
-                  items: ['Offers: Include coupon code, discount %, and expiry date', 'New Arrivals: Shows up to 3 product images with prices', 'Newsletter: Supports custom HTML in email body', 'Custom: Fully flexible HTML content', 'Target: All users / Verified only / Subscribed only'],
-                },
-                {
-                  title: '🔔 Trigger-based Emails',
-                  items: ['Back in Stock: Sends to users who clicked "Notify Me"', 'Abandoned Cart: Can be triggered via cron job after X hours', 'Wishlist Alert: Fires when wishlisted product goes on sale'],
-                },
-                {
-                  title: '⚙️ Email Queue & Reliability',
-                  items: ['High-priority emails (OTP, security) are sent instantly, not queued', 'Bulk campaign emails use an in-memory queue with 100ms throttle', 'Failed emails are retried up to 3 times with exponential backoff', 'Batch sending for large campaigns with 1-second pause between batches'],
-                },
-              ].map(section => (
-                <div key={section.title} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-                  <h3 className="font-bold text-gray-900 mb-3">{section.title}</h3>
-                  <ul className="space-y-1.5">
-                    {section.items.map((item, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                        <FiCheckCircle size={13} className="text-emerald-500 mt-0.5 flex-shrink-0" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                    Email Description / Body
+                  </label>
+                  <textarea
+                    rows={4}
+                    required
+                    placeholder="Write compelling sales pitch description..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-300 text-xs"
+                  />
                 </div>
-              ))}
-            </div>
-          )}
 
-        </motion.div>
+                {/* Promote Products Picker */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                    Promote Specific Products in Email (Select Products)
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-40 overflow-y-auto p-2 border border-gray-200 rounded-xl bg-gray-50">
+                    {products.map((p) => {
+                      const isSelected = formData.productIds.includes(p.id);
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => toggleProductSelect(p.id)}
+                          className={`p-2 rounded-lg border cursor-pointer transition text-xs ${
+                            isSelected ? 'bg-amber-100 border-amber-500 font-bold' : 'bg-white border-gray-200 hover:bg-gray-100'
+                          }`}
+                        >
+                          <p className="truncate text-[11px]">{p.name}</p>
+                          <p className="text-[10px] text-amber-700 font-bold">₹{p.price}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 text-xs font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-gold-500 to-amber-600 text-black font-bold text-xs uppercase tracking-wider hover:from-gold-400 shadow-lg"
+                  >
+                    Save Campaign
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
     </div>
   );
 };
 
-export default AdminEmail;
+export default AdminEmailManagement;

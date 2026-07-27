@@ -1,17 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const {
-  createCampaign,
-  sendTestEmail,
-  notifyBackInStock,
-  sendOrderStatusEmail,
-} = require('../controllers/emailController');
-const { protect, authorize } = require('../middleware/authMiddleware'); // FIXED: was '../middleware/auth'
+const emailController = require('../controllers/emailController');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
-// Admin-only routes
-router.post('/campaign', protect, authorize('ADMIN', 'SUPER_ADMIN'), createCampaign);
-router.post('/test', protect, authorize('ADMIN', 'SUPER_ADMIN'), sendTestEmail);
-router.post('/order-status', protect, authorize('ADMIN', 'SUPER_ADMIN'), sendOrderStatusEmail);
-router.post('/back-in-stock/:productId', protect, authorize('ADMIN', 'SUPER_ADMIN'), notifyBackInStock);
+// Public endpoints
+router.post('/newsletter/subscribe', emailController.subscribeNewsletter);
+
+// Protected customer routes
+router.put('/preferences', protect, emailController.updateNotificationPreferences);
+
+// Admin-only campaign routes
+const adminOnly = [protect, authorize('ADMIN', 'SUPER_ADMIN')];
+
+router.get('/campaigns', ...adminOnly, emailController.getCampaigns);
+router.post('/campaigns', ...adminOnly, emailController.createCampaign);
+router.put('/campaigns/:id', ...adminOnly, emailController.updateCampaign);
+router.post('/campaigns/:id/send', ...adminOnly, emailController.sendCampaignNow);
+router.delete('/campaigns/:id', ...adminOnly, emailController.deleteCampaign);
+
+router.get('/history', ...adminOnly, emailController.getEmailHistory);
 
 module.exports = router;
