@@ -33,7 +33,9 @@ model User {
   suspendedUntil      DateTime?
   blockReason         String?
   blockNotes          String?
-  adminNotes          String?       // Private admin-only notes (never visible to customer)
+  authProvider        String        @default("LOCAL") // LOCAL | GOOGLE | GITHUB
+  firebaseUid         String?
+  notificationPreferences String    @default("{\"newArrivals\":true,\"trending\":true,\"festivalOffers\":true,\"flashSales\":true,\"couponAlerts\":true,\"orderUpdates\":true,\"newsletter\":true}")
 
   // Fine-Grained Customer Permission Switches
   canLogin            Boolean       @default(true)
@@ -1034,3 +1036,40 @@ model AdminActionLog {
   userAgent    String?
   createdAt    DateTime @default(now())
 }
+
+model EmailCampaign {
+  id             String    @id @default(uuid())
+  title          String
+  subject        String
+  bannerImage    String?
+  description    String
+  buttonText     String    @default("Explore Now")
+  buttonUrl      String?
+  campaignType   String    @default("PROMOTIONAL") // FESTIVAL_SALE | MEGA_SALE | FLASH_SALE | NEW_ARRIVALS | TRENDING | EXCLUSIVE_OFFER | CLEARANCE | NEWSLETTER
+  targetAudience String    @default("ALL") // ALL | SELECTED | CATEGORY_INTEREST | PURCHASE_HISTORY | WISHLIST | NEWSLETTER | ACTIVE_USERS
+  targetCategory String?
+  productIds     String    @default("[]") // JSON string array of promoted product IDs
+  publishDate    DateTime?
+  expiryDate     DateTime?
+  status         String    @default("DRAFT") // DRAFT | SCHEDULED | SENT | CANCELLED
+  isFeatured     Boolean   @default(false)
+  sentCount      Int       @default(0)
+  deliveredCount Int       @default(0)
+  failedCount    Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  logs           EmailLog[]
+}
+
+model EmailLog {
+  id             String         @id @default(uuid())
+  campaignId     String?
+  campaign       EmailCampaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  recipientEmail String
+  subject        String
+  status         String         @default("SENT") // SENT | DELIVERED | FAILED | OPENED | CLICKED
+  failureReason  String?
+  sentAt         DateTime       @default(now())
+}
+

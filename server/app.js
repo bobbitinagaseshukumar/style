@@ -73,6 +73,8 @@ app.use('/api/v1/admin/auth', adminAuthRoutes);
 app.use('/api/v1/recommendations', recommendationRoutes);
 app.use('/api/v1/recently-viewed', recentlyViewedRoutes);
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/email', emailRoutes);
+app.use('/api/email', emailRoutes);
 app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/subcategories', subcategoryRoutes);
