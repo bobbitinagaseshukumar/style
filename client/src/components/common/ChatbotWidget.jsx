@@ -5,10 +5,9 @@ import {
   FiRefreshCw, FiZap, FiTrash2, FiDownload, FiUser, FiCpu,
   FiCheckCircle, FiHeart, FiTag, FiStar
 } from 'react-icons/fi';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { addToCart } from '../../redux/cart/cartSlice';
-import { formatCurrency } from '../../utils/formatCurrency';
 import api from '../../config/api';
 import { toast } from 'react-toastify';
 
@@ -23,28 +22,43 @@ const QUICK_ACTIONS = [
 ];
 
 /**
- * Enterprise Floating AI Customer Support Chatbot Widget
- * Positioned at bottom-right corner of every page.
- * Powered by natural language database search, order status checker, and live cart actions.
+ * AI Shopping Assistant Chatbot Widget
+ * Controlled dynamically by Admin Chatbot Settings in Admin Dashboard!
  */
 const ChatbotWidget = () => {
+  const [settings, setSettings] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      id: 'init-1',
-      sender: 'BOT',
-      text: "👋 Hello! Welcome to KVLR Styles. I'm your 24/7 AI Shopping Assistant. How can I help you today?",
-      type: 'GREETING',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [unread, setUnread] = useState(1);
 
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await api.get('/chatbot-setting/settings');
+        const s = res.data?.data;
+        setSettings(s);
+        if (s?.welcomeMessage) {
+          setMessages([
+            {
+              id: 'init-1',
+              sender: 'BOT',
+              text: s.welcomeMessage,
+              type: 'GREETING',
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+        }
+      } catch (err) {}
+    };
+    fetchSettings();
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -56,6 +70,10 @@ const ChatbotWidget = () => {
       scrollToBottom();
     }
   }, [isOpen, messages]);
+
+  // Hide on checkout if configured
+  if (settings && !settings.isEnabled) return null;
+  if (settings?.hideOnCheckout && location.pathname.startsWith('/checkout')) return null;
 
   const handleSendMessage = async (textToSend) => {
     const text = textToSend || inputValue;
@@ -91,7 +109,7 @@ const ChatbotWidget = () => {
         {
           id: `err-${Date.now()}`,
           sender: 'BOT',
-          text: 'I apologize, I am temporarily reconnecting. Please try again or click Human Support.',
+          text: 'I apologize, I am temporarily reconnecting. Please try again.',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -100,67 +118,20 @@ const ChatbotWidget = () => {
     }
   };
 
-  const handleAddToCart = (e, product) => {
-    e.stopPropagation();
-    const price = product.discountPrice || product.price;
-    const img = product.images?.[0]?.url || product.images?.[0] || '';
-    dispatch(addToCart({
-      id: product.id,
-      name: product.name,
-      price,
-      image: img,
-      quantity: 1,
-    }));
-    toast.success(`"${product.name}" added to cart! 🛍️`);
-  };
-
-  const handleBuyNow = (e, product) => {
-    e.stopPropagation();
-    const price = product.discountPrice || product.price;
-    const img = product.images?.[0]?.url || product.images?.[0] || '';
-    dispatch(addToCart({
-      id: product.id,
-      name: product.name,
-      price,
-      image: img,
-      quantity: 1,
-    }));
-    setIsOpen(false);
-    navigate('/checkout');
-  };
-
-  const handleClearChat = () => {
-    setMessages([
-      {
-        id: 'init-1',
-        sender: 'BOT',
-        text: "👋 Hello! Conversation restarted. How can I help you today?",
-        type: 'GREETING',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      },
-    ]);
-  };
-
-  const handleExportChat = () => {
-    const textContent = messages.map(m => `[${m.timestamp}] ${m.sender}: ${m.text}`).join('\n\n');
-    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `KVLR-Chatbot-Transcript-${Date.now()}.txt`;
-    a.click();
-  };
+  const posClass = settings?.position === 'bottom-left'
+    ? 'bottom-20 left-4 sm:bottom-6 sm:left-6'
+    : 'bottom-20 right-4 sm:bottom-6 sm:right-6';
 
   return (
     <>
-      {/* FLOATING CIRCULAR TRIGGER BUTTON */}
-      <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50">
+      {/* TRIGGER BUTTON */}
+      <div className={`fixed ${posClass} z-50`}>
         <motion.button
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.92 }}
           onClick={() => setIsOpen(!isOpen)}
           className="relative w-14 h-14 rounded-full bg-charcoal-900 border-2 border-gold-500 text-gold-400 shadow-[0_8px_30px_rgba(212,175,55,0.4)] flex items-center justify-center cursor-pointer group backdrop-blur-md"
-          aria-label="Open AI Shopping Assistant Chatbot"
+          aria-label="Open AI Shopping Assistant"
         >
           {isOpen ? (
             <FiX className="w-6 h-6 text-white" />
@@ -175,7 +146,6 @@ const ChatbotWidget = () => {
             </div>
           )}
 
-          {/* Unread Badge Indicator */}
           {!isOpen && unread > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-600 text-white font-black text-[10px] flex items-center justify-center border border-black shadow">
               1
@@ -184,7 +154,7 @@ const ChatbotWidget = () => {
         </motion.button>
       </div>
 
-      {/* EXPANDABLE CHAT WINDOW */}
+      {/* CHAT WINDOW */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -192,9 +162,9 @@ const ChatbotWidget = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="fixed bottom-24 right-4 sm:bottom-24 sm:right-6 z-50 w-[92vw] sm:w-[400px] h-[540px] bg-[#0D0D0D]/95 border border-gold-500/30 backdrop-blur-2xl rounded-3xl shadow-[0_16px_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden"
+            className={`fixed ${posClass} mb-16 z-50 w-[92vw] sm:w-[400px] h-[540px] bg-[#0D0D0D]/95 border border-gold-500/30 backdrop-blur-2xl rounded-3xl shadow-[0_16px_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden`}
           >
-            {/* CHAT HEADER */}
+            {/* HEADER */}
             <div className="px-5 py-3.5 bg-charcoal-950 border-b border-white/10 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-gold-500/10 border border-gold-500/40 text-gold-400 flex items-center justify-center relative">
@@ -203,34 +173,21 @@ const ChatbotWidget = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                    KVLR AI Shopping Assistant <FiStar className="w-3.5 h-3.5 text-gold-400 fill-gold-400" />
+                    KVLR AI Assistant <FiStar className="w-3.5 h-3.5 text-gold-400 fill-gold-400" />
                   </h3>
-                  <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
-                    ● 24/7 Online • Real-time DB Sync
-                  </span>
+                  <span className="text-[10px] text-emerald-400 font-semibold">● Online • 24/7 Active</span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 text-gray-400">
-                <button onClick={handleExportChat} title="Export Transcript" className="p-1.5 rounded-lg hover:text-white hover:bg-white/10 transition">
-                  <FiDownload className="w-4 h-4" />
-                </button>
-                <button onClick={handleClearChat} title="Restart Chat" className="p-1.5 rounded-lg hover:text-white hover:bg-white/10 transition">
-                  <FiTrash2 className="w-4 h-4" />
-                </button>
-                <button onClick={() => setIsOpen(false)} title="Close" className="p-1.5 rounded-lg hover:text-white hover:bg-white/10 transition">
-                  <FiX className="w-5 h-5" />
-                </button>
-              </div>
+              <button onClick={() => setIsOpen(false)} title="Close" className="text-gray-400 hover:text-white p-1 rounded-lg">
+                <FiX className="w-5 h-5" />
+              </button>
             </div>
 
             {/* MESSAGES BODY */}
             <div className="flex-1 p-4 overflow-y-auto space-y-4 scrollbar-thin">
               {messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={`flex flex-col ${m.sender === 'USER' ? 'items-end' : 'items-start'}`}
-                >
+                <div key={m.id} className={`flex flex-col ${m.sender === 'USER' ? 'items-end' : 'items-start'}`}>
                   <div
                     className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed shadow-sm ${
                       m.sender === 'USER'
@@ -239,55 +196,11 @@ const ChatbotWidget = () => {
                     }`}
                   >
                     <p className="whitespace-pre-line">{m.text}</p>
-
-                    {/* PRODUCT CARDS METADATA */}
-                    {m.data?.type === 'PRODUCT_CARDS' && m.data?.products?.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {m.data.products.map((p) => (
-                          <div
-                            key={p.id}
-                            onClick={() => {
-                              setIsOpen(false);
-                              navigate(`/product/${p.slug || p.id}`);
-                            }}
-                            className="bg-black/60 border border-gold-500/20 rounded-xl p-2 flex items-center gap-2.5 cursor-pointer hover:border-gold-500/50 transition"
-                          >
-                            <img
-                              src={p.images?.[0]?.url || p.images?.[0] || 'https://via.placeholder.com/100'}
-                              alt={p.name}
-                              className="w-12 h-14 object-cover rounded-lg shrink-0"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <h5 className="font-bold text-white text-[11px] truncate">{p.name}</h5>
-                              <p className="text-gold-400 font-extrabold text-xs">
-                                ₹{p.discountPrice || p.price}
-                              </p>
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <button
-                                  onClick={(e) => handleAddToCart(e, p)}
-                                  className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-white text-[9px] font-bold"
-                                >
-                                  + Cart
-                                </button>
-                                <button
-                                  onClick={(e) => handleBuyNow(e, p)}
-                                  className="px-2 py-0.5 rounded-md bg-gold-500 text-black text-[9px] font-bold"
-                                >
-                                  Buy Now
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
-
                   <span className="text-[9px] text-gray-500 mt-1 px-1">{m.timestamp}</span>
                 </div>
               ))}
 
-              {/* REAL-TIME TYPING INDICATOR */}
               {isTyping && (
                 <div className="flex items-center gap-1.5 bg-white/10 border border-white/10 rounded-2xl rounded-bl-none px-3 py-2 w-fit">
                   <span className="w-1.5 h-1.5 bg-gold-400 rounded-full animate-bounce" />
@@ -295,24 +208,23 @@ const ChatbotWidget = () => {
                   <span className="w-1.5 h-1.5 bg-gold-400 rounded-full animate-bounce [animation-delay:0.4s]" />
                 </div>
               )}
-
               <div ref={messagesEndRef} />
             </div>
 
-            {/* QUICK ACTIONS PILLS */}
+            {/* QUICK ACTIONS */}
             <div className="px-3 py-2 bg-charcoal-950 border-t border-white/5 flex gap-1.5 overflow-x-auto scrollbar-none shrink-0">
               {QUICK_ACTIONS.map((action) => (
                 <button
                   key={action.label}
                   onClick={() => handleSendMessage(action.query)}
-                  className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-gold-500/20 border border-white/10 hover:border-gold-500/40 text-gray-300 hover:text-gold-400 text-[10px] font-semibold whitespace-nowrap transition"
+                  className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-gold-500/20 border border-white/10 text-gray-300 hover:text-gold-400 text-[10px] font-semibold whitespace-nowrap transition"
                 >
                   {action.label}
                 </button>
               ))}
             </div>
 
-            {/* FORM INPUT BAR */}
+            {/* INPUT FORM */}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -322,14 +234,14 @@ const ChatbotWidget = () => {
             >
               <input
                 type="text"
-                placeholder="Ask about products, orders, returns..."
+                placeholder="Ask about products, orders..."
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 className="flex-1 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:ring-1 focus:ring-gold-500"
               />
               <button
                 type="submit"
-                className="p-2.5 rounded-xl bg-gradient-to-r from-gold-500 to-amber-600 text-black font-bold hover:from-gold-400 transition shadow cursor-pointer"
+                className="p-2.5 rounded-xl bg-gradient-to-r from-gold-500 to-amber-600 text-black font-bold hover:from-gold-400 transition cursor-pointer"
               >
                 <FiSend className="w-4 h-4" />
               </button>

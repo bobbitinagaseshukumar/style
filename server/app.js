@@ -72,8 +72,13 @@ const chatbotRoutes = require('./routes/chatbotRoutes');
 
 const authFormRoutes = require('./routes/authFormRoutes');
 
+const socialProofRoutes = require('./routes/socialProofRoutes');
+const chatbotSettingRoutes = require('./routes/chatbotSettingRoutes');
+
 // Mount Routes
 app.use('/api/v1/admin/auth', adminAuthRoutes);
+app.use('/api/v1/social-proof', socialProofRoutes);
+app.use('/api/v1/chatbot-setting', chatbotSettingRoutes);
 app.use('/api/v1/auth-form', authFormRoutes);
 app.use('/api/auth-form', authFormRoutes);
 app.use('/api/v1/chatbot', chatbotRoutes);

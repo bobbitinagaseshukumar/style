@@ -83,6 +83,8 @@ const AdminHeaderMenu = lazy(() => import('../admin/Offers/HeaderMenuManager'));
 const AdminMobileNav = lazy(() => import('../admin/MobileNavigation'));
 const AdminHeaderManager = lazy(() => import('../admin/Header'));
 const AdminAuthFormManager = lazy(() => import('../admin/AuthFormManager'));
+const AdminSocialProofManager = lazy(() => import('../admin/SocialProofManager'));
+const AdminChatbotManager = lazy(() => import('../admin/ChatbotManager'));
 
 const SuspenseLoader = () => (
   <div className="h-screen w-full flex items-center justify-center">
@@ -188,6 +190,8 @@ const AppRoutes = () => {
           <Route path="/admin/email" element={<AdminEmail />} />
           <Route path="/admin/whatsapp" element={<AdminWhatsApp />} />
           <Route path="/admin/auth-form-management" element={<AdminAuthFormManager />} />
+          <Route path="/admin/social-proof-management" element={<AdminSocialProofManager />} />
+          <Route path="/admin/chatbot-settings" element={<AdminChatbotManager />} />
         </Route>
 
         {/* Error Routes */}
