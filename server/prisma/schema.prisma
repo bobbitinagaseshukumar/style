@@ -1060,6 +1060,22 @@ model ChatbotMessage {
   createdAt      DateTime            @default(now())
 }
 
+model AuthFormField {
+  id              String   @id @default(uuid())
+  formType        String   @default("REGISTER") // REGISTER | LOGIN
+  fieldKey        String   @unique
+  label           String
+  placeholder     String?
+  helperText      String?
+  type            String   @default("text") // text | email | password | tel | number | select | textarea | checkbox | date
+  isRequired      Boolean  @default(false)
+  isEnabled       Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  validationRules String?  // JSON string containing minLength, maxLength, pattern, regexMessage, options
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 model EmailCampaign {
   id             String    @id @default(uuid())
   title          String

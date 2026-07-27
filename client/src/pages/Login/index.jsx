@@ -47,6 +47,20 @@ const Login = ({ initialMode }) => {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
+  const [dynamicFields, setDynamicFields] = useState([]);
+
+  React.useEffect(() => {
+    const fetchDynamicFields = async () => {
+      try {
+        const res = await api.get('/auth-form/form-fields?formType=REGISTER');
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setDynamicFields(res.data.data);
+        }
+      } catch (err) {}
+    };
+    fetchDynamicFields();
+  }, []);
+
   const cardRef = useRef(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 

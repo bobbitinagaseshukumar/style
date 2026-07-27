@@ -70,8 +70,12 @@ const adminAuthRoutes = require('./routes/adminAuthRoutes');
 
 const chatbotRoutes = require('./routes/chatbotRoutes');
 
+const authFormRoutes = require('./routes/authFormRoutes');
+
 // Mount Routes
 app.use('/api/v1/admin/auth', adminAuthRoutes);
+app.use('/api/v1/auth-form', authFormRoutes);
+app.use('/api/auth-form', authFormRoutes);
 app.use('/api/v1/chatbot', chatbotRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/v1/recommendations', recommendationRoutes);

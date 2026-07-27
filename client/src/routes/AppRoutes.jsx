@@ -82,6 +82,7 @@ const AdminHomepageSections = lazy(() => import('../admin/Offers/HomepageSection
 const AdminHeaderMenu = lazy(() => import('../admin/Offers/HeaderMenuManager'));
 const AdminMobileNav = lazy(() => import('../admin/MobileNavigation'));
 const AdminHeaderManager = lazy(() => import('../admin/Header'));
+const AdminAuthFormManager = lazy(() => import('../admin/AuthFormManager'));
 
 const SuspenseLoader = () => (
   <div className="h-screen w-full flex items-center justify-center">
@@ -186,6 +187,7 @@ const AppRoutes = () => {
           <Route path="/admin/support" element={<AdminSupport />} />
           <Route path="/admin/email" element={<AdminEmail />} />
           <Route path="/admin/whatsapp" element={<AdminWhatsApp />} />
+          <Route path="/admin/auth-form-management" element={<AdminAuthFormManager />} />
         </Route>
 
         {/* Error Routes */}
