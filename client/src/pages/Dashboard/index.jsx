@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector } from 'react-redux';
 import {
@@ -52,6 +52,15 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [mobileNav, setMobileNav] = useState(false);
   const { user, logout } = useAuth();
+
+  useEffect(() => {
+    if (mobileNav) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileNav]);
 
   const renderTab = () => {
     switch (activeTab) {
@@ -112,6 +121,14 @@ const Dashboard = () => {
             <FiChevronRight size={14} className={`ml-auto transition-transform ${mobileNav ? 'rotate-90' : ''}`} />
           </button>
         </div>
+
+        {/* Mobile sidebar backdrop */}
+        {mobileNav && (
+          <div
+            className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+            onClick={() => setMobileNav(false)}
+          />
+        )}
 
         <div className="flex gap-6">
           {/* Sidebar */}

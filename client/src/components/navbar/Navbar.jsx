@@ -115,7 +115,11 @@ const Navbar = () => {
       }
     };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
   }, []);
 
   /* ── Mega Menu hover handlers ──────────────────────────────── */
@@ -132,7 +136,7 @@ const Navbar = () => {
     <>
       {/* ── Navbar Shell ──────────────────────────────────────── */}
       <nav className={`
-        fixed top-0 left-0 right-0 z-40 transition-all duration-500
+        fixed top-0 left-0 right-0 z-50 transition-all duration-500
         ${scrolled
           ? 'bg-[#0D0D0D]/95 backdrop-blur-2xl shadow-[0_4px_32px_rgba(0,0,0,0.5)] border-b border-white/5'
           : 'bg-gradient-to-b from-[#0D0D0D]/90 to-transparent backdrop-blur-md border-b border-white/5'
@@ -277,7 +281,10 @@ const Navbar = () => {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  onClick={() => {
+                    setIsUserMenuOpen(!isUserMenuOpen);
+                    setActiveMegaMenu(null);
+                  }}
                   className="flex items-center gap-2 p-2 rounded-xl hover:bg-white/5 transition-all cursor-pointer"
                   aria-label="Account menu"
                 >
@@ -288,13 +295,20 @@ const Navbar = () => {
 
                 <AnimatePresence>
                   {isUserMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                      className="absolute right-0 mt-2 w-56 bg-[#111111] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.6)] overflow-hidden z-50"
-                    >
+                    <>
+                      {/* Invisible backdrop to catch clicks outside */}
+                      <div
+                        className="fixed inset-0 z-[55]"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        aria-hidden="true"
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                        className="absolute right-0 mt-2 w-56 bg-[#111111] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.6)] overflow-hidden z-[60]"
+                      >
                       {isAuthenticated ? (
                         <>
                           <div className="px-4 py-3 border-b border-white/5">
@@ -352,18 +366,10 @@ const Navbar = () => {
                           >
                             Create Account
                           </Link>
-                          <div className="border-t border-white/5 pt-2 mt-1">
-                            <Link
-                              to="/admin/login"
-                              onClick={() => setIsUserMenuOpen(false)}
-                              className="block w-full py-2 text-center text-xs font-bold text-yellow-400/90 hover:text-yellow-400 hover:underline transition-all"
-                            >
-                              🔒 Admin Portal Login
-                            </Link>
-                          </div>
                         </div>
                       )}
                     </motion.div>
+                    </>
                   )}
                 </AnimatePresence>
               </div>
