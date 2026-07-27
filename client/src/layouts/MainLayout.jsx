@@ -6,6 +6,7 @@ import ParticleCanvas from '../components/common/ParticleCanvas';
 import CustomCursor from '../components/common/CustomCursor';
 import WhatsAppFloat from '../components/common/WhatsAppFloat';
 import MobileBottomNav from '../components/common/MobileBottomNav';
+import ChatbotWidget from '../components/common/ChatbotWidget';
 
 const MainLayout = () => {
   return (
@@ -19,6 +20,7 @@ const MainLayout = () => {
       <Footer />
       <WhatsAppFloat />
       <MobileBottomNav />
+      <ChatbotWidget />
     </div>
   );
 };

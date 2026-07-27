@@ -68,8 +68,12 @@ const subcategoryRoutes = require('./routes/subcategoryRoutes');
 
 const adminAuthRoutes = require('./routes/adminAuthRoutes');
 
+const chatbotRoutes = require('./routes/chatbotRoutes');
+
 // Mount Routes
 app.use('/api/v1/admin/auth', adminAuthRoutes);
+app.use('/api/v1/chatbot', chatbotRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/v1/recommendations', recommendationRoutes);
 app.use('/api/v1/recently-viewed', recentlyViewedRoutes);
 app.use('/api/v1/auth', authRoutes);

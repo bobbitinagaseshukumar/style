@@ -1037,6 +1037,29 @@ model AdminActionLog {
   createdAt    DateTime @default(now())
 }
 
+model ChatbotConversation {
+  id             String           @id @default(uuid())
+  sessionId      String
+  userId         String?
+  status         String           @default("RESOLVED") // ACTIVE | RESOLVED | ESCALATED
+  ticketId       String?
+  rating         Int?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  messages       ChatbotMessage[]
+}
+
+model ChatbotMessage {
+  id             String              @id @default(uuid())
+  conversationId String
+  conversation   ChatbotConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         String              // USER | BOT | SYSTEM
+  text           String
+  metadata       String?             // JSON string for product cards, order status info, buttons
+  createdAt      DateTime            @default(now())
+}
+
 model EmailCampaign {
   id             String    @id @default(uuid())
   title          String
