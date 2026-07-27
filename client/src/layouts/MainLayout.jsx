@@ -7,6 +7,7 @@ import CustomCursor from '../components/common/CustomCursor';
 import WhatsAppFloat from '../components/common/WhatsAppFloat';
 import MobileBottomNav from '../components/common/MobileBottomNav';
 import ChatbotWidget from '../components/common/ChatbotWidget';
+import LivePurchaseToast from '../components/common/LivePurchaseToast';
 
 const MainLayout = () => {
   return (
@@ -21,6 +22,7 @@ const MainLayout = () => {
       <WhatsAppFloat />
       <MobileBottomNav />
       <ChatbotWidget />
+      <LivePurchaseToast />
     </div>
   );
 };
