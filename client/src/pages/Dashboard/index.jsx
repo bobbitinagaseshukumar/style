@@ -80,7 +80,7 @@ const Dashboard = () => {
         style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }}
       />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-8 relative z-10">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>

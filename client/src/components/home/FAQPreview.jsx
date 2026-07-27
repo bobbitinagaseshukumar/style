@@ -29,7 +29,7 @@ const FAQPreview = () => {
 
   return (
     <section className="py-12 lg:py-16 bg-white">
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4">
         <div className="text-center mb-10">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold-50 text-gold-700 text-xs font-bold mb-2">
             <FiHelpCircle className="w-4 h-4" /> FREQUENTLY ASKED QUESTIONS

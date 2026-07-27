@@ -311,8 +311,8 @@ export default function AdminCustomers() {
             <p style={{ fontSize: 13, color: '#aaa' }}>Try clearing filters or searching differently.</p>
           </div>
         ) : viewMode === 'table' ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={S.table}>
+          <div className="table-responsive" style={{ overflowX: 'auto', width: '100%' }}>
+            <table style={{ ...S.table, minWidth: '800px' }}>
               <thead>
                 <tr>
                   {['Customer', 'Customer ID', 'Contact', 'Orders / Spent', 'Registered', 'Last Login', 'Status', 'Verified', ''].map(h => (

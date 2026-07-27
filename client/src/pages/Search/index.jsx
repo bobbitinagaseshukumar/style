@@ -61,7 +61,7 @@ const SearchPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/50 pt-24 pb-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 space-y-6">
 
         {/* Search Header Banner */}
         <div className="bg-charcoal-900 border border-gold-500/30 p-6 sm:p-8 rounded-3xl text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">

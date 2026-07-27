@@ -570,8 +570,8 @@ const AdminOrders = () => {
         </div>
       ) : (
         <div className="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto table-responsive w-full">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   {['Order #', 'Customer', 'Items', 'Total', 'Payment', 'Status', 'Date', 'Actions'].map(h => (

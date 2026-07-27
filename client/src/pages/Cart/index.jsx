@@ -49,7 +49,7 @@ const Cart = () => {
 
   return (
     <div className="min-h-screen bg-white py-8 lg:py-12">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
         <h1 className="text-2xl sm:text-3xl font-serif font-bold text-charcoal-900 mb-8">Shopping Cart ({items.length})</h1>
 
         {items.length === 0 ? (
@@ -66,9 +66,14 @@ const Cart = () => {
             {/* ITEMS LIST */}
             <div className="lg:col-span-2 space-y-4">
               {items.map((item, idx) => (
-                <div key={idx} className="bg-white border border-gray-200 rounded-3xl p-4 sm:p-6 shadow-sm flex gap-4 sm:gap-6 items-center">
-                  <img src={item.image} alt={item.name} className="w-24 h-32 object-cover rounded-2xl bg-gray-50 shrink-0" />
-                  <div className="flex-1 min-w-0">
+                <div key={idx} className="bg-white border border-gray-200 rounded-3xl p-4 sm:p-6 shadow-sm flex flex-col sm:flex-row gap-4 sm:gap-6 sm:items-center">
+                  <div className="flex gap-4 items-start w-full sm:w-auto">
+                    <img src={item.image} alt={item.name} className="w-24 h-32 object-cover rounded-2xl bg-gray-50 shrink-0" />
+                    <button onClick={() => dispatch(removeFromCart(item))} className="sm:hidden text-gray-400 hover:text-red-600 p-2 rounded-lg transition ml-auto">
+                      <FiTrash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="flex-1 min-w-0 w-full">
                     <h3 className="font-semibold text-sm sm:text-base text-charcoal-900 line-clamp-1 mb-1">{item.name}</h3>
                     <div className="flex gap-2 text-xs text-gray-500 mb-3">
                       {item.size && <span className="bg-gray-100 px-2 py-0.5 rounded font-medium">Size: {item.size}</span>}
@@ -80,14 +85,14 @@ const Cart = () => {
                       <div className="flex items-center border border-gray-200 rounded-full px-2 py-1 bg-gray-50">
                         <button
                           onClick={() => dispatch(updateQuantity({ ...item, quantity: Math.max(1, item.quantity - 1) }))}
-                          className="p-1 text-gray-500 hover:text-charcoal-900"
+                          className="p-2 sm:p-1 text-gray-500 hover:text-charcoal-900"
                         >
                           <FiMinus className="w-3.5 h-3.5" />
                         </button>
                         <span className="w-8 text-center text-xs font-bold text-charcoal-900">{item.quantity}</span>
                         <button
                           onClick={() => dispatch(updateQuantity({ ...item, quantity: item.quantity + 1 }))}
-                          className="p-1 text-gray-500 hover:text-charcoal-900"
+                          className="p-2 sm:p-1 text-gray-500 hover:text-charcoal-900"
                         >
                           <FiPlus className="w-3.5 h-3.5" />
                         </button>
@@ -97,7 +102,7 @@ const Cart = () => {
                     </div>
                   </div>
 
-                  <button onClick={() => dispatch(removeFromCart(item))} className="text-gray-400 hover:text-red-600 p-2 rounded-lg transition">
+                  <button onClick={() => dispatch(removeFromCart(item))} className="hidden sm:block text-gray-400 hover:text-red-600 p-2 rounded-lg transition">
                     <FiTrash2 className="w-5 h-5" />
                   </button>
                 </div>

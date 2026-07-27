@@ -108,7 +108,7 @@ const Checkout = () => {
 
   return (
     <div className="min-h-screen bg-white py-8 lg:py-12">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
         <h1 className="text-2xl sm:text-3xl font-serif font-bold text-charcoal-900 mb-8">Express Checkout</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -260,7 +260,7 @@ const Checkout = () => {
           <Input label="Full Name" value={addressForm.fullName} onChange={e => setAddressForm({ ...addressForm, fullName: e.target.value })} required />
           <Input label="Phone Number" value={addressForm.phone} onChange={e => setAddressForm({ ...addressForm, phone: e.target.value })} required />
           <Input label="Flat, House no., Building, Street" value={addressForm.street} onChange={e => setAddressForm({ ...addressForm, street: e.target.value })} required />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="City" value={addressForm.city} onChange={e => setAddressForm({ ...addressForm, city: e.target.value })} required />
             <Input label="State" value={addressForm.state} onChange={e => setAddressForm({ ...addressForm, state: e.target.value })} required />
           </div>

@@ -55,7 +55,7 @@ const InstagramGallery = () => {
 
   return (
     <section className="py-12 bg-gray-50 border-t border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 text-center">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 text-center">
         <div className="max-w-xl mx-auto mb-8">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-50 text-pink-700 text-xs font-black mb-2 border border-pink-200">
             📱 JOIN OUR COMMUNITY

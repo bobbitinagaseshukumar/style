@@ -44,7 +44,7 @@ const BrandShowcase = () => {
 
   return (
     <section className="py-12 bg-white border-y border-gray-100">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4">
         <div className="text-center max-w-xl mx-auto mb-8">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-black mb-2 border border-amber-200">
             👑 LUXURY HERITAGE & ARTISANS
@@ -54,7 +54,7 @@ const BrandShowcase = () => {
           </h2>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
           {brands.map((brand) => (
             <motion.a
               key={brand.id}
@@ -68,11 +68,11 @@ const BrandShowcase = () => {
                     <img src={brand.bannerUrl} alt={brand.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   </div>
                 )}
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center gap-2 sm:gap-3 mb-2">
                   {brand.logoUrl ? (
-                    <img src={brand.logoUrl} alt={brand.name} className="w-10 h-10 rounded-xl object-cover border bg-white shrink-0" />
+                    <img src={brand.logoUrl} alt={brand.name} className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl object-cover border bg-white shrink-0" />
                   ) : (
-                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-white font-bold flex items-center justify-center text-base shrink-0">👑</div>
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500 text-white font-bold flex items-center justify-center text-base shrink-0">👑</div>
                   )}
                   <div>
                     <h3 className="text-sm font-bold text-gray-900 group-hover:text-amber-600 transition-colors">{brand.name}</h3>

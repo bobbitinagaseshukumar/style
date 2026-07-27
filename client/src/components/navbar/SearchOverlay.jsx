@@ -97,7 +97,7 @@ const SearchOverlay = ({ isOpen, onClose }) => {
         />
 
         {/* Floating Search Container */}
-        <div className="relative max-w-4xl mx-auto mt-12 sm:mt-20 px-4 z-10">
+        <div className="relative w-full max-w-4xl mx-auto mt-12 sm:mt-20 px-4 z-10">
           <motion.div
             initial={{ opacity: 0, y: -20, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -130,7 +130,7 @@ const SearchOverlay = ({ isOpen, onClose }) => {
             </div>
 
             {/* Content Body */}
-            <div className="max-h-[65vh] overflow-y-auto p-6 space-y-6">
+            <div className="max-h-[60vh] overflow-y-auto p-4 sm:p-6 space-y-6">
               {/* Popular Searches when query is empty */}
               {!query.trim() && (
                 <div>
@@ -142,7 +142,7 @@ const SearchOverlay = ({ isOpen, onClose }) => {
                       <button
                         key={tag}
                         onClick={() => handleSelectTag(tag)}
-                        className="px-4 py-2 rounded-full bg-gray-100 hover:bg-gold-500 hover:text-white text-xs font-bold text-charcoal-900 transition-all cursor-pointer"
+                        className="px-4 py-2 rounded-full bg-gray-100 hover:bg-gold-500 hover:text-white text-xs font-bold text-charcoal-900 transition-all cursor-pointer whitespace-nowrap"
                       >
                         {tag}
                       </button>

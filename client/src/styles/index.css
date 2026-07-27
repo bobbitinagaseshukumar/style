@@ -2,13 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════
+   KVLR STYLES — GLOBAL CSS
+   Enterprise E-Commerce Design System
+   ═══════════════════════════════════════════════════════ */
+
 :root {
   --primary-color: #D4AF37;
   --secondary-color: #121212;
   --accent-gold: #E0CC94;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
-/* Glassmorphism utilities */
+/* ─── Glassmorphism ─────────────────────────────────── */
 .glass-panel {
   background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(12px);
@@ -23,75 +32,159 @@
   border: 1px solid rgba(212, 175, 55, 0.2);
 }
 
-/* Custom Scrollbar — Desktop */
+/* ─── Custom Scrollbar (Desktop Only) ───────────────── */
 @media (min-width: 768px) {
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: #f1f1f1;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: #D4AF37;
-    border-radius: 4px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: #B89327;
-  }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #f1f1f1; }
+  ::-webkit-scrollbar-thumb { background: #D4AF37; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #B89327; }
 }
 
-/* Hide scrollbar utility for horizontal scrollable sections */
+/* ─── Hide Scrollbar Utility ────────────────────────── */
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
+.scrollbar-none::-webkit-scrollbar { display: none; }
 
-/* Anti-Accidental Text Selection (Amazon / Myntra style) */
+/* ─── Anti-Accidental Text Selection ────────────────── */
 body, button, a, img, svg, nav, header, footer,
 .product-card, .btn, .badge, .card, .banner, .menu {
   user-select: none;
   -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
 }
 
-input, textarea, [contenteditable="true"], form input, form textarea, .allow-select {
+input, textarea, [contenteditable="true"], form input,
+form textarea, .allow-select, select, label, p, h1, h2, h3, h4, h5, h6, span, td, th {
   user-select: text !important;
   -webkit-user-select: text !important;
-  -moz-user-select: text !important;
-  -ms-user-select: text !important;
 }
 
-/* Mobile touch interaction improvements */
-@media (max-width: 767px) {
-  * {
-    -webkit-tap-highlight-color: transparent;
+/* ─── Responsive Table Wrapper ──────────────────────── */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive table {
+  min-width: 640px;
+}
+
+/* ─── Responsive Modal ──────────────────────────────── */
+.modal-responsive {
+  max-height: 90vh;
+  max-height: 90dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 1rem;
+}
+
+@media (min-width: 768px) {
+  .modal-responsive { margin: 2rem auto; }
+}
+
+/* ─── Responsive Forms ──────────────────────────────── */
+@media (max-width: 639px) {
+  .form-responsive .form-row {
+    flex-direction: column;
   }
-  
-  button, a, [role="button"] {
+  .form-responsive .form-row > * {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+/* ─── Mobile Touch Optimizations ────────────────────── */
+@media (max-width: 767px) {
+  * { -webkit-tap-highlight-color: transparent; }
+  button, a, [role="button"], select, input[type="submit"],
+  input[type="button"], input[type="reset"] {
     touch-action: manipulation;
   }
-
   .overflow-y-auto, .overflow-x-auto {
     -webkit-overflow-scrolling: touch;
   }
 }
 
-/* Smooth page transitions */
+/* ─── Safe Area Padding (Notched Phones) ────────────── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+}
+
+/* ─── Smooth Scrolling ──────────────────────────────── */
 html {
   scroll-behavior: smooth;
 }
 
-/* Font rendering improvement */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Font Rendering ────────────────────────────────── */
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* ─── Responsive Image Defaults ─────────────────────── */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ─── Focus Visible for Accessibility ───────────────── */
+:focus-visible {
+  outline: 2px solid #D4AF37;
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ─── Admin Table Card View on Mobile ───────────────── */
+@media (max-width: 767px) {
+  .admin-table-mobile thead { display: none; }
+  .admin-table-mobile tbody tr {
+    display: block;
+    margin-bottom: 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    background: white;
+  }
+  .admin-table-mobile tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.375rem 0;
+    border: none;
+    font-size: 0.875rem;
+  }
+  .admin-table-mobile tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #6b7280;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+}
+
+/* ─── Print Styles ──────────────────────────────────── */
+@media print {
+  nav, footer, .no-print, .fixed { display: none !important; }
+  body { background: white !important; color: black !important; }
 }

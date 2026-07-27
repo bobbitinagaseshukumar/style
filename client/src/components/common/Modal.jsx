@@ -32,11 +32,11 @@ const Modal = ({ isOpen, onClose, title, children, className }) => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className={cn(
-                "w-full max-w-lg bg-white rounded-xl shadow-2xl pointer-events-auto overflow-hidden",
+                "w-[95vw] sm:w-auto sm:min-w-[400px] sm:max-w-lg mx-auto bg-white rounded-xl shadow-2xl pointer-events-auto flex flex-col overflow-hidden max-h-[90dvh]",
                 className
               )}
             >
-              <div className="flex items-center justify-between px-6 py-4 border-b">
+              <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
                 <h3 className="text-lg font-playfair font-semibold text-charcoal-900">{title}</h3>
                 <button
                   onClick={onClose}
@@ -45,7 +45,7 @@ const Modal = ({ isOpen, onClose, title, children, className }) => {
                   <FiX className="w-6 h-6" />
                 </button>
               </div>
-              <div className="px-6 py-4">
+              <div className="px-6 py-4 overflow-y-auto">
                 {children}
               </div>
             </motion.div>

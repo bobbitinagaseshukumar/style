@@ -63,13 +63,13 @@ const Footer = () => {
           <div>
             <h3 className="text-white text-sm font-semibold uppercase tracking-wider mb-4">Stay Updated</h3>
             <p className="text-sm text-gray-400 mb-4">Subscribe to receive updates, access to exclusive deals, and more.</p>
-            <form className="flex flex-col space-y-2" onSubmit={(e) => e.preventDefault()}>
+            <form className="flex flex-col sm:flex-row gap-2" onSubmit={(e) => e.preventDefault()}>
               <input 
                 type="email" 
                 placeholder="Enter your email address" 
-                className="bg-charcoal-900 border border-charcoal-800 text-white px-4 py-2 rounded focus:outline-none focus:border-gold-500 text-sm"
+                className="w-full bg-charcoal-900 border border-charcoal-800 text-white px-4 py-2 rounded focus:outline-none focus:border-gold-500 text-sm"
               />
-              <button className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors">
+              <button className="w-full sm:w-auto whitespace-nowrap bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors">
                 Subscribe
               </button>
             </form>
@@ -77,11 +77,11 @@ const Footer = () => {
 
         </div>
 
-        <div className="border-t border-charcoal-800 pt-8 flex flex-col md:flex-row justify-between items-center text-xs">
+        <div className="border-t border-charcoal-800 pt-8 flex flex-col sm:flex-row justify-between items-center text-xs gap-4 sm:gap-0 text-center sm:text-left">
           <p className="text-gray-500">
             &copy; {new Date().getFullYear()} {storeSettings?.storeName || 'StyleVerse'}. All rights reserved.
           </p>
-          <div className="flex items-center space-x-6 mt-4 md:mt-0 text-gray-500">
+          <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-6 text-gray-500">
             <Link to="/admin/login" className="hover:text-gold-400 font-semibold transition-colors flex items-center gap-1 opacity-75 hover:opacity-100">
               🔒 Admin Login
             </Link>

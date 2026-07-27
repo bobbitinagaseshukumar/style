@@ -50,7 +50,7 @@ const Orders = () => {
 
   return (
     <div className="min-h-screen bg-white py-8 lg:py-12">
-      <div className="max-w-7xl mx-auto px-4 space-y-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 space-y-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-serif font-bold text-charcoal-900">Order Tracking & History</h1>
           <p className="text-xs text-gray-500 mt-1">Track delivery status timeline and manage past purchases</p>
@@ -213,24 +213,38 @@ const Orders = () => {
             </div>
 
             <div className="border rounded-xl overflow-hidden">
-              <table className="w-full text-left">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="p-2">Product Description</th>
-                    <th className="p-2 text-right">Qty</th>
-                    <th className="p-2 text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {selectedInvoice.items?.map((it, i) => (
-                    <tr key={i}>
-                      <td className="p-2">{it.product?.name || 'Item'}</td>
-                      <td className="p-2 text-right">{it.quantity}</td>
-                      <td className="p-2 text-right">{formatCurrency(it.price * it.quantity)}</td>
+              <div className="hidden sm:block">
+                <table className="w-full text-left">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="p-2">Product Description</th>
+                      <th className="p-2 text-right">Qty</th>
+                      <th className="p-2 text-right">Amount</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y">
+                    {selectedInvoice.items?.map((it, i) => (
+                      <tr key={i}>
+                        <td className="p-2">{it.product?.name || 'Item'}</td>
+                        <td className="p-2 text-right">{it.quantity}</td>
+                        <td className="p-2 text-right">{formatCurrency(it.price * it.quantity)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              <div className="sm:hidden flex flex-col divide-y">
+                {selectedInvoice.items?.map((it, i) => (
+                  <div key={i} className="p-3 flex justify-between items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{it.product?.name || 'Item'}</p>
+                      <p className="text-gray-500">Qty: {it.quantity}</p>
+                    </div>
+                    <div className="font-semibold">{formatCurrency(it.price * it.quantity)}</div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="text-right font-bold text-sm text-charcoal-900 pt-2 border-t">
