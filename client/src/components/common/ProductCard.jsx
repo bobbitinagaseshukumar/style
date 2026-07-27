@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiHeart, FiShoppingBag, FiStar, FiEye, FiZap,
-  FiTruck, FiShield, FiCheck, FiArrowRight
+  FiTruck, FiCheck, FiCheckCircle
 } from 'react-icons/fi';
 import { useDispatch } from 'react-redux';
 import { addToCart } from '../../redux/cart/cartSlice';
@@ -30,9 +30,10 @@ const colorHexMap = {
 };
 
 /**
- * Luxury 3D Interactive Product Card (Amazon + Apple + Nike + Adidas Inspired)
- * Features 3D cursor tilt, reflective light shine, multi-image hover preview, color swatches,
- * wishlist heart particle pop, quick view modal, Buy Now & Add to Cart.
+ * Ultra-Luxury World-Class Product Card (Amazon + Apple + Nike + Zara Inspired)
+ * Features 3D cursor tilt, metallic light shine sweep, floating badges (🔥 30% OFF, ⭐ Bestseller, ✨ New Arrival),
+ * ratings breakdown, stock indicator (Only 5 Left), express delivery (⚡ Express Delivery Tomorrow),
+ * and luxury gold Buy Now + Square Glass Cart buttons.
  */
 const ProductCard = ({ product, index = 0 }) => {
   const navigate = useNavigate();
@@ -44,8 +45,8 @@ const ProductCard = ({ product, index = 0 }) => {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [selectedColorIdx, setSelectedColorIdx] = useState(null);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
+  const [addedToCart, setAddedToCart] = useState(false);
 
-  // 3D Tilt State
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const cardRef = useRef(null);
 
@@ -55,7 +56,6 @@ const ProductCard = ({ product, index = 0 }) => {
   const slug = product.slug || product.id || '';
   const brand = product.brand?.name || product.brandName || 'KVLR STYLES';
 
-  // Process Images
   const rawImages = product.images?.length > 0
     ? product.images.map(img => (typeof img === 'string' ? img : img.url))
     : [`https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=600&background=0D0D0D&color=D4AF37&bold=true`];
@@ -64,17 +64,15 @@ const ProductCard = ({ product, index = 0 }) => {
   const primaryImage = activeImageIdx < displayImages.length ? displayImages[activeImageIdx] : displayImages[0];
   const hoverPreviewImage = displayImages.length > 1 ? displayImages[1] : primaryImage;
 
-  // Pricing
   const price = product.price || 0;
   const discountPrice = product.discountPrice || 0;
   const discountPercent = product.discountPercent || 0;
   const finalPrice = discountPrice > 0 ? discountPrice : price;
+  const savingsAmount = price > finalPrice ? price - finalPrice : 0;
 
-  const rating = product.rating || product.averageRating || 4.8;
-  const reviewCount = product.reviewCount || product.totalReviews || 128;
-  const category = product.category?.name || product.categoryName || '';
+  const rating = product.rating || product.averageRating || 4.9;
+  const reviewCount = product.reviewCount || product.totalReviews || 1245;
 
-  // Process Colors & Sizes
   const colors = (() => {
     try {
       if (typeof product.colors === 'string') return JSON.parse(product.colors);
@@ -84,16 +82,6 @@ const ProductCard = ({ product, index = 0 }) => {
     }
   })();
 
-  const sizes = (() => {
-    try {
-      if (typeof product.sizes === 'string') return JSON.parse(product.sizes);
-      return Array.isArray(product.sizes) ? product.sizes : [];
-    } catch {
-      return [];
-    }
-  })();
-
-  // 3D Motion Handlers
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
@@ -103,8 +91,8 @@ const ProductCard = ({ product, index = 0 }) => {
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
 
-    const rotateX = ((y - centerY) / centerY) * -7;
-    const rotateY = ((x - centerX) / centerX) * 7;
+    const rotateX = ((y - centerY) / centerY) * -6;
+    const rotateY = ((x - centerX) / centerX) * 6;
 
     setTilt({ x: rotateX, y: rotateY });
   };
@@ -115,16 +103,12 @@ const ProductCard = ({ product, index = 0 }) => {
     setActiveImageIdx(0);
   };
 
-  const handleCardClick = () => {
-    navigate(`/product/${slug}`);
-  };
-
   const toggleWishlist = (e) => {
     e.stopPropagation();
     if (isWishlisted) {
       dispatch(removeFromWishlist(product.id));
       setIsWishlisted(false);
-      toast.info('Removed from wishlist');
+      toast.info('Removed from Wishlist');
     } else {
       dispatch(addToWishlist({ id: product.id, name, price: finalPrice, image: primaryImage, slug }));
       setIsWishlisted(true);
@@ -141,7 +125,9 @@ const ProductCard = ({ product, index = 0 }) => {
       image: primaryImage,
       quantity: 1,
     }));
-    toast.success(`"${name}" added to cart! 🛍️`);
+    setAddedToCart(true);
+    toast.success(`✓ "${name}" added to cart!`);
+    setTimeout(() => setAddedToCart(false), 2000);
   };
 
   const handleBuyNow = (e) => {
@@ -170,8 +156,8 @@ const ProductCard = ({ product, index = 0 }) => {
         ref={cardRef}
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-50px' }}
-        transition={{ duration: 0.4, delay: (index % 6) * 0.06 }}
+        viewport={{ once: true, margin: '-40px' }}
+        transition={{ duration: 0.4, delay: (index % 6) * 0.05 }}
         style={{
           transformStyle: 'preserve-3d',
           transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
@@ -179,13 +165,13 @@ const ProductCard = ({ product, index = 0 }) => {
         onMouseMove={handleMouseMove}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={handleMouseLeave}
-        onClick={handleCardClick}
-        className="group relative bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-gray-100/80 shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(212,175,55,0.15)] transition-all duration-300 flex flex-col h-full cursor-pointer select-none"
+        onClick={() => navigate(`/product/${slug}`)}
+        className="group relative bg-white rounded-2xl sm:rounded-[22px] overflow-hidden border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_45px_rgba(212,175,55,0.18)] transition-all duration-300 flex flex-col h-full cursor-pointer select-none"
       >
         {/* Shine Animation overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none z-20" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none z-20" />
 
-        {/* HERO IMAGE CONTAINER */}
+        {/* HERO PRODUCT IMAGE (70% height aspect ratio) */}
         <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-50/50">
           {!imageLoaded && (
             <div className="absolute inset-0 bg-gray-100 animate-pulse" />
@@ -201,25 +187,25 @@ const ProductCard = ({ product, index = 0 }) => {
             }`}
           />
 
-          {/* Badges Overlay */}
-          <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
+          {/* FLOATING BADGES */}
+          <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 pointer-events-none">
             {discountPercent > 0 && (
               <motion.span
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                className="px-2.5 py-1 rounded-full bg-gradient-to-r from-red-600 to-rose-600 text-white text-[10px] font-black uppercase tracking-wider shadow-lg"
+                animate={{ scale: [1, 1.04, 1] }}
+                transition={{ repeat: Infinity, duration: 2.5 }}
+                className="px-2.5 py-1 rounded-full bg-gradient-to-r from-red-600 to-rose-600 text-white text-[10px] font-black uppercase tracking-wider shadow-lg backdrop-blur-md border border-white/20"
               >
-                -{discountPercent}% OFF
+                🔥 {discountPercent}% OFF
               </motion.span>
             )}
             {product.featured && (
-              <span className="px-2.5 py-1 rounded-full bg-amber-500 text-black text-[9px] font-extrabold uppercase tracking-wider shadow">
-                ⭐ Featured
+              <span className="px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-600 text-black text-[9px] font-extrabold uppercase tracking-wider shadow">
+                ⭐ Bestseller
               </span>
             )}
             {product.newArrival && (
-              <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[9px] font-extrabold uppercase tracking-wider shadow">
-                NEW
+              <span className="px-2.5 py-1 rounded-full bg-emerald-600/90 text-white text-[9px] font-extrabold uppercase tracking-wider shadow backdrop-blur-sm animate-pulse">
+                ✨ New Arrival
               </span>
             )}
           </div>
@@ -230,7 +216,7 @@ const ProductCard = ({ product, index = 0 }) => {
             className={`absolute top-3 right-3 z-20 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 shadow-md ${
               isWishlisted
                 ? 'bg-red-600 text-white scale-110'
-                : 'bg-white/80 backdrop-blur-md text-gray-700 hover:text-red-600 hover:bg-white'
+                : 'bg-white/90 backdrop-blur-md text-gray-700 hover:text-red-600 hover:bg-white'
             }`}
             title="Add to Wishlist"
           >
@@ -258,22 +244,22 @@ const ProductCard = ({ product, index = 0 }) => {
           </AnimatePresence>
         </div>
 
-        {/* DETAILS CONTAINER */}
+        {/* PRODUCT DETAILS */}
         <div className="p-4 flex flex-col flex-grow space-y-2 bg-white">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-widest line-clamp-1">
               {brand}
             </span>
-            <span className="text-[10px] font-semibold text-gray-400 flex items-center gap-1">
-              <FiTruck className="w-3 h-3 text-emerald-600" /> Express
+            <span className="text-[10px] font-bold text-amber-700 flex items-center gap-1">
+              <FiZap className="w-3 h-3 text-amber-500 fill-amber-500" /> ⚡ Express Delivery Tomorrow
             </span>
           </div>
 
-          <h3 className="text-xs sm:text-sm font-bold text-gray-900 line-clamp-1 group-hover:text-amber-600 transition-colors">
+          <h3 className="text-xs sm:text-sm font-bold text-gray-900 line-clamp-2 leading-snug group-hover:text-amber-600 transition-colors">
             {name}
           </h3>
 
-          {/* Star Ratings */}
+          {/* Rating Breakdown */}
           <div className="flex items-center gap-1">
             <div className="flex items-center gap-0.5">
               {[...Array(5)].map((_, i) => (
@@ -283,13 +269,13 @@ const ProductCard = ({ product, index = 0 }) => {
                 />
               ))}
             </div>
-            <span className="text-[11px] font-black text-gray-800 ml-0.5">{rating.toFixed(1)}</span>
-            <span className="text-[10px] text-gray-400">({reviewCount})</span>
+            <span className="text-[11px] font-black text-gray-800 ml-1">{rating.toFixed(1)}</span>
+            <span className="text-[10px] text-gray-400">({reviewCount.toLocaleString()} Reviews)</span>
           </div>
 
-          {/* Color Swatch Circles */}
+          {/* Color Swatches */}
           {colors.length > 0 && (
-            <div className="flex items-center gap-1.5 pt-1">
+            <div className="flex items-center gap-1.5 pt-0.5">
               {colors.slice(0, 5).map((color, i) => {
                 const hex = colorHexMap[color.toLowerCase()] || '#6B7280';
                 const isSelected = selectedColorIdx === i;
@@ -305,39 +291,56 @@ const ProductCard = ({ product, index = 0 }) => {
                   />
                 );
               })}
-              {colors.length > 5 && (
-                <span className="text-[9px] font-bold text-gray-400">+{colors.length - 5}</span>
-              )}
             </div>
           )}
 
-          {/* Pricing */}
-          <div className="flex items-baseline gap-2 pt-1">
+          {/* Stock Indicator */}
+          <div className="pt-0.5">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping" /> Only 5 Left in Stock
+            </span>
+          </div>
+
+          {/* Pricing Section */}
+          <div className="flex items-baseline flex-wrap gap-1.5 pt-1">
             <span className="text-base sm:text-lg font-black text-gray-900">
               {formatCurrency(finalPrice)}
             </span>
             {discountPercent > 0 && (
-              <span className="text-xs text-gray-400 line-through">
-                {formatCurrency(price)}
-              </span>
+              <>
+                <span className="text-xs text-gray-400 line-through">
+                  {formatCurrency(price)}
+                </span>
+                <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                  Save {formatCurrency(savingsAmount)}
+                </span>
+              </>
             )}
           </div>
 
           <div className="flex-grow min-h-[4px]" />
 
-          {/* DUAL ACTION BUTTONS (Buy Now & Add to Cart) */}
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
+          {/* BUY NOW & SQUARE GLASS CART BUTTONS */}
+          <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+            {/* Square Glass Cart Icon Button */}
             <button
               onClick={handleAddToCart}
-              className="py-2.5 px-2 rounded-xl bg-gray-100 text-gray-900 hover:bg-gray-200 text-xs font-bold transition flex items-center justify-center gap-1 active:scale-95"
+              className={`w-11 h-11 rounded-xl flex items-center justify-center border transition-all active:scale-90 ${
+                addedToCart
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-white/80 border-gray-200 text-gray-800 hover:bg-gray-100 hover:border-gray-300 shadow-sm'
+              }`}
+              title="Add to Cart"
             >
-              <FiShoppingBag className="w-3.5 h-3.5" /> Cart
+              {addedToCart ? <FiCheck className="w-5 h-5" /> : <FiShoppingBag className="w-5 h-5" />}
             </button>
+
+            {/* Luxury Gold Buy Now Button */}
             <button
               onClick={handleBuyNow}
-              className="py-2.5 px-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 text-black font-bold text-xs hover:from-amber-400 transition flex items-center justify-center gap-1 shadow-sm active:scale-95"
+              className="flex-1 py-3 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-amber-500/20 flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
             >
-              <FiZap className="w-3.5 h-3.5" /> Buy Now
+              <FiZap className="w-4 h-4 fill-black" /> Buy Now
             </button>
           </div>
         </div>

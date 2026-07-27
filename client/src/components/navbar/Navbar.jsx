@@ -58,6 +58,17 @@ const Navbar = () => {
     setActiveMegaMenu(null);
   };
 
+  /* ── Auto-close all drawers & unlock body scroll on route change ── */
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setIsSearchOpen(false);
+    setIsAuthOpen(false);
+    setIsMiniCartOpen(false);
+    setIsUserMenuOpen(false);
+    setActiveMegaMenu(null);
+    document.body.style.overflow = '';
+  }, [location.pathname]);
+
   /* ── Scroll detection ──────────────────────────────────────── */
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -332,7 +343,7 @@ const Navbar = () => {
                             onClick={() => setIsUserMenuOpen(false)}
                             className="block w-full py-2.5 text-center rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 text-black text-sm font-bold hover:from-yellow-400 transition-all cursor-pointer"
                           >
-                            Sign In (3D Login)
+                            Sign In
                           </Link>
                           <Link
                             to="/login?mode=register"

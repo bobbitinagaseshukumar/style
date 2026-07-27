@@ -1076,6 +1076,31 @@ model AuthFormField {
   updatedAt       DateTime @updatedAt
 }
 
+model ChatbotSetting {
+  id             String   @id @default("default")
+  isEnabled      Boolean  @default(true)
+  showOnMobile   Boolean  @default(true)
+  showOnDesktop  Boolean  @default(true)
+  position       String   @default("bottom-right") // bottom-right | bottom-left | top-right | top-left
+  bottomOffset   Int      @default(24)
+  rightOffset    Int      @default(24)
+  theme          String   @default("dark") // dark | light | gold
+  welcomeMessage String   @default("👋 Hello! Welcome to KVLR Styles. I'm your 24/7 AI Shopping Assistant. How can I help you today?")
+  autoOpenDelay  Int      @default(0) // seconds (0 = disabled)
+  hideOnCheckout Boolean  @default(true)
+  updatedAt      DateTime @updatedAt
+}
+
+model SocialProofSetting {
+  id             String   @id @default("default")
+  isEnabled      Boolean  @default(false) // Disabled by default as requested!
+  position       String   @default("bottom-left")
+  displayTimeMs  Int      @default(5000)
+  intervalTimeMs Int      @default(15000)
+  onlyRealOrders Boolean  @default(true)
+  updatedAt      DateTime @updatedAt
+}
+
 model EmailCampaign {
   id             String    @id @default(uuid())
   title          String
