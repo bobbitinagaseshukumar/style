@@ -153,6 +153,7 @@ const AppRoutes = () => {
         {/* Admin Dashboard & Management Routes */}
         <Route element={<AdminRoute><AdminLayout /></AdminRoute>}>
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/profile" element={<AdminProfile />} />
           <Route path="/admin/account-settings" element={<AdminProfile />} />
           <Route path="/admin/security" element={<AdminProfile />} />

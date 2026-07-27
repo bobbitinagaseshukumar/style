@@ -18,8 +18,8 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const [email, setEmail] = useState('nagaseshukumarbobbiti@gmail.com');
-  const [password, setPassword] = useState('seshu@2409');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [trustDevice, setTrustDevice] = useState(true);
   const [loading, setLoading] = useState(false);
