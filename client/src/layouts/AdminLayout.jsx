@@ -5,7 +5,7 @@ import {
   FiHome, FiBox, FiGrid, FiShoppingBag, FiUsers, FiTag,
   FiSettings, FiFileText, FiImage, FiLayout, FiHelpCircle,
   FiBarChart2, FiMenu, FiX, FiLogOut, FiChevronRight, FiMail,
-  FiZap, FiLayers, FiShield, FiUser
+  FiZap, FiLayers, FiShield, FiUser, FiSliders
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 
@@ -29,6 +29,7 @@ const sidebarLinks = [
   { path: '/admin/analytics', label: 'Analytics', icon: FiBarChart2 },
   { path: '/admin/email', label: 'Email', icon: FiMail },
   { path: '/admin/whatsapp', label: 'WhatsApp', icon: FaWhatsapp },
+  { path: '/admin/auth-form-management', label: 'Auth Form Builder', icon: FiSliders },
   { path: '/admin/settings', label: 'Settings', icon: FiSettings },
 ];
 
