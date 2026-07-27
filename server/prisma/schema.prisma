@@ -236,6 +236,8 @@ model Product {
   images          ProductImage[]
   videoUrl        String?
   threeSixtyImages String     @default("[]")
+  colorGalleries   String     @default("[]")
+  colorSizeInventory String   @default("[]")
 
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
@@ -254,6 +256,8 @@ model ProductImage {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   url       String
   isPrimary Boolean  @default(false)
+  color     String?
+  sortOrder Int      @default(0)
 }
 
 model Address {
@@ -692,6 +696,38 @@ model HeaderMenu {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now()) @updatedAt
+}
+
+model MobileNavItem {
+  id          String   @id @default(uuid())
+  label       String
+  path        String
+  icon        String   @default("FiHome")
+  activeIcon  String?
+  badgeType   String   @default("NONE") // NONE | CART | WISHLIST | NOTIFICATIONS
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+}
+
+model HeaderSetting {
+  id                  String   @id @default(uuid())
+  logoUrl             String?
+  announcementText    String?
+  announcementBgColor String   @default("#121212")
+  announcementTextColor String @default("#D4AF37")
+  announcementLink    String?
+  announcementEnabled Boolean  @default(true)
+  stickyHeader        Boolean  @default(true)
+  searchVisible       Boolean  @default(true)
+  notificationVisible Boolean  @default(true)
+  wishlistVisible     Boolean  @default(true)
+  cartVisible         Boolean  @default(true)
+  profileVisible      Boolean  @default(true)
+  headerBgColor       String   @default("#0D0D0D")
+  headerTextColor     String   @default("#FFFFFF")
+  updatedAt           DateTime @default(now()) @updatedAt
 }
 
 model AuthSettings {

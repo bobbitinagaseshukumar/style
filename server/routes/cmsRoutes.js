@@ -21,6 +21,8 @@ router.get('/instagram', cmsController.getInstagramPosts);
 router.get('/homepage', cmsController.getHomepageSections);
 router.get('/homepage/sections/public', cmsController.getHomepageSectionsPublic);
 router.get('/header-menus/public', cmsController.getHeaderMenusPublic);
+router.get('/mobile-nav', cmsController.getMobileNavItems);
+router.get('/header-settings', cmsController.getHeaderSettings);
 router.get('/pages/:slug', cmsController.getCMSPage);
 router.get('/faqs', cmsController.getFAQs);
 
@@ -122,6 +124,13 @@ router.put('/contact/messages/:id/read', ...adminOnly, cmsController.markContact
 router.delete('/contact/messages/:id', ...adminOnly, cmsController.deleteContactMessage);
 router.get('/newsletter/admin/subscribers', ...adminOnly, cmsController.adminGetNewsletterSubscribers);
 router.delete('/newsletter/subscribers/:id', ...adminOnly, cmsController.deleteNewsletterSubscriber);
+
+// Mobile Navigation & Header Settings Admin Routes
+router.post('/mobile-nav', ...adminOnly, cmsController.createMobileNavItem);
+router.put('/mobile-nav/reorder', ...adminOnly, cmsController.reorderMobileNavItems);
+router.put('/mobile-nav/:id', ...adminOnly, cmsController.updateMobileNavItem);
+router.delete('/mobile-nav/:id', ...adminOnly, cmsController.deleteMobileNavItem);
+router.put('/header-settings', ...adminOnly, cmsController.updateHeaderSettings);
 
 module.exports = router;
 

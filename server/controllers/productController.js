@@ -173,7 +173,8 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
     categoryId, subCategoryId, brandId, tags,
     featured, trending, newArrival, bestSeller, isRecommended, isPremium, isFestival,
     showOnHomepage, status, displayOrder,
-    sizes, colors, material, occasion, gender, images
+    sizes, colors, material, occasion, gender, images,
+    colorGalleries, colorSizeInventory
   } = req.body;
 
   if (!name || !price || !categoryId) {
@@ -206,13 +207,15 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
       description: description || '',
       sizes: typeof sizes === 'string' ? sizes : JSON.stringify(sizes || []),
       colors: typeof colors === 'string' ? colors : JSON.stringify(colors || []),
+      colorGalleries: typeof colorGalleries === 'string' ? colorGalleries : JSON.stringify(colorGalleries || []),
+      colorSizeInventory: typeof colorSizeInventory === 'string' ? colorSizeInventory : JSON.stringify(colorSizeInventory || []),
       material: material || null,
       occasion: occasion || null,
       gender: gender || null,
       tags: typeof tags === 'string' ? tags : JSON.stringify(tags || []),
       featured: featured === 'true' || featured === true,
       trending: trending === 'true' || trending === true,
-      newArrival: newArrival === 'true' || newArrival === true || true, // Default new arrival for fresh products
+      newArrival: newArrival === 'true' || newArrival === true || true,
       bestSeller: bestSeller === 'true' || bestSeller === true,
       isRecommended: isRecommended === 'true' || isRecommended === true,
       isPremium: isPremium === 'true' || isPremium === true,
@@ -226,10 +229,12 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
 
   // Attach images
   if (images && Array.isArray(images) && images.length > 0) {
-    const imageRecords = images.map((url, index) => ({
+    const imageRecords = images.map((item, index) => ({
       productId: product.id,
-      url: typeof url === 'string' ? url : (url.url || ''),
-      isPrimary: index === 0
+      url: typeof item === 'string' ? item : (item.url || ''),
+      isPrimary: typeof item === 'object' && item.isPrimary !== undefined ? Boolean(item.isPrimary) : index === 0,
+      color: typeof item === 'object' ? item.color || null : null,
+      sortOrder: typeof item === 'object' && item.sortOrder !== undefined ? parseInt(item.sortOrder) : index,
     })).filter(i => i.url);
 
     if (imageRecords.length > 0) {
@@ -252,7 +257,8 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
 // ==================== UPDATE PRODUCT ====================
 exports.updateProduct = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const updateData = { ...req.body };
+  const { images, ...rawUpdate } = req.body;
+  const updateData = { ...rawUpdate };
 
   if (updateData.name) {
     updateData.slug = slugify(updateData.name, { lower: true, strict: true });
@@ -276,20 +282,42 @@ exports.updateProduct = asyncHandler(async (req, res, next) => {
 
   if (updateData.status) updateData.status = updateData.status.toUpperCase();
 
-  if (Array.isArray(updateData.sizes)) updateData.sizes = JSON.stringify(updateData.sizes);
-  if (Array.isArray(updateData.colors)) updateData.colors = JSON.stringify(updateData.colors);
-  if (Array.isArray(updateData.tags)) updateData.tags = JSON.stringify(updateData.tags);
+  if (updateData.sizes && typeof updateData.sizes !== 'string') updateData.sizes = JSON.stringify(updateData.sizes);
+  if (updateData.colors && typeof updateData.colors !== 'string') updateData.colors = JSON.stringify(updateData.colors);
+  if (updateData.colorGalleries && typeof updateData.colorGalleries !== 'string') updateData.colorGalleries = JSON.stringify(updateData.colorGalleries);
+  if (updateData.colorSizeInventory && typeof updateData.colorSizeInventory !== 'string') updateData.colorSizeInventory = JSON.stringify(updateData.colorSizeInventory);
+  if (updateData.tags && typeof updateData.tags !== 'string') updateData.tags = JSON.stringify(updateData.tags);
 
   const product = await prisma.product.update({
     where: { id },
-    data: updateData,
+    data: updateData
+  });
+
+  // If new images provided, sync images
+  if (images && Array.isArray(images)) {
+    await prisma.productImage.deleteMany({ where: { productId: id } });
+    const imageRecords = images.map((item, index) => ({
+      productId: id,
+      url: typeof item === 'string' ? item : (item.url || ''),
+      isPrimary: typeof item === 'object' && item.isPrimary !== undefined ? Boolean(item.isPrimary) : index === 0,
+      color: typeof item === 'object' ? item.color || null : null,
+      sortOrder: typeof item === 'object' && item.sortOrder !== undefined ? parseInt(item.sortOrder) : index,
+    })).filter(i => i.url);
+
+    if (imageRecords.length > 0) {
+      await prisma.productImage.createMany({ data: imageRecords });
+    }
+  }
+
+  const updatedFullProduct = await prisma.product.findUnique({
+    where: { id },
     include: { images: true, category: true, subCategory: true }
   });
 
   res.status(200).json({
     success: true,
     message: 'Product updated successfully',
-    data: product
+    data: updatedFullProduct
   });
 });
 

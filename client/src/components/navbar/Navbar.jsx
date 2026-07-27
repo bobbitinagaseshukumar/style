@@ -40,8 +40,9 @@ const Navbar = () => {
   const [activeMegaMenu, setActiveMegaMenu] = useState(null);
   const [scrolled, setScrolled] = useState(false);
 
-  // Dynamic Header Navigation Menus
+  // Dynamic Header Navigation & Settings
   const [navItems, setNavItems] = useState(DEFAULT_NAV_ITEMS);
+  const [headerSettings, setHeaderSettings] = useState(null);
 
   const navigate = useNavigate();
   const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
@@ -64,13 +65,17 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  /* ── Fetch Dynamic Header Navigation ──────────────────────── */
+  /* ── Fetch Dynamic Header Navigation & Settings ────────────── */
   useEffect(() => {
-    const fetchHeaderMenus = async () => {
+    const fetchHeaderData = async () => {
       try {
-        const res = await api.get('/cms/header-menus/public');
-        if (res.data?.data?.length > 0) {
-          const formatted = res.data.data.map(m => ({
+        const [menusRes, settingsRes] = await Promise.allSettled([
+          api.get('/cms/header-menus/public'),
+          api.get('/cms/header-settings')
+        ]);
+
+        if (menusRes.status === 'fulfilled' && menusRes.value.data?.data?.length > 0) {
+          const formatted = menusRes.value.data.data.map(m => ({
             id: m.id,
             title: m.title,
             link: m.link || `/categories/${m.slug}`,
@@ -79,11 +84,15 @@ const Navbar = () => {
           }));
           setNavItems([{ title: 'Home', link: '/' }, ...formatted]);
         }
+
+        if (settingsRes.status === 'fulfilled' && settingsRes.value.data?.data) {
+          setHeaderSettings(settingsRes.value.data.data);
+        }
       } catch (err) {
-        console.error('Failed to load dynamic header menus:', err);
+        console.error('Failed to load dynamic header data:', err);
       }
     };
-    fetchHeaderMenus();
+    fetchHeaderData();
   }, []);
 
   /* ── Close user menu on outside click ─────────────────────── */
