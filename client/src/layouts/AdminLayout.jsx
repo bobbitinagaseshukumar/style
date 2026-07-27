@@ -37,6 +37,16 @@ const AdminLayout = () => {
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const location = useLocation();
 
+  // Lock body scroll on mobile drawer open
+  React.useEffect(() => {
+    if (mobileSidebar) {
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileSidebar]);
+
   const currentPage = sidebarLinks.find(l => location.pathname.startsWith(l.path))?.label || 'Dashboard';
 
   return (
