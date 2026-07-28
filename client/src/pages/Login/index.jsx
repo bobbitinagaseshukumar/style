@@ -325,7 +325,9 @@ const Login = ({ initialMode }) => {
               animate={{ rotateY: isRegister ? 180 : 0, scale: [1, 0.95, 1] }}
               transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }}
               style={{ transformStyle: 'preserve-3d' }}
-              className="relative w-full rounded-[23px] bg-[#0D0D12]/80 backdrop-blur-2xl glass-card"
+              className={`relative w-full rounded-[23px] bg-[#0D0D12]/80 backdrop-blur-2xl glass-card transition-all duration-300 ${
+                isRegister ? 'min-h-[640px]' : 'min-h-[500px]'
+              }`}
             >
               {/* Internal Cursor Spotlight Overlay */}
               {!isMobile && (
@@ -340,7 +342,14 @@ const Login = ({ initialMode }) => {
 
               {/* ── FRONT FACE: WELCOME BACK (LOGIN) ── */}
               <motion.div
-                style={{ backfaceVisibility: 'hidden', zIndex: 10 }}
+                style={{
+                  backfaceVisibility: 'hidden',
+                  zIndex: 10,
+                  opacity: isRegister ? 0 : 1,
+                  pointerEvents: isRegister ? 'none' : 'auto',
+                  visibility: isRegister ? 'hidden' : 'visible',
+                  transition: 'opacity 0.3s ease, visibility 0.3s ease'
+                }}
                 animate={{ x: error ? [-8, 8, -6, 6, 0] : 0 }}
                 className="w-full p-5 sm:p-8 relative"
               >
@@ -473,7 +482,11 @@ const Login = ({ initialMode }) => {
                   left: 0,
                   width: '100%',
                   height: '100%',
-                  zIndex: 10
+                  zIndex: 10,
+                  opacity: isRegister ? 1 : 0,
+                  pointerEvents: isRegister ? 'auto' : 'none',
+                  visibility: isRegister ? 'visible' : 'hidden',
+                  transition: 'opacity 0.3s ease, visibility 0.3s ease'
                 }}
                 animate={{ x: error && isRegister ? [-8, 8, -6, 6, 0] : 0 }}
                 className="w-full p-5 sm:p-8 flex flex-col justify-center"
