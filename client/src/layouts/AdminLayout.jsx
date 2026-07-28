@@ -305,8 +305,8 @@ const AdminLayout = () => {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* TOP HEADER BAR */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0 relative z-30">
+        {/* TOP HEADER BAR (Sticky Top Guarantee) */}
+        <header className="h-16 bg-white/95 backdrop-blur-md border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0 sticky top-0 z-40">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setMobileSidebar(true)}
