@@ -321,14 +321,7 @@ const Login = ({ initialMode }) => {
             }`}
           >
             {/* INNER CARD */}
-            <motion.div
-              animate={{ rotateY: isRegister ? 180 : 0, scale: [1, 0.95, 1] }}
-              transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }}
-              style={{ transformStyle: 'preserve-3d' }}
-              className={`relative w-full rounded-[23px] bg-[#0D0D12]/80 backdrop-blur-2xl glass-card transition-all duration-300 ${
-                isRegister ? 'min-h-[640px]' : 'min-h-[500px]'
-              }`}
-            >
+            <div className="relative w-full rounded-[23px] bg-[#0D0D12]/90 backdrop-blur-2xl glass-card overflow-hidden border border-white/10">
               {/* Internal Cursor Spotlight Overlay */}
               {!isMobile && (
                  <div 
@@ -340,19 +333,17 @@ const Login = ({ initialMode }) => {
                  />
               )}
 
-              {/* ── FRONT FACE: WELCOME BACK (LOGIN) ── */}
-              <motion.div
-                style={{
-                  backfaceVisibility: 'hidden',
-                  zIndex: 10,
-                  opacity: isRegister ? 0 : 1,
-                  pointerEvents: isRegister ? 'none' : 'auto',
-                  visibility: isRegister ? 'hidden' : 'visible',
-                  transition: 'opacity 0.3s ease, visibility 0.3s ease'
-                }}
-                animate={{ x: error ? [-8, 8, -6, 6, 0] : 0 }}
-                className="w-full p-5 sm:p-8 relative"
-              >
+              <AnimatePresence mode="wait">
+                {!isRegister ? (
+                  /* ── LOGIN FORM ── */
+                  <motion.div
+                    key="login-view"
+                    initial={{ opacity: 0, x: -24 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 24 }}
+                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    className="w-full p-5 sm:p-8 relative z-10"
+                  >
                 <div className="text-center space-y-2 mb-6 relative z-10">
                   <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-md">
                     <FiStar className="w-6 h-6 fill-amber-400" />
@@ -472,25 +463,16 @@ const Login = ({ initialMode }) => {
                 </div>
               </motion.div>
 
-              {/* ── BACK FACE: CREATE ACCOUNT (REGISTER) ── */}
-              <motion.div
-                style={{
-                  backfaceVisibility: 'hidden',
-                  transform: 'rotateY(180deg)',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  zIndex: 10,
-                  opacity: isRegister ? 1 : 0,
-                  pointerEvents: isRegister ? 'auto' : 'none',
-                  visibility: isRegister ? 'visible' : 'hidden',
-                  transition: 'opacity 0.3s ease, visibility 0.3s ease'
-                }}
-                animate={{ x: error && isRegister ? [-8, 8, -6, 6, 0] : 0 }}
-                className="w-full p-5 sm:p-8 flex flex-col justify-center"
-              >
+                ) : (
+                  /* ── REGISTER FORM ── */
+                  <motion.div
+                    key="register-view"
+                    initial={{ opacity: 0, x: 24 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -24 }}
+                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    className="w-full p-5 sm:p-8 relative z-10"
+                  >
                 <div className="text-center space-y-2 mb-4 relative z-10">
                   <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-md">
                     <FiUser className="w-6 h-6" />
@@ -633,7 +615,9 @@ const Login = ({ initialMode }) => {
                   </button>
                 </div>
               </motion.div>
-            </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
           </motion.div>
         </motion.div>
 
