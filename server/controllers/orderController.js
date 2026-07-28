@@ -339,12 +339,12 @@ exports.adminGetAllOrders = asyncHandler(async (req, res) => {
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
   const where = {};
-  if (status) where.orderStatus = status;
+  if (status && status !== 'ALL') where.orderStatus = status;
   if (search) {
     where.OR = [
-      { orderNumber: { contains: search } },
-      { user: { fullName: { contains: search } } },
-      { user: { email: { contains: search } } },
+      { orderNumber: { contains: search, mode: 'insensitive' } },
+      { user: { fullName: { contains: search, mode: 'insensitive' } } },
+      { user: { email: { contains: search, mode: 'insensitive' } } },
     ];
   }
 
@@ -352,9 +352,9 @@ exports.adminGetAllOrders = asyncHandler(async (req, res) => {
     prisma.order.findMany({
       where,
       include: {
-        items: { include: { product: { include: { images: true } } } },
+        items: { include: { product: { include: { images: { take: 1 } } } } },
         address: true,
-        user: { select: { fullName: true, email: true, phone: true, whatsappNumber: true } },
+        user: { select: { fullName: true, email: true, phone: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip,
@@ -365,8 +365,8 @@ exports.adminGetAllOrders = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    data: orders,
-    meta: { total, page: parseInt(page), limit: parseInt(limit) },
+    data: orders || [],
+    meta: { total: total || 0, page: parseInt(page), limit: parseInt(limit) },
   });
 });
 

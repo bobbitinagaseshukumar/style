@@ -291,11 +291,16 @@ const AdminLayout = () => {
                         <NavLink
                           key={link.label}
                           to={link.path}
+                          onTouchEnd={(e) => {
+                            e.preventDefault();
+                            closeMobileDrawer();
+                            navigate(link.path);
+                          }}
                           onClick={() => {
                             closeMobileDrawer();
                             navigate(link.path);
                           }}
-                          className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 min-h-[44px] cursor-pointer ${
+                          className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 min-h-[48px] cursor-pointer touch-manipulation ${
                             isActive
                               ? 'bg-gradient-to-r from-gold-500/20 to-gold-500/5 text-gold-400 border border-gold-500/30'
                               : 'text-gray-400 hover:text-white hover:bg-white/5'
