@@ -476,10 +476,12 @@ const AdminOrders = () => {
       const params = new URLSearchParams();
       if (filterStatus) params.set('status', filterStatus);
       if (search) params.set('search', search);
-      const { data } = await api.get(`/orders/admin/all?${params}`);
-      setOrders(data.data || []);
+      const res = await api.get(`/orders/admin/all?${params}`);
+      const list = res.data?.data || res.data?.orders || [];
+      setOrders(Array.isArray(list) ? list : []);
     } catch (err) {
-      toast.error('Failed to load orders');
+      console.error('Admin orders load notification:', err.message);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
