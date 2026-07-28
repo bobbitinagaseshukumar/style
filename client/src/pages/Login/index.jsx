@@ -66,13 +66,13 @@ const Particles = () => {
           key={p.id}
           className="absolute rounded-full bg-gradient-to-b from-amber-400/60 to-amber-500/30"
           style={{
-            width: \`\${p.size}px\`,
-            height: \`\${p.size}px\`,
-            top: \`\${p.top}%\`,
-            left: \`\${p.left}%\`,
+            width: `${p.size}px`,
+            height: `${p.size}px`,
+            top: `${p.top}%`,
+            left: `${p.left}%`,
             opacity: p.opacity,
-            animation: \`float-particle \${p.duration}s infinite linear\`,
-            animationDelay: \`\${p.delay}s\`,
+            animation: `float-particle ${p.duration}s infinite linear`,
+            animationDelay: `${p.delay}s`,
             willChange: 'transform, opacity',
           }}
         />
@@ -99,7 +99,7 @@ const RippleButton = ({ children, onClick, className, disabled, type = 'button' 
       type={type}
       disabled={disabled}
       onClick={handleClick}
-      className={\`luxury-button-ripple \${className}\`}
+      className={`luxury-button-ripple ${className}`}
     >
       {children}
       {ripples.map((r) => (
@@ -283,7 +283,7 @@ const Login = ({ initialMode }) => {
           <div
             className="absolute w-[600px] h-[600px] bg-amber-500/5 rounded-full blur-[150px] pointer-events-none transition-transform duration-300 z-0"
             style={{
-              transform: \`translate(\${mousePos.x * 0.1}px, \${mousePos.y * 0.1}px)\`,
+              transform: `translate(${mousePos.x * 0.1}px, ${mousePos.y * 0.1}px)`,
             }}
           />
         )}
@@ -314,11 +314,11 @@ const Login = ({ initialMode }) => {
             }}
             transition={{ type: 'spring', stiffness: 350, damping: 30 }}
             style={{ transformStyle: 'preserve-3d' }}
-            className={\`relative w-full rounded-3xl p-[1px] transition-colors duration-500 \${
+            className={`relative w-full rounded-3xl p-[1px] transition-colors duration-500 ${
               authSuccess 
                 ? 'bg-emerald-500 shadow-[0_0_40px_rgba(16,185,129,0.4)]' 
                 : 'bg-gradient-to-br from-amber-500/50 via-amber-500/10 to-gold-500/50 shadow-[0_0_40px_rgba(212,175,55,0.15)]'
-            }\`}
+            }`}
           >
             {/* INNER CARD */}
             <motion.div
@@ -371,7 +371,7 @@ const Login = ({ initialMode }) => {
                         value={form.email}
                         onChange={handleChange}
                         placeholder="name@domain.com"
-                        className={\`w-full pl-10 pr-4 py-3 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 \${error && !isRegister ? 'border-red-500' : ''} \${authSuccess ? 'border-emerald-500' : ''}\`}
+                        className={`w-full pl-10 pr-4 py-3 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 ${error && !isRegister ? 'border-red-500' : ''} ${authSuccess ? 'border-emerald-500' : ''}`}
                       />
                     </div>
                   </div>
@@ -396,7 +396,7 @@ const Login = ({ initialMode }) => {
                         value={form.password}
                         onChange={handleChange}
                         placeholder="••••••••••••"
-                        className={\`w-full pl-10 pr-10 py-3 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 \${error && !isRegister ? 'border-red-500' : ''} \${authSuccess ? 'border-emerald-500' : ''}\`}
+                        className={`w-full pl-10 pr-10 py-3 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 ${error && !isRegister ? 'border-red-500' : ''} ${authSuccess ? 'border-emerald-500' : ''}`}
                       />
                       <button
                         type="button"
@@ -424,11 +424,11 @@ const Login = ({ initialMode }) => {
                   <RippleButton
                     type="submit"
                     disabled={loading || authSuccess}
-                    className={\`w-full py-3.5 min-h-[44px] rounded-xl font-black uppercase tracking-wider text-xs shadow-lg transition-all duration-300 flex items-center justify-center gap-2 \${
+                    className={`w-full py-3.5 min-h-[44px] rounded-xl font-black uppercase tracking-wider text-xs shadow-lg transition-all duration-300 flex items-center justify-center gap-2 ${
                       authSuccess 
                         ? 'bg-emerald-500 text-white shadow-emerald-500/30' 
                         : 'bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-black shadow-amber-500/20 hover:-translate-y-[2px] active:scale-[0.98]'
-                    }\`}
+                    }`}
                   >
                     {authSuccess ? (
                       <>
@@ -505,7 +505,7 @@ const Login = ({ initialMode }) => {
                         value={form.fullName}
                         onChange={handleChange}
                         placeholder="John Doe"
-                        className={\`w-full pl-10 pr-4 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 \${error && isRegister && !form.fullName ? 'border-red-500' : ''}\`}
+                        className={`w-full pl-10 pr-4 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 ${error && isRegister && !form.fullName ? 'border-red-500' : ''}`}
                       />
                     </div>
                   </div>
@@ -521,7 +521,7 @@ const Login = ({ initialMode }) => {
                         value={form.email}
                         onChange={handleChange}
                         placeholder="name@domain.com"
-                        className={\`w-full pl-10 pr-4 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 \${error && isRegister && !form.email ? 'border-red-500' : ''}\`}
+                        className={`w-full pl-10 pr-4 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 ${error && isRegister && !form.email ? 'border-red-500' : ''}`}
                       />
                     </div>
                   </div>
@@ -551,7 +551,7 @@ const Login = ({ initialMode }) => {
                         value={form.password}
                         onChange={handleChange}
                         placeholder="••••••••"
-                        className={\`w-full px-3 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 text-xs \${error && isRegister && form.password.length < 6 ? 'border-red-500' : ''}\`}
+                        className={`w-full px-3 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 text-xs ${error && isRegister && form.password.length < 6 ? 'border-red-500' : ''}`}
                       />
                     </div>
                     <div>
@@ -563,7 +563,7 @@ const Login = ({ initialMode }) => {
                         value={form.confirmPassword}
                         onChange={handleChange}
                         placeholder="••••••••"
-                        className={\`w-full px-3 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 text-xs \${error && isRegister && form.password !== form.confirmPassword ? 'border-red-500' : ''}\`}
+                        className={`w-full px-3 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 text-xs ${error && isRegister && form.password !== form.confirmPassword ? 'border-red-500' : ''}`}
                       />
                     </div>
                   </div>
@@ -582,11 +582,11 @@ const Login = ({ initialMode }) => {
                   <RippleButton
                     type="submit"
                     disabled={loading || authSuccess}
-                    className={\`w-full py-3.5 min-h-[44px] rounded-xl font-black uppercase tracking-wider text-xs shadow-lg transition-all duration-300 flex items-center justify-center gap-2 mt-2 \${
+                    className={`w-full py-3.5 min-h-[44px] rounded-xl font-black uppercase tracking-wider text-xs shadow-lg transition-all duration-300 flex items-center justify-center gap-2 mt-2 ${
                       authSuccess 
                         ? 'bg-emerald-500 text-white shadow-emerald-500/30' 
                         : 'bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-black shadow-amber-500/20 hover:-translate-y-[2px] active:scale-[0.98]'
-                    }\`}
+                    }`}
                   >
                     {authSuccess ? (
                       <>
