@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiChevronRight, FiHome, FiGrid, FiUser, FiShoppingBag, FiHeart, FiLogOut, FiPackage } from 'react-icons/fi';
