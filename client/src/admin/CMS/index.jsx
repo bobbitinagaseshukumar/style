@@ -209,34 +209,34 @@ const AdminCMS = () => {
   const headerClasses = "text-2xl font-bold text-white mb-6 flex items-center gap-3";
 
   return (
-    <div className="flex w-full min-h-[calc(100vh-5rem)] bg-[#0a0a0a] rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-      {/* Sidebar Navigation */}
-      <div className="w-64 sm:w-72 bg-black/90 border-r border-white/10 flex flex-col shrink-0">
-        <div className="p-6 border-b border-white/10">
-          <h2 className="text-xl font-bold text-[#D4AF37] flex items-center gap-2">
+    <div className="flex flex-col md:flex-row w-full min-h-[calc(100vh-5rem)] bg-[#0a0a0a] rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+      {/* Sidebar Navigation (Desktop Left Sidebar / Mobile Top Horizontal Bar) */}
+      <div className="w-full md:w-64 lg:w-72 bg-black/90 border-b md:border-b-0 md:border-r border-white/10 flex flex-col shrink-0">
+        <div className="p-4 md:p-6 border-b border-white/10 flex items-center justify-between">
+          <h2 className="text-lg md:text-xl font-bold text-[#D4AF37] flex items-center gap-2">
             <FiSettings /> Settings & CMS
           </h2>
         </div>
-        <div className="flex-1 overflow-y-auto py-4 space-y-1">
+        <div className="flex md:flex-col overflow-x-auto md:overflow-y-auto py-2 md:py-4 space-x-1 md:space-x-0 md:space-y-1">
           {TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center gap-3 px-6 py-3.5 text-left transition-all ${
+              className={`flex items-center gap-2.5 px-4 md:px-6 py-2.5 md:py-3.5 text-left transition-all whitespace-nowrap shrink-0 ${
                 activeTab === tab.id 
-                  ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-r-4 border-[#D4AF37] font-bold' 
+                  ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-b-2 md:border-b-0 md:border-r-4 border-[#D4AF37] font-bold' 
                   : 'text-gray-400 hover:bg-white/5 hover:text-white'
               }`}
             >
-              <tab.icon className="text-lg" />
-              <span className="text-sm font-medium">{tab.label}</span>
+              <tab.icon className="text-base md:text-lg shrink-0" />
+              <span className="text-xs md:text-sm font-medium">{tab.label}</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 p-6 lg:p-8 overflow-y-auto w-full">
+      <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto w-full">
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 20 }}

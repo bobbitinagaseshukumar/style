@@ -77,9 +77,9 @@ const Dashboard = () => {
   };
 
   const handleNav = (item) => {
-    if (item.link !== undefined && item.link !== null) return; // handled by Link
-    setActiveTab(item.key);
+    if (item.key) setActiveTab(item.key);
     setMobileNav(false);
+    document.body.style.overflow = '';
   };
 
   return (
@@ -175,7 +175,7 @@ const Dashboard = () => {
 
                   if (item.link) {
                     return (
-                      <Link key={item.key} to={item.link}>
+                      <Link key={item.key} to={item.link} onClick={() => { setMobileNav(false); document.body.style.overflow = ''; }}>
                         {content}
                       </Link>
                     );

@@ -35,24 +35,17 @@ const MobileMenu = ({ isOpen, onClose }) => {
     : [];
 
   return (
-    <AnimatePresence>
+    <>
       {isOpen && (
         <>
           {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+          <div
             onClick={onClose}
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 lg:hidden"
           />
 
           {/* Drawer */}
-          <motion.div
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '-100%' }}
-            transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
+          <div
             className="fixed inset-y-0 left-0 w-[300px] max-w-[85vw] bg-[#0D0D0D] z-50 flex flex-col h-full lg:hidden shadow-2xl"
           >
             {/* Header */}
@@ -171,10 +164,10 @@ const MobileMenu = ({ isOpen, onClose }) => {
                 </>
               )}
             </div>
-          </motion.div>
+          </div>
         </>
       )}
-    </AnimatePresence>
+    </>
   );
 };
 
