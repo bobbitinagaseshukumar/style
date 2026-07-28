@@ -606,7 +606,7 @@ const Login = ({ initialMode }) => {
                 </form>
 
                 <div className="relative z-10 mt-6">
-                  <SocialAuthButtons />
+                  <SocialAuthButtons mode="register" />
                 </div>
 
                 <div className="mt-3 text-center text-xs text-gray-400 border-t border-white/10 pt-3 relative z-10">

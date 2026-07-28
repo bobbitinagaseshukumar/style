@@ -86,6 +86,8 @@ const AdminAuthFormManager = lazy(() => import('../admin/AuthFormManager'));
 const AdminSocialProofManager = lazy(() => import('../admin/SocialProofManager'));
 const AdminChatbotManager = lazy(() => import('../admin/ChatbotManager'));
 
+import ScrollToTop from '../components/common/ScrollToTop';
+
 const SuspenseLoader = () => (
   <div className="h-screen w-full flex items-center justify-center">
     <Spinner className="w-12 h-12" />
@@ -94,10 +96,12 @@ const SuspenseLoader = () => (
 
 const AppRoutes = () => {
   return (
-    <Suspense fallback={<SuspenseLoader />}>
-      <Routes>
-        {/* Main Customer Layout Routes */}
-        <Route element={<MainLayout />}>
+    <>
+      <ScrollToTop />
+      <Suspense fallback={<SuspenseLoader />}>
+        <Routes>
+          {/* Main Customer Layout Routes */}
+          <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/categories/:slug" element={<Categories />} />
@@ -200,6 +204,7 @@ const AppRoutes = () => {
         <Route path="*" element={<Error404 />} />
       </Routes>
     </Suspense>
+    </>
   );
 };
 
