@@ -150,8 +150,13 @@ const AdminLayout = () => {
     weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
   }).format(new Date());
 
+  const closeMobileDrawer = () => {
+    setMobileSidebar(false);
+    document.body.style.overflow = '';
+  };
+
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans select-none">
+    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       {/* DESKTOP SIDEBAR */}
       <motion.aside
         animate={{ width: sidebarOpen ? 260 : 76 }}
@@ -250,24 +255,25 @@ const AdminLayout = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
-              onClick={() => setMobileSidebar(false)}
+              onClick={closeMobileDrawer}
             />
             <motion.aside
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
               className="fixed left-0 top-0 bottom-0 w-[280px] bg-[#0D0D12] text-white z-50 lg:hidden shadow-2xl flex flex-col border-r border-white/10"
             >
               <div className="h-16 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
-                <Link to="/" onClick={() => setMobileSidebar(false)} title="Go to Storefront Homepage" className="flex items-center gap-3 hover:opacity-90 transition cursor-pointer">
+                <Link to="/" onClick={closeMobileDrawer} title="Go to Storefront Homepage" className="flex items-center gap-3 hover:opacity-90 transition cursor-pointer">
                   <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-gold-400 to-amber-600 flex items-center justify-center text-black font-black text-lg">
                     S
                   </div>
                   <span className="text-xl font-serif font-bold text-gold-400">StyleVerse Admin</span>
                 </Link>
-                <button onClick={() => setMobileSidebar(false)} className="text-gray-400 hover:text-white p-1">
+                <button onClick={closeMobileDrawer} className="text-gray-400 hover:text-white p-1">
                   <FiX className="w-6 h-6" />
                 </button>
               </div>
@@ -285,8 +291,11 @@ const AdminLayout = () => {
                         <NavLink
                           key={link.label}
                           to={link.path}
-                          onClick={() => setMobileSidebar(false)}
-                          className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 min-h-[44px] ${
+                          onClick={() => {
+                            closeMobileDrawer();
+                            navigate(link.path);
+                          }}
+                          className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 min-h-[44px] cursor-pointer ${
                             isActive
                               ? 'bg-gradient-to-r from-gold-500/20 to-gold-500/5 text-gold-400 border border-gold-500/30'
                               : 'text-gray-400 hover:text-white hover:bg-white/5'
