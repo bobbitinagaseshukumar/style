@@ -80,14 +80,10 @@ const Home = () => {
   useEffect(() => {
     const fetchHomeData = async () => {
       try {
-        const [bannersRes, categoriesRes, featuredRes, trendingRes, newRes, dealsRes, allProdsRes, trendSelRes, settingsRes, dynSecRes] = await Promise.allSettled([
+        const [bannersRes, categoriesRes, allProdsRes, trendSelRes, settingsRes, dynSecRes] = await Promise.allSettled([
           api.get('/cms/banners?activeOnly=true'),
           api.get('/categories?showOnHomepage=true&limit=8'),
-          api.get('/products?showOnHomepage=true&featured=true&limit=8'),
-          api.get('/products?showOnHomepage=true&trending=true&limit=8'),
-          api.get('/products?showOnHomepage=true&newArrival=true&limit=8'),
-          api.get('/products?showOnHomepage=true&bestSeller=true&limit=8'),
-          api.get('/products?limit=8'),
+          api.get('/products?limit=50'),
           api.get('/cms/trending-selection/public'),
           api.get('/cms/settings'),
           api.get('/cms/homepage/sections/public'),
@@ -113,20 +109,18 @@ const Home = () => {
           setCategories(categoriesRes.value.data.data);
         }
 
-        const fallbackAll = allProdsRes.status === 'fulfilled' ? (allProdsRes.value.data?.data?.products || []) : [];
+        const allProds = allProdsRes.status === 'fulfilled' ? (allProdsRes.value.data?.data?.products || []) : [];
 
-        const getList = (res) => {
-          if (res.status === 'fulfilled' && res.value.data?.data?.products?.length > 0) {
-            return res.value.data.data.products;
-          }
-          return fallbackAll;
-        };
+        const featuredList = allProds.filter(p => p.featured).slice(0, 8);
+        const trendingList = allProds.filter(p => p.trending).slice(0, 8);
+        const newArrivalsList = allProds.filter(p => p.newArrival).slice(0, 8);
+        const bestSellerList = allProds.filter(p => p.bestSeller).slice(0, 8);
 
         setProducts({
-          featured: getList(featuredRes),
-          trending: getList(trendingRes),
-          newArrivals: getList(newRes),
-          todaysDeals: getList(dealsRes),
+          featured: featuredList.length > 0 ? featuredList : allProds.slice(0, 8),
+          trending: trendingList.length > 0 ? trendingList : allProds.slice(0, 8),
+          newArrivals: newArrivalsList.length > 0 ? newArrivalsList : allProds.slice(0, 8),
+          todaysDeals: bestSellerList.length > 0 ? bestSellerList : allProds.slice(0, 8),
         });
       } catch (err) {
         console.error('Home page data fetch error:', err);

@@ -92,8 +92,13 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
     })
   ]);
 
-  // Calculate Revenue Metrics
-  const validOrders = allOrders.filter(o => o.orderStatus !== 'CANCELLED' && o.orderStatus !== 'REFUNDED');
+  // Calculate Revenue Metrics (Only valid customer orders count towards revenue)
+  const validOrders = allOrders.filter(o =>
+    o.orderStatus !== 'CANCELLED' &&
+    o.orderStatus !== 'REFUNDED' &&
+    o.orderStatus !== 'REJECTED' &&
+    (o.paymentStatus === 'PAID' || o.paymentStatus === 'COMPLETED' || o.paymentMethod === 'COD')
+  );
 
   const lifetimeRevenue = validOrders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
   const todayRevenue = validOrders.filter(o => o.createdAt >= startOfToday).reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
