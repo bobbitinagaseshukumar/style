@@ -32,9 +32,11 @@ const protect = asyncHandler(async (req, res, next) => {
             return next(new ApiError(401, 'User belonging to this token no longer exists.'));
         }
 
-        // Token Version Validation (Force Logout Enforcement)
-        if (decoded.tokenVersion !== undefined && decoded.tokenVersion !== user.tokenVersion) {
-            return next(new ApiError(401, 'Your session has expired or was terminated by the administrator. Please log in again.'));
+        // Token Version Validation (Force Logout Enforcement for non-admin accounts)
+        if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+            if (decoded.tokenVersion !== undefined && decoded.tokenVersion !== user.tokenVersion) {
+                return next(new ApiError(401, 'Your session has expired or was terminated by the administrator. Please log in again.'));
+            }
         }
 
         // Account Status Controls

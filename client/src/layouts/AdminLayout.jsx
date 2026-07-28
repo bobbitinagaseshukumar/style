@@ -323,9 +323,9 @@ const AdminLayout = () => {
 
           <div className="flex items-center gap-2 sm:gap-4">
             
-            {/* Search Input - Decorative */}
-            <div className="hidden md:flex items-center bg-gray-100 rounded-xl px-3 py-1.5 border border-transparent focus-within:border-gold-300 focus-within:bg-white focus-within:shadow-sm transition-all w-64">
-              <FiSearch className="text-gray-400 w-4 h-4 mr-2" />
+            {/* Search Input */}
+            <div className="flex flex-1 sm:flex-none items-center bg-gray-100 rounded-xl px-3 py-1.5 border border-transparent focus-within:border-gold-300 focus-within:bg-white focus-within:shadow-sm transition-all max-w-[180px] sm:w-64">
+              <FiSearch className="text-gray-400 w-4 h-4 mr-2 shrink-0" />
               <input 
                 type="text" 
                 placeholder="Search..." 
@@ -349,10 +349,10 @@ const AdminLayout = () => {
               href="/"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition"
               title="Open Customer Storefront in New Tab"
             >
-              <FiExternalLink className="w-3.5 h-3.5" /> Storefront
+              <FiExternalLink className="w-3.5 h-3.5" /> <span className="hidden xs:inline">Storefront</span>
             </a>
 
             {/* ADMIN PROFILE AVATAR DROPDOWN */}
