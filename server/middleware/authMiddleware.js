@@ -109,7 +109,15 @@ const optionalAuth = asyncHandler(async (req, res, next) => {
 
 const authorize = (...roles) => {
     return (req, res, next) => {
-        if (!roles.includes(req.user?.role)) {
+        if (!req.user) {
+            return next(new ApiError(401, 'Not authorized, please log in'));
+        }
+        const userRole = (req.user.role || '').toUpperCase();
+        const allowedRoles = roles.map(r => (r || '').toUpperCase());
+        if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
+            return next();
+        }
+        if (!allowedRoles.includes(userRole)) {
             return next(new ApiError(403, `User role ${req.user?.role} is not authorized to access this route`));
         }
         next();

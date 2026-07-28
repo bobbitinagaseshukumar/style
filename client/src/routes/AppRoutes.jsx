@@ -15,76 +15,94 @@ import Register from '../pages/Register';
 import AdminLogin from '../admin/Login';
 import AdminVerifyOTP from '../admin/Login/AdminVerifyOTP';
 
+// Helper function for dynamic imports with auto-reload retry on stale Vercel deployment chunk hash mismatches
+const lazyRetry = (componentImport) =>
+  lazy(async () => {
+    const pageHasBeenReloaded = sessionStorage.getItem('chunk_reload');
+    try {
+      const component = await componentImport();
+      sessionStorage.removeItem('chunk_reload');
+      return component;
+    } catch (error) {
+      if (!pageHasBeenReloaded) {
+        sessionStorage.setItem('chunk_reload', 'true');
+        window.location.reload();
+        return new Promise(() => {});
+      }
+      throw error;
+    }
+  });
+
 // Lazy loading customer pages
-const Cart = lazy(() => import('../pages/Cart'));
-const Checkout = lazy(() => import('../pages/Checkout'));
-const Wishlist = lazy(() => import('../pages/Wishlist'));
-const Orders = lazy(() => import('../pages/Orders'));
-const UserProfile = lazy(() => import('../pages/UserProfile'));
-const AddressBook = lazy(() => import('../pages/AddressBook'));
-const Notifications = lazy(() => import('../pages/Notifications'));
-const PaymentSuccess = lazy(() => import('../pages/PaymentSuccess'));
-const PaymentFailure = lazy(() => import('../pages/PaymentFailure'));
-const Compare = lazy(() => import('../pages/Compare'));
-const Search = lazy(() => import('../pages/Search'));
-const VendorRegister = lazy(() => import('../pages/VendorRegister'));
-const Blog = lazy(() => import('../pages/Blog'));
-const Support = lazy(() => import('../pages/Support'));
-const Dashboard = lazy(() => import('../pages/Dashboard'));
-const About = lazy(() => import('../pages/About'));
-const Contact = lazy(() => import('../pages/Contact'));
-const FAQ = lazy(() => import('../pages/FAQ'));
-const PrivacyPolicy = lazy(() => import('../pages/PrivacyPolicy'));
-const Terms = lazy(() => import('../pages/Terms'));
-const ShippingPolicy = lazy(() => import('../pages/ShippingPolicy'));
-const RefundPolicy = lazy(() => import('../pages/RefundPolicy'));
-const Error404 = lazy(() => import('../pages/Error404'));
-const Error500 = lazy(() => import('../pages/Error500'));
+const Cart = lazyRetry(() => import('../pages/Cart'));
+const Checkout = lazyRetry(() => import('../pages/Checkout'));
+const Wishlist = lazyRetry(() => import('../pages/Wishlist'));
+const Orders = lazyRetry(() => import('../pages/Orders'));
+const UserProfile = lazyRetry(() => import('../pages/UserProfile'));
+const AddressBook = lazyRetry(() => import('../pages/AddressBook'));
+const Notifications = lazyRetry(() => import('../pages/Notifications'));
+const PaymentSuccess = lazyRetry(() => import('../pages/PaymentSuccess'));
+const PaymentFailure = lazyRetry(() => import('../pages/PaymentFailure'));
+const Compare = lazyRetry(() => import('../pages/Compare'));
+const Search = lazyRetry(() => import('../pages/Search'));
+const VendorRegister = lazyRetry(() => import('../pages/VendorRegister'));
+const Blog = lazyRetry(() => import('../pages/Blog'));
+const Support = lazyRetry(() => import('../pages/Support'));
+const Dashboard = lazyRetry(() => import('../pages/Dashboard'));
+const About = lazyRetry(() => import('../pages/About'));
+const Contact = lazyRetry(() => import('../pages/Contact'));
+const FAQ = lazyRetry(() => import('../pages/FAQ'));
+const PrivacyPolicy = lazyRetry(() => import('../pages/PrivacyPolicy'));
+const Terms = lazyRetry(() => import('../pages/Terms'));
+const ShippingPolicy = lazyRetry(() => import('../pages/ShippingPolicy'));
+const RefundPolicy = lazyRetry(() => import('../pages/RefundPolicy'));
+const Error404 = lazyRetry(() => import('../pages/Error404'));
+const Error500 = lazyRetry(() => import('../pages/Error500'));
 
 // Lazy loading auth pages
-const VerifyOTP = lazy(() => import('../pages/VerifyOTP'));
-const VerifyEmail = lazy(() => import('../pages/VerifyEmail'));
-const ForgotPassword = lazy(() => import('../pages/ForgotPassword'));
-const ResetPassword = lazy(() => import('../pages/ResetPassword'));
+const VerifyOTP = lazyRetry(() => import('../pages/VerifyOTP'));
+const VerifyEmail = lazyRetry(() => import('../pages/VerifyEmail'));
+const ForgotPassword = lazyRetry(() => import('../pages/ForgotPassword'));
+const ResetPassword = lazyRetry(() => import('../pages/ResetPassword'));
 
 // Lazy loading admin pages
-const AdminProfile = lazy(() => import('../admin/AdminProfile'));
-const AdminTeam = lazy(() => import('../admin/Team'));
-const AdminDashboard = lazy(() => import('../admin/Dashboard'));
-const AdminProducts = lazy(() => import('../admin/Products'));
-const AdminCategories = lazy(() => import('../admin/Categories'));
-const AdminSubcategories = lazy(() => import('../admin/Subcategories'));
-const AdminInventory = lazy(() => import('../admin/Inventory'));
-const AdminOrders = lazy(() => import('../admin/Orders'));
-const AdminCustomers = lazy(() => import('../admin/Customers'));
-const AdminCoupons = lazy(() => import('../admin/Coupons'));
-const AdminSettings = lazy(() => import('../admin/Settings'));
-const AdminCMS = lazy(() => import('../admin/CMS'));
-const AdminBanner = lazy(() => import('../admin/Banner'));
-const AdminHomepage = lazy(() => import('../admin/Homepage'));
-const AdminFAQs = lazy(() => import('../admin/FAQs'));
-const AdminAnalytics = lazy(() => import('../admin/Analytics'));
-const AdminSEO = lazy(() => import('../admin/SEO'));
-const AdminBackup = lazy(() => import('../admin/Backup'));
-const AdminMarketplace = lazy(() => import('../admin/Marketplace'));
-const AdminBlog = lazy(() => import('../admin/Blog'));
-const AdminSupport = lazy(() => import('../admin/Support'));
-const AdminEmail = lazy(() => import('../admin/Email'));
-const AdminFlashSale = lazy(() => import('../admin/Offers/FlashSaleManager'));
-const AdminSpecialDeals = lazy(() => import('../admin/Offers/SpecialDealsManager'));
-const AdminCollections = lazy(() => import('../admin/Offers/ProductCollectionsManager'));
-const AdminReviews = lazy(() => import('../admin/Offers/CustomerReviewsManager'));
-const AdminSocial = lazy(() => import('../admin/Offers/SocialFollowManager'));
-const AdminHeritageBrands = lazy(() => import('../admin/Offers/HeritageBrandsManager'));
-const AdminTrending = lazy(() => import('../admin/Offers/TrendingProductsManager'));
-const AdminWhatsApp = lazy(() => import('../admin/WhatsApp'));
-const AdminHomepageSections = lazy(() => import('../admin/Offers/HomepageSectionManager'));
-const AdminHeaderMenu = lazy(() => import('../admin/Offers/HeaderMenuManager'));
-const AdminMobileNav = lazy(() => import('../admin/MobileNavigation'));
-const AdminHeaderManager = lazy(() => import('../admin/Header'));
-const AdminAuthFormManager = lazy(() => import('../admin/AuthFormManager'));
-const AdminSocialProofManager = lazy(() => import('../admin/SocialProofManager'));
-const AdminChatbotManager = lazy(() => import('../admin/ChatbotManager'));
+const AdminProfile = lazyRetry(() => import('../admin/AdminProfile'));
+const AdminTeam = lazyRetry(() => import('../admin/Team'));
+const AdminDashboard = lazyRetry(() => import('../admin/Dashboard'));
+const AdminProducts = lazyRetry(() => import('../admin/Products'));
+const AdminCategories = lazyRetry(() => import('../admin/Categories'));
+const AdminSubcategories = lazyRetry(() => import('../admin/Subcategories'));
+const AdminInventory = lazyRetry(() => import('../admin/Inventory'));
+const AdminOrders = lazyRetry(() => import('../admin/Orders'));
+const AdminCustomers = lazyRetry(() => import('../admin/Customers'));
+const AdminCoupons = lazyRetry(() => import('../admin/Coupons'));
+const AdminSettings = lazyRetry(() => import('../admin/Settings'));
+const AdminCMS = lazyRetry(() => import('../admin/CMS'));
+const AdminBanner = lazyRetry(() => import('../admin/Banner'));
+const AdminHomepage = lazyRetry(() => import('../admin/Homepage'));
+const AdminFAQs = lazyRetry(() => import('../admin/FAQs'));
+const AdminAnalytics = lazyRetry(() => import('../admin/Analytics'));
+const AdminSEO = lazyRetry(() => import('../admin/SEO'));
+const AdminBackup = lazyRetry(() => import('../admin/Backup'));
+const AdminMarketplace = lazyRetry(() => import('../admin/Marketplace'));
+const AdminBlog = lazyRetry(() => import('../admin/Blog'));
+const AdminSupport = lazyRetry(() => import('../admin/Support'));
+const AdminEmail = lazyRetry(() => import('../admin/Email'));
+const AdminFlashSale = lazyRetry(() => import('../admin/Offers/FlashSaleManager'));
+const AdminSpecialDeals = lazyRetry(() => import('../admin/Offers/SpecialDealsManager'));
+const AdminCollections = lazyRetry(() => import('../admin/Offers/ProductCollectionsManager'));
+const AdminReviews = lazyRetry(() => import('../admin/Offers/CustomerReviewsManager'));
+const AdminSocial = lazyRetry(() => import('../admin/Offers/SocialFollowManager'));
+const AdminHeritageBrands = lazyRetry(() => import('../admin/Offers/HeritageBrandsManager'));
+const AdminTrending = lazyRetry(() => import('../admin/Offers/TrendingProductsManager'));
+const AdminWhatsApp = lazyRetry(() => import('../admin/WhatsApp'));
+const AdminHomepageSections = lazyRetry(() => import('../admin/Offers/HomepageSectionManager'));
+const AdminHeaderMenu = lazyRetry(() => import('../admin/Offers/HeaderMenuManager'));
+const AdminMobileNav = lazyRetry(() => import('../admin/MobileNavigation'));
+const AdminHeaderManager = lazyRetry(() => import('../admin/Header'));
+const AdminAuthFormManager = lazyRetry(() => import('../admin/AuthFormManager'));
+const AdminSocialProofManager = lazyRetry(() => import('../admin/SocialProofManager'));
+const AdminChatbotManager = lazyRetry(() => import('../admin/ChatbotManager'));
 
 import ScrollToTop from '../components/common/ScrollToTop';
 

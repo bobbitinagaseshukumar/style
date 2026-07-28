@@ -16,10 +16,12 @@ class ErrorBoundary extends React.Component {
   }
 
   handleReload = () => {
+    sessionStorage.removeItem('chunk_reload');
     window.location.reload();
   };
 
   handleGoHome = () => {
+    sessionStorage.removeItem('chunk_reload');
     window.location.href = '/';
   };
 
