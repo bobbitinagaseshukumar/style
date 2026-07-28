@@ -127,7 +127,7 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
         firstName: true, lastName: true, phone: true, alternatePhone: true,
         whatsappNumber: true, gender: true, dob: true, role: true,
         isVerified: true, avatar: true, status: true, tokenVersion: true,
-        suspendedUntil: true, blockReason: true, blockNotes: true, adminNotes: true,
+        suspendedUntil: true, blockReason: true, blockNotes: true,
         canLogin: true, canCheckout: true, canPlaceOrders: true, canCancelOrders: true,
         canReturnProducts: true, canAddReviews: true, canAddWishlist: true,
         canUseCoupons: true, canUseWallet: true, canUseReferral: true,
@@ -328,7 +328,7 @@ exports.updateCustomerDetails = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const {
     firstName, lastName, fullName, username, email, phone, alternatePhone,
-    whatsappNumber, gender, dob, avatar, preferredLanguage, address, adminNotes
+    whatsappNumber, gender, dob, avatar, preferredLanguage, address
   } = req.body;
 
   const existing = await prisma.user.findUnique({ where: { id } });
@@ -361,8 +361,7 @@ exports.updateCustomerDetails = asyncHandler(async (req, res, next) => {
       gender: gender !== undefined ? gender : existing.gender,
       dob: dob ? new Date(dob) : existing.dob,
       avatar: avatar !== undefined ? avatar : existing.avatar,
-      preferredLanguage: preferredLanguage || existing.preferredLanguage,
-      adminNotes: adminNotes !== undefined ? adminNotes : existing.adminNotes,
+      preferredLanguage: preferredLanguage || existing.preferredLanguage
     }
   });
 
@@ -801,7 +800,7 @@ exports.updateAdminNotes = asyncHandler(async (req, res, next) => {
 
   const updated = await prisma.user.update({
     where: { id },
-    data: { adminNotes: adminNotes || null }
+    data: { blockNotes: adminNotes || null }
   });
 
   await logAdminAction(req, user, 'ADMIN_NOTES_UPDATED', 'Admin updated private notes');
@@ -809,7 +808,7 @@ exports.updateAdminNotes = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: 'Admin notes updated.',
-    data: { adminNotes: updated.adminNotes }
+    data: { adminNotes: updated.blockNotes }
   });
 });
 
