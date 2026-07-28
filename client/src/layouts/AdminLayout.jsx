@@ -247,81 +247,61 @@ const AdminLayout = () => {
         </div>
       </motion.aside>
 
-      {/* MOBILE SIDEBAR DRAWER & OVERLAY */}
-      <AnimatePresence>
-        {mobileSidebar && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
-              onClick={closeMobileDrawer}
-            />
-            <motion.aside
-              initial={{ x: -280 }}
-              animate={{ x: 0 }}
-              exit={{ x: -280 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="fixed left-0 top-0 bottom-0 w-[280px] bg-[#0D0D12] text-white z-50 lg:hidden shadow-2xl flex flex-col border-r border-white/10"
-            >
-              <div className="h-16 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
-                <Link to="/" onClick={closeMobileDrawer} title="Go to Storefront Homepage" className="flex items-center gap-3 hover:opacity-90 transition cursor-pointer">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-gold-400 to-amber-600 flex items-center justify-center text-black font-black text-lg">
-                    S
-                  </div>
-                  <span className="text-xl font-serif font-bold text-gold-400">StyleVerse Admin</span>
-                </Link>
-                <button onClick={closeMobileDrawer} className="text-gray-400 hover:text-white p-1">
-                  <FiX className="w-6 h-6" />
-                </button>
-              </div>
-
-              <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-6 pb-20 sm:pb-safe">
-                {sidebarGroups.map((group, groupIndex) => (
-                  <div key={groupIndex} className="space-y-1">
-                    <div className="px-4 mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                      {group.title}
-                    </div>
-                    {group.links.map((link) => {
-                      const Icon = link.icon;
-                      const isActive = location.pathname === link.path || (link.path === '/admin/dashboard' && location.pathname === '/admin');
-                      return (
-                        <NavLink
-                          key={link.label}
-                          to={link.path}
-                          onTouchEnd={(e) => {
-                            e.preventDefault();
-                            closeMobileDrawer();
-                            navigate(link.path);
-                          }}
-                          onClick={() => {
-                            closeMobileDrawer();
-                            navigate(link.path);
-                          }}
-                          className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 min-h-[48px] cursor-pointer touch-manipulation ${
-                            isActive
-                              ? 'bg-gradient-to-r from-gold-500/20 to-gold-500/5 text-gold-400 border border-gold-500/30'
-                              : 'text-gray-400 hover:text-white hover:bg-white/5'
-                          }`}
-                        >
-                          <Icon className="w-5 h-5 shrink-0" />
-                          <span className="text-[13px] font-semibold">{link.label}</span>
-                        </NavLink>
-                      );
-                    })}
-                  </div>
-                ))}
-                
-                <div className="mt-8 text-center text-[10px] text-gray-500 uppercase tracking-widest font-bold">
-                  Powered by StyleVerse
+      {/* MOBILE SIDEBAR DRAWER & OVERLAY (Instant Unmount Guarantee) */}
+      {mobileSidebar && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
+            onClick={closeMobileDrawer}
+          />
+          <aside className="fixed left-0 top-0 bottom-0 w-[280px] bg-[#0D0D12] text-white z-50 lg:hidden shadow-2xl flex flex-col border-r border-white/10">
+            <div className="h-16 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
+              <Link to="/" onClick={closeMobileDrawer} title="Go to Storefront Homepage" className="flex items-center gap-3 hover:opacity-90 transition cursor-pointer">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-gold-400 to-amber-600 flex items-center justify-center text-black font-black text-lg">
+                  S
                 </div>
-              </nav>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+                <span className="text-xl font-serif font-bold text-gold-400">StyleVerse Admin</span>
+              </Link>
+              <button onClick={closeMobileDrawer} className="text-gray-400 hover:text-white p-1 cursor-pointer">
+                <FiX className="w-6 h-6" />
+              </button>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-6 pb-20 sm:pb-safe">
+              {sidebarGroups.map((group, groupIndex) => (
+                <div key={groupIndex} className="space-y-1">
+                  <div className="px-4 mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                    {group.title}
+                  </div>
+                  {group.links.map((link) => {
+                    const Icon = link.icon;
+                    const isActive = location.pathname === link.path || (link.path === '/admin/dashboard' && location.pathname === '/admin');
+                    return (
+                      <NavLink
+                        key={link.label}
+                        to={link.path}
+                        onClick={closeMobileDrawer}
+                        className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 min-h-[48px] cursor-pointer ${
+                          isActive
+                            ? 'bg-gradient-to-r from-gold-500/20 to-gold-500/5 text-gold-400 border border-gold-500/30'
+                            : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <Icon className="w-5 h-5 shrink-0" />
+                        <span className="text-[13px] font-semibold">{link.label}</span>
+                      </NavLink>
+                    );
+                  })}
+                </div>
+              ))}
+              
+              <div className="mt-8 text-center text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+                Powered by StyleVerse
+              </div>
+            </nav>
+          </aside>
+        </>
+      )}
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col overflow-hidden">

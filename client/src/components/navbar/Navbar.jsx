@@ -294,25 +294,16 @@ const Navbar = () => {
                   </div>
                 </motion.button>
 
-                <AnimatePresence>
-                  {isUserMenuOpen && (
-                    <>
-                      {/* Fixed full-screen backdrop to handle touch & click outside */}
-                      <div
-                        className="fixed inset-0 z-[55] bg-transparent cursor-default"
-                        onTouchStart={(e) => {
-                          e.preventDefault();
-                          setIsUserMenuOpen(false);
-                        }}
-                        onClick={() => setIsUserMenuOpen(false)}
-                      />
-                      <motion.div
-                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute right-0 mt-2 w-56 bg-[#111111] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.6)] overflow-hidden z-[60] touch-manipulation"
-                      >
+                {isUserMenuOpen && (
+                  <>
+                    {/* Fixed full-screen backdrop to handle touch & click outside */}
+                    <div
+                      className="fixed inset-0 z-[55] bg-transparent cursor-default"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    />
+                    <div
+                      className="absolute right-0 mt-2 w-56 bg-[#111111] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.6)] overflow-hidden z-[60]"
+                    >
                       {isAuthenticated ? (
                         <>
                           <div className="px-4 py-3 border-b border-white/5">
@@ -325,52 +316,33 @@ const Navbar = () => {
                             { label: 'Profile', icon: FiUser, path: '/profile' },
                             { label: 'Notifications', icon: FiBell, path: '/notifications' },
                           ].map((item) => (
-                            <button
+                            <Link
                               key={item.label}
-                              onTouchEnd={(e) => {
-                                e.preventDefault();
-                                setIsUserMenuOpen(false);
-                                navigate(item.path);
-                              }}
-                              onClick={() => {
-                                setIsUserMenuOpen(false);
-                                navigate(item.path);
-                              }}
-                              className="flex items-center gap-3 w-full text-left px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors cursor-pointer touch-manipulation min-h-[44px]"
+                              to={item.path}
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="flex items-center gap-3 w-full text-left px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors cursor-pointer min-h-[44px]"
                             >
                               <item.icon size={15} className="text-yellow-400/80 shrink-0" />
                               {item.label}
-                            </button>
+                            </Link>
                           ))}
                           <div className="border-t border-white/5 mt-1" />
                           {user?.role === 'ADMIN' && (
-                            <button
-                              onTouchEnd={(e) => {
-                                e.preventDefault();
-                                setIsUserMenuOpen(false);
-                                navigate('/admin/dashboard');
-                              }}
-                              onClick={() => {
-                                setIsUserMenuOpen(false);
-                                navigate('/admin/dashboard');
-                              }}
-                              className="flex items-center gap-3 w-full text-left px-4 py-3 text-sm text-yellow-400 hover:bg-yellow-400/5 transition-colors cursor-pointer touch-manipulation min-h-[44px]"
+                            <Link
+                              to="/admin/dashboard"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="flex items-center gap-3 w-full text-left px-4 py-3 text-sm text-yellow-400 hover:bg-yellow-400/5 transition-colors cursor-pointer min-h-[44px]"
                             >
                               <FiSettings size={15} className="shrink-0" />
                               Super Admin Panel
-                            </button>
+                            </Link>
                           )}
                           <button
-                            onTouchEnd={(e) => {
-                              e.preventDefault();
-                              setIsUserMenuOpen(false);
-                              logout();
-                            }}
                             onClick={() => {
                               setIsUserMenuOpen(false);
                               logout();
                             }}
-                            className="flex items-center gap-3 w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-500/5 transition-colors cursor-pointer touch-manipulation min-h-[44px]"
+                            className="flex items-center gap-3 w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-500/5 transition-colors cursor-pointer min-h-[44px]"
                           >
                             <FiLogOut size={15} className="shrink-0" />
                             Logout
@@ -378,40 +350,25 @@ const Navbar = () => {
                         </>
                       ) : (
                         <div className="p-3 space-y-2">
-                          <button
-                            onTouchEnd={(e) => {
-                              e.preventDefault();
-                              setIsUserMenuOpen(false);
-                              navigate('/login');
-                            }}
-                            onClick={() => {
-                              setIsUserMenuOpen(false);
-                              navigate('/login');
-                            }}
-                            className="block w-full py-2.5 text-center rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 text-black text-sm font-bold hover:from-yellow-400 transition-all cursor-pointer touch-manipulation"
+                          <Link
+                            to="/login"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="block w-full py-2.5 text-center rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 text-black text-sm font-bold hover:from-yellow-400 transition-all cursor-pointer"
                           >
                             Sign In
-                          </button>
-                          <button
-                            onTouchEnd={(e) => {
-                              e.preventDefault();
-                              setIsUserMenuOpen(false);
-                              navigate('/login?mode=register');
-                            }}
-                            onClick={() => {
-                              setIsUserMenuOpen(false);
-                              navigate('/login?mode=register');
-                            }}
-                            className="block w-full py-2.5 text-center rounded-xl border border-white/10 text-white/70 text-sm font-medium hover:bg-white/5 transition-all cursor-pointer touch-manipulation"
+                          </Link>
+                          <Link
+                            to="/login?mode=register"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="block w-full py-2.5 text-center rounded-xl border border-white/10 text-white/70 text-sm font-medium hover:bg-white/5 transition-all cursor-pointer"
                           >
                             Create Account
-                          </button>
+                          </Link>
                         </div>
                       )}
-                    </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
