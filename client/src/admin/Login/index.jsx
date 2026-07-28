@@ -133,7 +133,11 @@ const AdminLogin = () => {
           )}
         </AnimatePresence>
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4 text-xs">
+          {/* Fake inputs to prevent browser forced autofill */}
+          <input type="text" name="prevent_autofill_email" style={{ display: 'none' }} tabIndex={-1} readOnly />
+          <input type="password" name="prevent_autofill_password" style={{ display: 'none' }} tabIndex={-1} readOnly />
+
           {/* Email */}
           <div>
             <label className="block font-bold text-gray-300 mb-1.5 font-mono">ADMIN_EMAIL</label>
@@ -141,6 +145,8 @@ const AdminLogin = () => {
               <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cyan-500" size={16} />
               <input
                 type="email"
+                name="admin_auth_user_email"
+                autoComplete="off"
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -157,6 +163,8 @@ const AdminLogin = () => {
               <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cyan-500" size={16} />
               <input
                 type={showPassword ? 'text' : 'password'}
+                name="admin_auth_user_password"
+                autoComplete="new-password"
                 required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
