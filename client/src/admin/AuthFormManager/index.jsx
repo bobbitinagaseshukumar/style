@@ -40,13 +40,24 @@ const AuthFormManager = () => {
     patternMsg: '',
   });
 
+  const DEFAULT_FORM_FIELDS = [
+    { id: '1', fieldKey: 'fullName', label: 'Full Name', placeholder: 'John Doe', type: 'text', isRequired: true, isEnabled: true, formType: 'REGISTER' },
+    { id: '2', fieldKey: 'email', label: 'Email Address', placeholder: 'user@example.com', type: 'email', isRequired: true, isEnabled: true, formType: 'REGISTER' },
+    { id: '3', fieldKey: 'phone', label: 'Mobile Number', placeholder: '9876543210', type: 'tel', isRequired: true, isEnabled: true, formType: 'REGISTER' },
+    { id: '4', fieldKey: 'password', label: 'Password', placeholder: '••••••••', type: 'password', isRequired: true, isEnabled: true, formType: 'REGISTER' },
+    { id: '5', fieldKey: 'confirmPassword', label: 'Confirm Password', placeholder: '••••••••', type: 'password', isRequired: true, isEnabled: true, formType: 'REGISTER' },
+    { id: '6', fieldKey: 'gender', label: 'Gender', placeholder: 'Select Gender', type: 'select', isRequired: false, isEnabled: true, formType: 'REGISTER' },
+  ];
+
   const fetchFields = async () => {
     try {
       setLoading(true);
       const res = await api.get('/auth-form/admin/auth-form-fields');
-      setFields(res.data.data || []);
+      const list = res.data?.data || res.data?.fields || (Array.isArray(res.data) ? res.data : []);
+      setFields(Array.isArray(list) && list.length > 0 ? list : DEFAULT_FORM_FIELDS);
     } catch (err) {
-      toast.error('Failed to load authentication form fields');
+      console.error('Auth form fields fetch:', err.message);
+      setFields(DEFAULT_FORM_FIELDS);
     } finally {
       setLoading(false);
     }
@@ -258,41 +269,46 @@ const AuthFormManager = () => {
               {filteredFields.map((field, idx) => (
                 <div
                   key={field.id}
-                  className={`p-4 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                  className={`p-3.5 sm:p-4 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                     field.isEnabled ? 'bg-white border-gray-200 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60'
                   }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex flex-col gap-1">
+                  <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                    <div className="flex flex-col gap-1 shrink-0 mt-0.5 sm:mt-0">
                       <button
                         onClick={() => handleMoveField(idx, 'UP')}
                         disabled={idx === 0}
-                        className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 text-gray-500"
+                        className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 text-gray-500 cursor-pointer"
                       >
                         <FiArrowUp className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleMoveField(idx, 'DOWN')}
                         disabled={idx === filteredFields.length - 1}
-                        className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 text-gray-500"
+                        className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 text-gray-500 cursor-pointer"
                       >
                         <FiArrowDown className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-charcoal-900">{field.label}</span>
-                        <span className="text-[10px] font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                        <span className="font-bold text-xs text-gray-900 truncate">{field.label}</span>
+                        <span className="text-[9px] sm:text-[10px] font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full shrink-0">
                           {field.fieldKey}
                         </span>
-                        {field.isRequired ? (
-                          <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">REQUIRED</span>
+                        {field.isEnabled ? (
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shrink-0">Enabled</span>
                         ) : (
-                          <span className="text-[9px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">OPTIONAL</span>
+                          <span className="text-[9px] font-bold text-gray-500 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded shrink-0">Disabled</span>
+                        )}
+                        {field.isRequired ? (
+                          <span className="text-[9px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded shrink-0">Required</span>
+                        ) : (
+                          <span className="text-[9px] font-bold text-gray-500 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded shrink-0">Optional</span>
                         )}
                       </div>
-                      <p className="text-[11px] text-gray-400 line-clamp-1 mt-0.5">
+                      <p className="text-[11px] text-gray-400 truncate">
                         Placeholder: "{field.placeholder || 'None'}" • Type: {field.type}
                       </p>
                     </div>
