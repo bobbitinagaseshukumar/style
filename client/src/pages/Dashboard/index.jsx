@@ -125,7 +125,7 @@ const Dashboard = () => {
         {/* Mobile sidebar backdrop */}
         {mobileNav && (
           <div
-            className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+            className="fixed inset-0 bg-black/75 backdrop-blur-sm z-30 lg:hidden"
             onClick={() => setMobileNav(false)}
           />
         )}
@@ -135,9 +135,9 @@ const Dashboard = () => {
           <aside className={`
             ${mobileNav ? 'block' : 'hidden'} lg:block
             w-full lg:w-64 flex-shrink-0
-            ${mobileNav ? 'absolute left-4 right-4 z-30 top-auto' : ''}
+            ${mobileNav ? 'absolute left-4 right-4 z-40 top-auto' : ''}
           `}>
-            <div className="bg-white/3 border border-white/8 rounded-2xl overflow-hidden sticky top-24">
+            <div className={`border rounded-2xl overflow-hidden sticky top-24 ${mobileNav ? 'bg-[#141414] border-yellow-500/30 shadow-[0_25px_60px_rgba(0,0,0,0.95)] backdrop-blur-xl' : 'bg-white/3 border-white/8'}`}>
               {/* User Card */}
               <div className="p-4 border-b border-white/5 bg-gradient-to-r from-yellow-400/5 to-transparent">
                 <div className="flex items-center gap-3">
