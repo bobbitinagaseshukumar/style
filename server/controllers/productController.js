@@ -37,8 +37,8 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
       whereClause.status = status.toUpperCase();
     }
   } else {
-    // Guest & Customer public storefront view: Show all published/active products without requiring login
-    whereClause.status = { in: ['PUBLISHED', 'ACTIVE', 'published', 'active'] };
+    // Guest & Customer public storefront view: Show all products except deleted/archived items without requiring login
+    whereClause.status = { notIn: ['DELETED', 'ARCHIVED', 'deleted', 'archived'] };
   }
 
   // Text Search

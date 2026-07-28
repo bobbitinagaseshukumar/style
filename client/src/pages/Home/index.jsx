@@ -109,18 +109,28 @@ const Home = () => {
           setCategories(categoriesRes.value.data.data);
         }
 
-        const allProds = allProdsRes.status === 'fulfilled' ? (allProdsRes.value.data?.data?.products || []) : [];
+        const rawResData = allProdsRes.status === 'fulfilled' ? allProdsRes.value?.data : null;
+        let allProds = [];
+        if (Array.isArray(rawResData?.data?.products)) {
+          allProds = rawResData.data.products;
+        } else if (Array.isArray(rawResData?.data)) {
+          allProds = rawResData.data;
+        } else if (Array.isArray(rawResData?.products)) {
+          allProds = rawResData.products;
+        } else if (Array.isArray(rawResData)) {
+          allProds = rawResData;
+        }
 
-        const featuredList = allProds.filter(p => p.featured).slice(0, 8);
-        const trendingList = allProds.filter(p => p.trending).slice(0, 8);
-        const newArrivalsList = allProds.filter(p => p.newArrival).slice(0, 8);
-        const bestSellerList = allProds.filter(p => p.bestSeller).slice(0, 8);
+        const featuredList = allProds.filter(p => p.featured).length > 0 ? allProds.filter(p => p.featured).slice(0, 8) : allProds.slice(0, 8);
+        const trendingList = allProds.filter(p => p.trending).length > 0 ? allProds.filter(p => p.trending).slice(0, 8) : allProds.slice(0, 8);
+        const newArrivalsList = allProds.filter(p => p.newArrival).length > 0 ? allProds.filter(p => p.newArrival).slice(0, 8) : allProds.slice(0, 8);
+        const bestSellerList = allProds.filter(p => p.bestSeller).length > 0 ? allProds.filter(p => p.bestSeller).slice(0, 8) : allProds.slice(0, 8);
 
         setProducts({
-          featured: featuredList.length > 0 ? featuredList : allProds.slice(0, 8),
-          trending: trendingList.length > 0 ? trendingList : allProds.slice(0, 8),
-          newArrivals: newArrivalsList.length > 0 ? newArrivalsList : allProds.slice(0, 8),
-          todaysDeals: bestSellerList.length > 0 ? bestSellerList : allProds.slice(0, 8),
+          featured: featuredList,
+          trending: trendingList,
+          newArrivals: newArrivalsList,
+          todaysDeals: bestSellerList,
         });
       } catch (err) {
         console.error('Home page data fetch error:', err);
