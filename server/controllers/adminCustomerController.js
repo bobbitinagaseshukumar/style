@@ -133,8 +133,7 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
           select: {
             orders: true,
             reviews: true,
-            addresses: true,
-            supportTickets: true
+            addresses: true
           }
         }
       }

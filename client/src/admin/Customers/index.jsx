@@ -121,11 +121,14 @@ export default function AdminCustomers() {
       if (statusFilter !== 'ALL') params.status = statusFilter;
       if (presetFilter) params.filter = presetFilter;
       const res = await api.get('/admin/customers', { params });
-      setCustomers(res.data.data?.customers || []);
-      setSummary(res.data.data?.summary || {});
-      setPagination(res.data.data?.pagination || { total: 0, page: 1, limit: 20, pages: 1 });
+      const dataObj = res.data?.data || res.data;
+      const customerList = Array.isArray(dataObj) ? dataObj : (dataObj?.customers || []);
+      setCustomers(customerList);
+      setSummary(dataObj?.summary || {});
+      setPagination(dataObj?.pagination || { total: customerList.length, page: 1, limit: 20, pages: 1 });
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || 'Unknown error';
+      const rawMsg = err?.response?.data?.message || err?.message || 'Failed to load customers';
+      const msg = typeof rawMsg === 'string' && rawMsg.length > 100 ? `${rawMsg.slice(0, 100)}...` : rawMsg;
       toast.error(`Failed to load customers: ${msg}`);
     } finally {
       setLoading(false);
