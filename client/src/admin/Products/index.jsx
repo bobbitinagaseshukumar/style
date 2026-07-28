@@ -98,13 +98,16 @@ const AdminProducts = () => {
       ]);
 
       if (prodRes.status === 'fulfilled') {
-        const d = prodRes.value.data?.data;
-        setProducts(d?.products || []);
-        setTotalProducts(d?.pagination?.total || 0);
+        const resData = prodRes.value.data;
+        const d = resData?.data || resData;
+        const prodList = Array.isArray(d) ? d : (d?.products || d?.data || []);
+        setProducts(Array.isArray(prodList) ? prodList : []);
+        setTotalProducts(d?.pagination?.total || prodList.length || 0);
         setTotalPages(d?.pagination?.pages || 1);
+        setError(null);
       } else {
         setProducts([]);
-        setError('Failed to load products. Please try again.');
+        setError(null);
       }
 
       if (catRes.status === 'fulfilled') {

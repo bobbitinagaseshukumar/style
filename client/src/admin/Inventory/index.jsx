@@ -33,12 +33,12 @@ const AdminInventory = () => {
   const fetchInventory = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get('/products?limit=200&includeAll=true');
-      const list = data.data?.products || data.products || [];
-      setProducts(list);
+      const res = await api.get('/products?limit=200&includeAll=true');
+      const list = res.data?.data?.products || res.data?.products || res.data?.data || (Array.isArray(res.data) ? res.data : []);
+      setProducts(Array.isArray(list) ? list : []);
     } catch (err) {
-      console.error(err);
-      toast.error('Failed to load inventory data');
+      console.error('Failed to load inventory data:', err.message);
+      setProducts([]);
     } finally {
       setLoading(false);
     }

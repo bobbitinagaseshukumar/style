@@ -127,9 +127,8 @@ export default function AdminCustomers() {
       setSummary(dataObj?.summary || {});
       setPagination(dataObj?.pagination || { total: customerList.length, page: 1, limit: 20, pages: 1 });
     } catch (err) {
-      const rawMsg = err?.response?.data?.message || err?.message || 'Failed to load customers';
-      const msg = typeof rawMsg === 'string' && rawMsg.length > 100 ? `${rawMsg.slice(0, 100)}...` : rawMsg;
-      toast.error(`Failed to load customers: ${msg}`);
+      console.error('Failed to load customers:', err.message);
+      setCustomers([]);
     } finally {
       setLoading(false);
     }
