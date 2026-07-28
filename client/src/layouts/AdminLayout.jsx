@@ -87,13 +87,26 @@ const AdminLayout = () => {
   const dispatch = useDispatch();
   const profileMenuRef = useRef(null);
   const mainContentRef = useRef(null);
+  const mobileNavRef = useRef(null);
+  const mobileDrawerScrollPos = useRef(0);
 
   const { user } = useSelector((state) => state.auth || {});
 
-  // 1. Lock body scroll on mobile sidebar drawer open
+  // 1. Lock body scroll & preserve scroll position on mobile sidebar drawer open
   useEffect(() => {
     if (mobileSidebar) {
       document.body.style.overflow = 'hidden';
+      if (mobileNavRef.current) {
+        mobileNavRef.current.scrollTop = mobileDrawerScrollPos.current;
+        setTimeout(() => {
+          if (mobileNavRef.current) {
+            const activeEl = mobileNavRef.current.querySelector('.border-gold-500\\/30');
+            if (activeEl) {
+              activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+          }
+        }, 30);
+      }
     }
     return () => {
       document.body.style.overflow = '';
@@ -267,7 +280,11 @@ const AdminLayout = () => {
               </button>
             </div>
 
-            <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-6 pb-20 sm:pb-safe">
+            <nav
+              ref={mobileNavRef}
+              onScroll={(e) => { mobileDrawerScrollPos.current = e.target.scrollTop; }}
+              className="flex-1 overflow-y-auto py-4 px-2 space-y-6 pb-20 sm:pb-safe"
+            >
               {sidebarGroups.map((group, groupIndex) => (
                 <div key={groupIndex} className="space-y-1">
                   <div className="px-4 mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">

@@ -8,11 +8,16 @@ import { useAuth } from '../../hooks/useAuth';
 const MobileMenu = ({ isOpen, onClose }) => {
   const { categories } = useSelector((state) => state.category);
   const { isAuthenticated, user, logout } = useAuth();
+  const navRef = useRef(null);
+  const menuScrollPos = useRef(0);
 
-  // Lock body scroll when open
+  // Lock body scroll when open & restore drawer scroll position
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      if (navRef.current) {
+        navRef.current.scrollTop = menuScrollPos.current;
+      }
     }
     return () => {
       document.body.style.overflow = '';
@@ -65,7 +70,11 @@ const MobileMenu = ({ isOpen, onClose }) => {
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            <nav
+              ref={navRef}
+              onScroll={(e) => { menuScrollPos.current = e.target.scrollTop; }}
+              className="flex-1 overflow-y-auto py-4 px-3 space-y-1"
+            >
               {/* Main Links */}
               {mainLinks.map((link) => (
                 <Link
