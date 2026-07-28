@@ -50,7 +50,7 @@ const sidebarGroups = [
       { path: '/admin/homepage', label: 'Homepage', icon: FiLayout },
       { path: '/admin/cms', label: 'CMS Pages', icon: FiFileText },
       { path: '/admin/faqs', label: 'FAQs', icon: FiHelpCircle },
-      { path: '#', label: 'Blog', icon: FiEdit3 },
+      { path: '/admin/blog', label: 'Blog', icon: FiEdit3 },
     ]
   },
   {
@@ -104,6 +104,7 @@ const AdminLayout = () => {
   useEffect(() => {
     setMobileSidebar(false);
     setProfileDropdownOpen(false);
+    document.body.style.overflow = '';
     if (mainContentRef.current) {
       mainContentRef.current.scrollTop = 0;
     }
@@ -453,16 +454,18 @@ const AdminLayout = () => {
 
         {/* SINGLE-PAGE ISOLATED CONTENT CONTAINER (Unmounts previous page completely) */}
         <main ref={mainContentRef} className="flex-1 overflow-auto p-3 sm:p-5 lg:p-6 bg-gray-50 flex flex-col">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.25 }}
-            className="w-full flex-1 flex flex-col"
-          >
-            <Outlet />
-          </motion.div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="w-full flex-1 flex flex-col"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>

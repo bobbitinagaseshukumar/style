@@ -54,9 +54,13 @@ const StatusBadge = ({ status }) => {
 /* ─── Order Detail Side Panel ─────────────────────────────── */
 const OrderDetail = ({ order, onClose, onStatusUpdate }) => {
   const [updating, setUpdating] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState('');
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState(order?.expectedDeliveryDate || '');
   const [deliveryTimeSlot, setDeliveryTimeSlot] = useState(order?.deliveryTimeSlot || '');
   const [internalNotes, setInternalNotes] = useState(order?.notes || '');
+  const [courierName, setCourierName] = useState(order?.courierName || '');
+  const [trackingNumber, setTrackingNumber] = useState(order?.trackingNumber || '');
+  const [cancelReason, setCancelReason] = useState('');
 
   const nextStatuses = TRANSITIONS[order?.orderStatus] || ALL_STATUSES;
 
