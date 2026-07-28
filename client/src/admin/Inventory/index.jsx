@@ -124,10 +124,18 @@ const AdminInventory = () => {
     }
   };
 
-  // Quick Restock shortcut in Modal (+10, +50)
-  const handleQuickAdd = (amount) => {
-    const current = parseInt(newStock) || 0;
-    setNewStock(String(current + amount));
+  // Batch Reset All Product Stocks to 0
+  const handleResetAllStocks = async () => {
+    if (!window.confirm('⚠️ Are you sure you want to reset ALL product stock levels to 0? Stock will automatically increase when you add/edit stock and decrease as customers purchase.')) return;
+    try {
+      setLoading(true);
+      await api.put('/products/admin/reset-all-stocks');
+      toast.info('All product stock levels have been reset to 0 pcs.');
+      fetchInventory();
+    } catch (err) {
+      toast.error('Failed to reset all stocks');
+      setLoading(false);
+    }
   };
 
   return (
@@ -139,10 +147,17 @@ const AdminInventory = () => {
             <FiBox className="text-gold-600" /> Inventory & Stock Control
           </h1>
           <p className="text-xs text-gray-500 mt-1">
-            Complete admin control — manage real-time inventory levels, low-stock warnings, and delete items.
+            Real-time stock sync: Admin adds/creates stock ↗️ | Customer purchases decrease stock ↘️
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleResetAllStocks}
+            className="px-3.5 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs font-bold hover:bg-red-100 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+            title="Reset all product stocks to 0"
+          >
+            <FiXCircle className="w-4 h-4" /> Reset All Stocks (0)
+          </button>
           <button
             onClick={fetchInventory}
             className="p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition cursor-pointer"

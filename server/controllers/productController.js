@@ -348,3 +348,14 @@ exports.deleteProduct = asyncHandler(async (req, res, next) => {
     data: null
   });
 });
+
+// ==================== RESET ALL STOCKS TO 0 ====================
+exports.resetAllStocks = asyncHandler(async (req, res) => {
+  await prisma.product.updateMany({
+    data: { stock: 0 }
+  });
+  res.status(200).json({
+    success: true,
+    message: 'All product stocks reset to 0 successfully!'
+  });
+});
