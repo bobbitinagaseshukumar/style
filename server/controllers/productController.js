@@ -31,17 +31,14 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
   let whereClause = {};
   const andConditions = [];
 
-  // Admin view (includeAll=true) vs Customer view
+  // Admin view (includeAll=true) vs Customer & Guest view
   if (includeAll === 'true') {
     if (status && status !== 'ALL') {
       whereClause.status = status.toUpperCase();
     }
   } else {
-    whereClause.status = 'PUBLISHED';
-    whereClause.isVisible = true;
-    if (showOnHomepage === 'true') {
-      whereClause.showOnHomepage = true;
-    }
+    // Guest & Customer public storefront view: Show all published/active products without requiring login
+    whereClause.status = { in: ['PUBLISHED', 'ACTIVE', 'published', 'active'] };
   }
 
   // Text Search
