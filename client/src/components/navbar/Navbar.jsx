@@ -297,9 +297,9 @@ const Navbar = () => {
                 <AnimatePresence>
                   {isUserMenuOpen && (
                     <>
-                      {/* Invisible backdrop to catch clicks outside */}
+                      {/* Fixed backdrop to catch any clicks outside and close menu */}
                       <div
-                        className="fixed inset-0 z-[55]"
+                        className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[1px]"
                         onClick={() => setIsUserMenuOpen(false)}
                         aria-hidden="true"
                       />
@@ -324,9 +324,12 @@ const Navbar = () => {
                           ].map((item) => (
                             <Link
                               key={item.label}
-                              onClick={() => setIsUserMenuOpen(false)}
+                              onClick={(e) => {
+                                setIsUserMenuOpen(false);
+                                navigate(item.path);
+                              }}
                               to={item.path}
-                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                             >
                               <item.icon size={14} className="text-yellow-400/70" />
                               {item.label}
@@ -335,16 +338,22 @@ const Navbar = () => {
                           <div className="border-t border-white/5 mt-1" />
                           {user?.role === 'ADMIN' && (
                             <Link
-                              onClick={() => setIsUserMenuOpen(false)}
+                              onClick={(e) => {
+                                setIsUserMenuOpen(false);
+                                navigate('/admin/dashboard');
+                              }}
                               to="/admin/dashboard"
-                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-yellow-400 hover:bg-yellow-400/5 transition-colors"
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-yellow-400 hover:bg-yellow-400/5 transition-colors cursor-pointer"
                             >
                               <FiSettings size={14} />
                               Super Admin Panel
                             </Link>
                           )}
                           <button
-                            onClick={() => { logout(); setIsUserMenuOpen(false); }}
+                            onClick={() => {
+                              setIsUserMenuOpen(false);
+                              logout();
+                            }}
                             className="flex items-center gap-3 w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/5 transition-colors cursor-pointer"
                           >
                             <FiLogOut size={14} />
