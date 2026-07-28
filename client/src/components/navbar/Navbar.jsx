@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiShoppingBag, FiHeart, FiUser, FiMenu, FiSearch,
@@ -45,6 +45,7 @@ const Navbar = () => {
   const [headerSettings, setHeaderSettings] = useState(null);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
   const megaMenuTimeout = useRef(null);
 
