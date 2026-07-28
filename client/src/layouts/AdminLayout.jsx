@@ -159,7 +159,7 @@ const AdminLayout = () => {
         className="hidden lg:flex flex-col bg-[#0D0D12] text-white relative z-20 shadow-2xl border-r border-white/10"
       >
         {/* Logo Area */}
-        <div className="h-16 flex items-center px-4 border-b border-white/10 shrink-0">
+        <Link to="/" title="Go to Storefront Homepage" className="h-16 flex items-center px-4 border-b border-white/10 shrink-0 hover:opacity-90 transition cursor-pointer">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-gold-400 to-amber-600 flex items-center justify-center text-black font-black text-lg shrink-0 shadow-lg">
             S
           </div>
@@ -175,7 +175,7 @@ const AdminLayout = () => {
               </motion.span>
             )}
           </AnimatePresence>
-        </div>
+        </Link>
 
         {/* Navigation Links */}
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-6 scrollbar-thin">
@@ -261,12 +261,12 @@ const AdminLayout = () => {
               className="fixed left-0 top-0 bottom-0 w-[280px] bg-[#0D0D12] text-white z-50 lg:hidden shadow-2xl flex flex-col border-r border-white/10"
             >
               <div className="h-16 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
-                <div className="flex items-center gap-3">
+                <Link to="/" onClick={() => setMobileSidebar(false)} title="Go to Storefront Homepage" className="flex items-center gap-3 hover:opacity-90 transition cursor-pointer">
                   <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-gold-400 to-amber-600 flex items-center justify-center text-black font-black text-lg">
                     S
                   </div>
                   <span className="text-xl font-serif font-bold text-gold-400">StyleVerse Admin</span>
-                </div>
+                </Link>
                 <button onClick={() => setMobileSidebar(false)} className="text-gray-400 hover:text-white p-1">
                   <FiX className="w-6 h-6" />
                 </button>
