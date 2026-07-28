@@ -157,6 +157,15 @@ const Login = ({ initialMode }) => {
       } catch (err) {}
     };
     fetchDynamicFields();
+
+    const savedEmail = localStorage.getItem('remembered_email');
+    if (savedEmail) {
+      setForm((prev) => ({
+        ...prev,
+        email: savedEmail,
+        rememberMe: true,
+      }));
+    }
   }, []);
 
   const cardRef = useRef(null);
@@ -234,6 +243,11 @@ const Login = ({ initialMode }) => {
       const res = await api.post(endpoint, payload);
 
       if (res.data?.success && res.data.token) {
+        if (form.rememberMe && form.email) {
+          localStorage.setItem('remembered_email', form.email);
+        } else {
+          localStorage.removeItem('remembered_email');
+        }
         setAuthSuccess(true);
         dispatch(setCredentials({ user: res.data.user, token: res.data.token }));
         toast.success(isRegister ? '🎉 Account created successfully!' : '✨ Welcome back!');
