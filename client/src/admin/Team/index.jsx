@@ -44,9 +44,11 @@ const AdminTeam = () => {
     try {
       setLoading(true);
       const res = await api.get('/admin/customers?role=ADMIN');
-      setAdmins(res.data.data?.customers || []);
-    } catch {
-      toast.error('Failed to load admin team list');
+      const list = res.data.data?.customers || res.data?.customers || (Array.isArray(res.data?.data) ? res.data.data : []);
+      setAdmins(list);
+    } catch (err) {
+      console.error(err);
+      setAdmins([]);
     } finally {
       setLoading(false);
     }

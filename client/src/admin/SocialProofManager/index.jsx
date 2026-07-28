@@ -32,7 +32,7 @@ const SocialProofManager = () => {
         if (setRes.data?.data) setSettings(setRes.data.data);
         if (ordRes.data?.data) setRealOrders(ordRes.data.data);
       } catch (err) {
-        toast.error('Failed to load social proof settings');
+        console.error('Social proof settings load error:', err);
       } finally {
         setLoading(false);
       }

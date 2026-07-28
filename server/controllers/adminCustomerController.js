@@ -58,8 +58,11 @@ const logAdminAction = async (req, targetUser, action, reason = null, details = 
 };
 
 // Helper: Build safe where clause for search
-const buildSearchWhere = (search, extra = {}) => {
-  const where = { role: { in: ['CUSTOMER', 'USER'] }, ...extra };
+const buildSearchWhere = (search, extra = {}, roleQuery = null) => {
+  const where = { ...extra };
+  if (roleQuery) {
+    where.role = roleQuery.toUpperCase();
+  }
   if (search && search.trim()) {
     const q = search.trim();
     where.OR = [
@@ -85,7 +88,7 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
   const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
   const skip = (pageNum - 1) * limitNum;
 
-  let where = buildSearchWhere(search);
+  let where = buildSearchWhere(search, {}, req.query.role);
 
   // Status Filter
   if (status && status !== 'ALL') {
