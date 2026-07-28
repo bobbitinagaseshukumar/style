@@ -15,8 +15,12 @@ const AdminRoute = ({ children }) => {
     return children;
   }
 
+  const hasToken = Boolean(
+    adminToken || localStorage.getItem('token') || isAuthenticated
+  );
+
   // If unauthenticated or token missing, redirect to dedicated Admin Login page
-  if (!isAuthenticated && !adminToken) {
+  if (!hasToken) {
     return <Navigate to="/admin/login" replace />;
   }
 
