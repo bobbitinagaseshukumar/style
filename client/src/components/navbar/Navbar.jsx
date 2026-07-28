@@ -296,20 +296,13 @@ const Navbar = () => {
 
                 <AnimatePresence>
                   {isUserMenuOpen && (
-                    <>
-                      {/* Fixed backdrop to catch any clicks outside and close menu */}
-                      <div
-                        className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[1px]"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        aria-hidden="true"
-                      />
-                      <motion.div
-                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute right-0 mt-2 w-56 bg-[#111111] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.6)] overflow-hidden z-[60]"
-                      >
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute right-0 mt-2 w-56 bg-[#111111] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.6)] overflow-hidden z-[60]"
+                    >
                       {isAuthenticated ? (
                         <>
                           <div className="px-4 py-3 border-b border-white/5">
@@ -322,32 +315,30 @@ const Navbar = () => {
                             { label: 'Profile', icon: FiUser, path: '/profile' },
                             { label: 'Notifications', icon: FiBell, path: '/notifications' },
                           ].map((item) => (
-                            <Link
+                            <button
                               key={item.label}
-                              onClick={(e) => {
+                              onClick={() => {
                                 setIsUserMenuOpen(false);
                                 navigate(item.path);
                               }}
-                              to={item.path}
-                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                              className="flex items-center gap-3 w-full text-left px-4 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                             >
                               <item.icon size={14} className="text-yellow-400/70" />
                               {item.label}
-                            </Link>
+                            </button>
                           ))}
                           <div className="border-t border-white/5 mt-1" />
                           {user?.role === 'ADMIN' && (
-                            <Link
-                              onClick={(e) => {
+                            <button
+                              onClick={() => {
                                 setIsUserMenuOpen(false);
                                 navigate('/admin/dashboard');
                               }}
-                              to="/admin/dashboard"
-                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-yellow-400 hover:bg-yellow-400/5 transition-colors cursor-pointer"
+                              className="flex items-center gap-3 w-full text-left px-4 py-2.5 text-sm text-yellow-400 hover:bg-yellow-400/5 transition-colors cursor-pointer"
                             >
                               <FiSettings size={14} />
                               Super Admin Panel
-                            </Link>
+                            </button>
                           )}
                           <button
                             onClick={() => {
@@ -362,24 +353,27 @@ const Navbar = () => {
                         </>
                       ) : (
                         <div className="p-3 space-y-2">
-                          <Link
-                            to="/login"
-                            onClick={() => setIsUserMenuOpen(false)}
+                          <button
+                            onClick={() => {
+                              setIsUserMenuOpen(false);
+                              navigate('/login');
+                            }}
                             className="block w-full py-2.5 text-center rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 text-black text-sm font-bold hover:from-yellow-400 transition-all cursor-pointer"
                           >
                             Sign In
-                          </Link>
-                          <Link
-                            to="/login?mode=register"
-                            onClick={() => setIsUserMenuOpen(false)}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsUserMenuOpen(false);
+                              navigate('/login?mode=register');
+                            }}
                             className="block w-full py-2.5 text-center rounded-xl border border-white/10 text-white/70 text-sm font-medium hover:bg-white/5 transition-all cursor-pointer"
                           >
                             Create Account
-                          </Link>
+                          </button>
                         </div>
                       )}
                     </motion.div>
-                    </>
                   )}
                 </AnimatePresence>
               </div>
