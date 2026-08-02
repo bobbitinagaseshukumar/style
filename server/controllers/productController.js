@@ -270,21 +270,32 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
   });
 });
 
+const sanitizeUpdateData = (data, extraKeysToRemove = []) => {
+  const clean = { ...data };
+  const keysToRemove = [
+    'id', 'createdAt', 'updatedAt', '_count', 'category', 'subCategory',
+    'brand', 'images', 'reviews', 'items', 'user', 'products', 'subcategories',
+    ...extraKeysToRemove
+  ];
+  keysToRemove.forEach(k => delete clean[k]);
+  return clean;
+};
+
 // ==================== UPDATE PRODUCT ====================
 exports.updateProduct = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const { images, ...rawUpdate } = req.body;
-  const updateData = { ...rawUpdate };
+  const updateData = sanitizeUpdateData(rawUpdate);
 
   if (updateData.name) {
     updateData.slug = slugify(updateData.name, { lower: true, strict: true });
   }
 
-  if (updateData.price !== undefined) updateData.price = parseFloat(updateData.price);
-  if (updateData.discountPercent !== undefined) updateData.discountPercent = parseFloat(updateData.discountPercent);
-  if (updateData.discountPrice !== undefined) updateData.discountPrice = parseFloat(updateData.discountPrice);
-  if (updateData.stock !== undefined) updateData.stock = parseInt(updateData.stock);
-  if (updateData.displayOrder !== undefined) updateData.displayOrder = parseInt(updateData.displayOrder);
+  if (updateData.price !== undefined && updateData.price !== null) updateData.price = parseFloat(updateData.price);
+  if (updateData.discountPercent !== undefined && updateData.discountPercent !== null) updateData.discountPercent = parseFloat(updateData.discountPercent);
+  if (updateData.discountPrice !== undefined && updateData.discountPrice !== null) updateData.discountPrice = parseFloat(updateData.discountPrice);
+  if (updateData.stock !== undefined && updateData.stock !== null) updateData.stock = parseInt(updateData.stock);
+  if (updateData.displayOrder !== undefined && updateData.displayOrder !== null) updateData.displayOrder = parseInt(updateData.displayOrder);
 
   // Boolean Toggles
   if (updateData.featured !== undefined) updateData.featured = updateData.featured === 'true' || updateData.featured === true;
