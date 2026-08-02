@@ -117,7 +117,8 @@ exports.createCoupon = asyncHandler(async (req, res, next) => {
 // ==================== UPDATE COUPON ====================
 exports.updateCoupon = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const updateData = { ...req.body };
+  const { id: bodyId, createdAt, updatedAt, usedCount, _count, ...cleanBody } = req.body;
+  const updateData = { ...cleanBody };
 
   if (updateData.code) updateData.code = updateData.code.toUpperCase();
   if (updateData.discountPercent) updateData.discountPercent = parseFloat(updateData.discountPercent);
@@ -132,7 +133,7 @@ exports.updateCoupon = asyncHandler(async (req, res, next) => {
 
   const coupon = await prisma.coupon.update({ where: { id }, data: updateData });
 
-  res.status(200).json({ success: true, message: 'Coupon updated', data: coupon });
+  res.status(200).json({ success: true, message: 'Coupon updated and published successfully', data: coupon });
 });
 
 // ==================== DELETE COUPON ====================

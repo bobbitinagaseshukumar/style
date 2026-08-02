@@ -165,7 +165,8 @@ exports.createBanner = asyncHandler(async (req, res) => {
 });
 
 exports.updateBanner = asyncHandler(async (req, res) => {
-    const updateData = { ...req.body };
+    const { id: bodyId, createdAt, updatedAt, views, clicks, ...cleanBody } = req.body;
+    const updateData = { ...cleanBody };
     if (updateData.overlayOpacity !== undefined) updateData.overlayOpacity = parseFloat(updateData.overlayOpacity);
     if (updateData.priority !== undefined) updateData.priority = parseInt(updateData.priority);
     if (updateData.sortOrder !== undefined) updateData.sortOrder = parseInt(updateData.sortOrder);
@@ -173,7 +174,7 @@ exports.updateBanner = asyncHandler(async (req, res) => {
     if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
 
     const banner = await prisma.banner.update({ where: { id: req.params.id }, data: updateData });
-    res.status(200).json({ success: true, message: 'Banner updated', data: banner });
+    res.status(200).json({ success: true, message: 'Banner updated successfully', data: banner });
 });
 
 exports.duplicateBanner = asyncHandler(async (req, res) => {
@@ -297,7 +298,8 @@ exports.createFlashSale = asyncHandler(async (req, res) => {
 
 exports.updateFlashSale = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const updateData = { ...req.body };
+    const { id: bodyId, createdAt, updatedAt, products, _count, ...cleanBody } = req.body;
+    const updateData = { ...cleanBody };
     if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
     if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
     if (updateData.discountValue !== undefined) updateData.discountValue = parseFloat(updateData.discountValue);
@@ -386,7 +388,8 @@ exports.createSpecialDeal = asyncHandler(async (req, res) => {
 
 exports.updateSpecialDeal = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const updateData = { ...req.body };
+    const { id: bodyId, createdAt, updatedAt, products, _count, ...cleanBody } = req.body;
+    const updateData = { ...cleanBody };
     if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
     if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
     if (typeof updateData.productIds === 'object') updateData.productIds = JSON.stringify(updateData.productIds);
@@ -461,7 +464,8 @@ exports.createCollection = asyncHandler(async (req, res) => {
 
 exports.updateCollection = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const updateData = { ...req.body };
+    const { id: bodyId, createdAt, updatedAt, products, _count, ...cleanBody } = req.body;
+    const updateData = { ...cleanBody };
     if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
     if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
     if (typeof updateData.productIds === 'object') updateData.productIds = JSON.stringify(updateData.productIds);

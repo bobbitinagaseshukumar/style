@@ -104,16 +104,22 @@ exports.createCategory = asyncHandler(async (req, res, next) => {
   });
 });
 
+const sanitizeUpdateData = (data) => {
+  const clean = { ...data };
+  ['id', 'createdAt', 'updatedAt', '_count', 'subcategories', 'products'].forEach(k => delete clean[k]);
+  return clean;
+};
+
 // ==================== UPDATE CATEGORY ====================
 exports.updateCategory = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const updateData = { ...req.body };
+  const updateData = sanitizeUpdateData(req.body);
 
   if (updateData.name) {
     updateData.slug = slugify(updateData.name, { lower: true, strict: true });
   }
 
-  if (updateData.sortOrder !== undefined) updateData.sortOrder = parseInt(updateData.sortOrder);
+  if (updateData.sortOrder !== undefined && updateData.sortOrder !== null) updateData.sortOrder = parseInt(updateData.sortOrder);
   if (updateData.status) updateData.status = updateData.status.toUpperCase();
 
   // Boolean Toggles
@@ -132,7 +138,7 @@ exports.updateCategory = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    message: 'Category updated successfully',
+    message: 'Category updated and published successfully',
     data: category
   });
 });
