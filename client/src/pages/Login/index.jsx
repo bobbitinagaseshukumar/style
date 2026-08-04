@@ -373,7 +373,7 @@ const Login = ({ initialMode }) => {
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4 text-xs relative z-10">
+                <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4 text-xs relative z-10">
                   <div>
                     <label className="block font-bold text-gray-300 mb-1">Email Address</label>
                     <div className="relative group">
@@ -381,6 +381,7 @@ const Login = ({ initialMode }) => {
                       <input
                         type="email"
                         name="email"
+                        autoComplete="new-password"
                         required
                         value={form.email}
                         onChange={handleChange}
@@ -406,6 +407,7 @@ const Login = ({ initialMode }) => {
                       <input
                         type={showPassword ? 'text' : 'password'}
                         name="password"
+                        autoComplete="new-password"
                         required
                         value={form.password}
                         onChange={handleChange}
@@ -502,7 +504,7 @@ const Login = ({ initialMode }) => {
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-3 text-xs relative z-10 overflow-y-auto no-scrollbar pb-2">
+                <form onSubmit={handleSubmit} autoComplete="off" className="space-y-3 text-xs relative z-10 overflow-y-auto no-scrollbar pb-2">
                   <div>
                     <label className="block font-bold text-gray-300 mb-1">Full Name</label>
                     <div className="relative group">
@@ -510,6 +512,7 @@ const Login = ({ initialMode }) => {
                       <input
                         type="text"
                         name="fullName"
+                        autoComplete="off"
                         required
                         value={form.fullName}
                         onChange={handleChange}
@@ -526,6 +529,7 @@ const Login = ({ initialMode }) => {
                       <input
                         type="email"
                         name="email"
+                        autoComplete="new-password"
                         required
                         value={form.email}
                         onChange={handleChange}
@@ -556,6 +560,7 @@ const Login = ({ initialMode }) => {
                       <input
                         type="password"
                         name="password"
+                        autoComplete="new-password"
                         required
                         value={form.password}
                         onChange={handleChange}
@@ -568,6 +573,7 @@ const Login = ({ initialMode }) => {
                       <input
                         type="password"
                         name="confirmPassword"
+                        autoComplete="new-password"
                         required
                         value={form.confirmPassword}
                         onChange={handleChange}

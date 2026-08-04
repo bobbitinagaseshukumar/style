@@ -375,7 +375,8 @@ exports.adminUpdateOrderStatus = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const {
     orderStatus, courierName, trackingNumber, trackingUrl,
-    cancelReason, expectedDeliveryDate, deliveryTimeSlot, internalNotes
+    cancelReason, expectedDeliveryDate, deliveryTimeSlot, internalNotes,
+    cancellationAllowed, cancellationDuration
   } = req.body;
 
   const updateData = {};
@@ -388,6 +389,16 @@ exports.adminUpdateOrderStatus = asyncHandler(async (req, res, next) => {
   if (deliveryTimeSlot !== undefined) updateData.deliveryTimeSlot = deliveryTimeSlot;
   if (internalNotes !== undefined) updateData.notes = internalNotes;
   if (orderStatus === 'DELIVERED') updateData.deliveredAt = new Date();
+
+  if (cancellationAllowed === true && cancellationDuration !== undefined) {
+    updateData.cancellationAllowed = true;
+    updateData.cancellationStart = new Date();
+    updateData.cancellationEnd = new Date(Date.now() + cancellationDuration * 60 * 1000);
+  } else if (cancellationAllowed === false) {
+    updateData.cancellationAllowed = false;
+    updateData.cancellationStart = null;
+    updateData.cancellationEnd = null;
+  }
 
   const order = await prisma.order.update({
     where: { id },
@@ -625,6 +636,41 @@ exports.getCancellationEligibility = asyncHandler(async (req, res, next) => {
       remainingSeconds,
       isEligible,
       orderStatus: order.orderStatus,
+    },
+  });
+});
+
+// ==================== GET CANCELLATION STATUS ====================
+exports.getOrderCancellationStatus = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const order = await prisma.order.findUnique({ where: { id } });
+  if (!order) return next(new ApiError(404, 'Order not found'));
+
+  let { cancellationAllowed, cancellationEnd } = order;
+  let timeRemainingMs = 0;
+
+  if (cancellationAllowed && cancellationEnd) {
+    const now = Date.now();
+    const endMs = new Date(cancellationEnd).getTime();
+    timeRemainingMs = endMs - now;
+
+    if (timeRemainingMs <= 0) {
+      cancellationAllowed = false;
+      timeRemainingMs = 0;
+      
+      await prisma.order.update({
+        where: { id },
+        data: { cancellationAllowed: false },
+      });
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      cancellationAllowed,
+      cancellationEnd,
+      timeRemainingMs,
     },
   });
 });

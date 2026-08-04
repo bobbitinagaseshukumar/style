@@ -7,6 +7,96 @@ import { formatDate } from '../../utils/formatDate';
 import Modal from '../../components/common/Modal';
 import { toast } from 'react-toastify';
 
+const CancellationTimer = ({ order, onCancel }) => {
+  const [timeLeft, setTimeLeft] = useState(null);
+  const [reason, setReason] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [expired, setExpired] = useState(false);
+
+  useEffect(() => {
+    let interval;
+    const fetchStatus = async () => {
+      try {
+        const { data } = await api.get(`/orders/${order.id}/cancellation-status`);
+        const { timeRemainingMs } = data.data;
+        if (timeRemainingMs > 0) {
+          setTimeLeft(timeRemainingMs);
+          interval = setInterval(() => {
+            setTimeLeft(prev => {
+              if (prev <= 1000) {
+                clearInterval(interval);
+                setExpired(true);
+                return 0;
+              }
+              return prev - 1000;
+            });
+          }, 1000);
+        } else {
+          setExpired(true);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchStatus();
+    return () => clearInterval(interval);
+  }, [order.id]);
+
+  if (expired) {
+    return <div className="text-[10px] text-gray-500 font-semibold bg-gray-100 px-3 py-1.5 rounded-full whitespace-nowrap">Cancellation window expired</div>;
+  }
+
+  if (timeLeft === null) return null;
+
+  const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+  const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+  const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+  return (
+    <>
+      <div className="flex items-center gap-3 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
+        <span className="text-xs font-bold text-amber-600 flex items-center gap-1.5 animate-pulse whitespace-nowrap">
+          <FiClock /> {formattedTime}
+        </span>
+        <button
+          onClick={() => setShowModal(true)}
+          className="text-xs font-bold text-red-600 hover:text-red-700 hover:underline whitespace-nowrap"
+        >
+          Cancel Order
+        </button>
+      </div>
+
+      {showModal && (
+        <Modal isOpen={true} onClose={() => setShowModal(false)} title="Cancel Order">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">Please tell us why you're cancelling this order:</p>
+            <textarea
+              className="w-full border rounded-xl p-3 text-sm focus:outline-none focus:border-amber-400"
+              rows="3"
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="Reason for cancellation..."
+            />
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-semibold rounded-xl border hover:bg-gray-50 transition">Keep Order</button>
+              <button
+                onClick={() => {
+                  onCancel(order.id, reason);
+                  setShowModal(false);
+                }}
+                className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-xl hover:bg-red-700 transition"
+              >
+                Confirm Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+};
+
 const orderTimelineSteps = ['CONFIRMED', 'PACKED', 'SHIPPED', 'DELIVERED'];
 
 const Orders = () => {
@@ -31,13 +121,11 @@ const Orders = () => {
     fetchOrders();
   }, []);
 
-  const handleCancelOrder = async (orderId) => {
-    if (!window.confirm('Are you sure you want to cancel this order?')) return;
-
+  const handleCancelOrder = async (orderId, reason = '') => {
     try {
-      await api.put(`/orders/${orderId}/cancel`);
+      await api.post(`/orders/${orderId}/cancel`, { reason });
       toast.success('Order cancelled. Inventory stock restored!');
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, orderStatus: 'CANCELLED' } : o));
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, orderStatus: 'CANCELLED', cancellationAllowed: false } : o));
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Failed to cancel order');
@@ -104,13 +192,21 @@ const Orders = () => {
                         <FiPrinter /> Invoice
                       </button>
 
-                      {['PENDING', 'CONFIRMED', 'PROCESSING'].includes(order.orderStatus) && (
-                        <button
-                          onClick={() => handleCancelOrder(order.id)}
-                          className="px-3 py-1.5 rounded-full border border-red-200 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-1.5"
-                        >
-                          <FiXCircle /> Cancel Order
-                        </button>
+                      {order.cancellationAllowed && new Date(order.cancellationEnd) > new Date() ? (
+                        <CancellationTimer order={order} onCancel={handleCancelOrder} />
+                      ) : (
+                        ['PENDING', 'CONFIRMED', 'PROCESSING'].includes(order.orderStatus) && (
+                          <button
+                            onClick={() => {
+                              if(window.confirm('Are you sure you want to cancel this order?')) {
+                                handleCancelOrder(order.id);
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-full border border-red-200 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-1.5"
+                          >
+                            <FiXCircle /> Cancel Order
+                          </button>
+                        )
                       )}
                     </div>
                   </div>

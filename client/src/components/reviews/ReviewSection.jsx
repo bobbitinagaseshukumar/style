@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FiStar, FiCheckCircle, FiThumbsUp, FiFilter, FiUser } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import PhotoViewerModal from './PhotoViewerModal';
 
 const ReviewSection = ({ productId }) => {
   const [reviews, setReviews] = useState([]);
@@ -15,6 +16,11 @@ const ReviewSection = ({ productId }) => {
   const [selectedRating, setSelectedRating] = useState('');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [sortBy, setSortBy] = useState('recent');
+  
+  // Photo Viewer State
+  const [viewerPhotos, setViewerPhotos] = useState([]);
+  const [viewerIndex, setViewerIndex] = useState(0);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
 
   const fetchReviews = async () => {
     try {
@@ -52,28 +58,34 @@ const ReviewSection = ({ productId }) => {
       toast.info(err.response?.data?.message || 'Already voted on this review');
     }
   };
+  
+  const openPhotoViewer = (photos, index) => {
+    setViewerPhotos(photos);
+    setViewerIndex(index);
+    setIsViewerOpen(true);
+  };
 
   return (
-    <div className="space-y-8 my-12 bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm">
-      <h2 className="text-2xl font-serif font-bold text-charcoal-900">Customer Ratings & Reviews</h2>
+    <div className="space-y-8 my-12 bg-[#0D0D12] text-white p-6 sm:p-8 rounded-3xl border border-white/10 shadow-sm">
+      <h2 className="text-2xl font-serif font-bold text-white">Customer Ratings & Reviews</h2>
 
       {/* Summary Header */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-gray-50 p-6 rounded-2xl border border-gray-100">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-[#141414] p-6 rounded-2xl border border-white/10">
         {/* Rating Number */}
-        <div className="flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-200 pb-4 md:pb-0">
-          <span className="text-5xl font-black text-charcoal-900">{avgRating.toFixed(1)}</span>
-          <div className="flex gap-1 text-gold-400 my-2">
+        <div className="flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-white/10 pb-4 md:pb-0">
+          <span className="text-5xl font-black text-white">{avgRating.toFixed(1)}</span>
+          <div className="flex gap-1 text-[#D4AF37] my-2">
             {[1, 2, 3, 4, 5].map((star) => (
               <FiStar
                 key={star}
                 size={18}
-                className={`${star <= Math.round(avgRating) ? 'fill-gold-400' : 'text-gray-300'}`}
+                className={`${star <= Math.round(avgRating) ? 'fill-[#D4AF37]' : 'text-gray-600'}`}
               />
             ))}
           </div>
-          <p className="text-xs text-gray-500 font-medium">Based on {totalReviews} Verified Ratings</p>
+          <p className="text-xs text-gray-400 font-medium">Based on {totalReviews} Verified Ratings</p>
           {verifiedCount > 0 && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 mt-2">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-900/30 px-2.5 py-0.5 rounded-full border border-emerald-500/30 mt-2">
               <FiCheckCircle size={11} /> {verifiedCount} Verified Purchases
             </span>
           )}
@@ -86,11 +98,11 @@ const ReviewSection = ({ productId }) => {
             const pct = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
             return (
               <div key={stars} className="flex items-center gap-3 text-xs">
-                <span className="w-12 text-gray-600 font-bold">{stars} Star</span>
-                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-gold-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                <span className="w-12 text-gray-400 font-bold">{stars} Star</span>
+                <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#D4AF37] rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                 </div>
-                <span className="w-12 text-right text-gray-400 font-mono text-[11px]">{pct}% ({count})</span>
+                <span className="w-12 text-right text-gray-500 font-mono text-[11px]">{pct}% ({count})</span>
               </div>
             );
           })}
@@ -98,15 +110,15 @@ const ReviewSection = ({ productId }) => {
       </div>
 
       {/* Filter & Sort Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold text-gray-500 flex items-center gap-1 mr-1">
+          <span className="text-xs font-bold text-gray-400 flex items-center gap-1 mr-1">
             <FiFilter size={12} /> Filter:
           </span>
           <button
             onClick={() => setSelectedRating('')}
             className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
-              selectedRating === '' ? 'bg-charcoal-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              selectedRating === '' ? 'bg-[#D4AF37] text-black' : 'bg-[#141414] text-gray-400 hover:bg-white/10 border border-white/5'
             }`}
           >
             All
@@ -116,7 +128,7 @@ const ReviewSection = ({ productId }) => {
               key={r}
               onClick={() => setSelectedRating(r === selectedRating ? '' : r)}
               className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
-                selectedRating === r ? 'bg-charcoal-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                selectedRating === r ? 'bg-[#D4AF37] text-black' : 'bg-[#141414] text-gray-400 hover:bg-white/10 border border-white/5'
               }`}
             >
               {r} ★
@@ -125,7 +137,7 @@ const ReviewSection = ({ productId }) => {
           <button
             onClick={() => setVerifiedOnly(!verifiedOnly)}
             className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
-              verifiedOnly ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              verifiedOnly ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-[#141414] text-gray-400 hover:bg-white/10 border border-white/5'
             }`}
           >
             ✓ Verified Only
@@ -133,11 +145,11 @@ const ReviewSection = ({ productId }) => {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-gray-500">Sort By:</span>
+          <span className="text-xs font-bold text-gray-400">Sort By:</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-1 rounded-xl bg-gray-100 text-xs font-bold text-charcoal-900 focus:outline-none border-none cursor-pointer"
+            className="px-3 py-1 rounded-xl bg-[#141414] text-xs font-bold text-white focus:outline-none border border-white/5 cursor-pointer"
           >
             <option value="recent">Most Recent</option>
             <option value="highest">Highest Rating</option>
@@ -149,9 +161,9 @@ const ReviewSection = ({ productId }) => {
 
       {/* Reviews List */}
       {loading ? (
-        <div className="py-12 text-center text-gray-400 text-xs animate-pulse">Loading verified reviews...</div>
+        <div className="py-12 text-center text-gray-500 text-xs animate-pulse">Loading verified reviews...</div>
       ) : reviews.length === 0 ? (
-        <div className="py-12 text-center text-gray-500 text-sm bg-gray-50 rounded-2xl">
+        <div className="py-12 text-center text-gray-500 text-sm bg-[#141414] rounded-2xl border border-white/5">
           No reviews match your selected filters. Be the first verified customer to leave a review!
         </div>
       ) : (
@@ -165,63 +177,68 @@ const ReviewSection = ({ productId }) => {
             }
 
             return (
-              <div key={rev.id} className="p-5 rounded-2xl bg-gray-50/50 border border-gray-100 space-y-3">
+              <div key={rev.id} className="p-5 rounded-2xl bg-[#141414] border border-white/10 space-y-3">
                 {/* Author Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-gold-500/20 text-gold-700 flex items-center justify-center font-bold text-sm">
+                    <div className="w-9 h-9 rounded-full bg-[#D4AF37]/20 text-[#D4AF37] flex items-center justify-center font-bold text-sm">
                       {rev.isAnonymous ? <FiUser /> : rev.user?.fullName?.charAt(0) || 'C'}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-charcoal-900">
+                        <span className="text-sm font-bold text-white">
                           {rev.isAnonymous ? 'Verified Customer' : rev.user?.fullName || 'Customer'}
                         </span>
                         {rev.isVerified && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-400 bg-emerald-900/30 px-2 py-0.5 rounded-full border border-emerald-500/30">
                             <FiCheckCircle size={10} /> Verified Purchase
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-gray-400">
+                      <p className="text-[10px] text-gray-500">
                         Reviewed on {new Date(rev.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
                     </div>
                   </div>
 
                   {/* Rating Stars */}
-                  <div className="flex text-gold-400 gap-0.5">
+                  <div className="flex text-[#D4AF37] gap-0.5">
                     {[1, 2, 3, 4, 5].map((s) => (
-                      <FiStar key={s} size={14} className={s <= rev.rating ? 'fill-gold-400' : 'text-gray-200'} />
+                      <FiStar key={s} size={14} className={s <= rev.rating ? 'fill-[#D4AF37]' : 'text-gray-700'} />
                     ))}
                   </div>
                 </div>
 
                 {/* Review Title & Comment */}
                 <div>
-                  {rev.title && <h4 className="text-xs font-bold text-charcoal-900 mb-1">{rev.title}</h4>}
-                  <p className="text-xs text-gray-700 leading-relaxed">{rev.comment}</p>
+                  {rev.title && <h4 className="text-xs font-bold text-white mb-1">{rev.title}</h4>}
+                  <p className="text-xs text-gray-400 leading-relaxed">{rev.comment}</p>
                 </div>
 
                 {/* Photo Gallery */}
                 {imageList.length > 0 && (
                   <div className="flex flex-wrap gap-2 pt-1">
                     {imageList.map((url, i) => (
-                      <img
-                        key={i}
-                        src={url}
-                        alt="Customer review photo"
-                        className="w-16 h-16 object-cover rounded-xl border border-gray-200 hover:scale-105 transition shadow-sm"
-                      />
+                      <button 
+                        key={i} 
+                        onClick={() => openPhotoViewer(imageList, i)}
+                        className="cursor-zoom-in"
+                      >
+                        <img
+                          src={url}
+                          alt="Customer review photo"
+                          className="w-16 h-16 object-cover rounded-xl border border-white/10 hover:scale-105 transition shadow-sm"
+                        />
+                      </button>
                     ))}
                   </div>
                 )}
 
                 {/* Footer Actions */}
-                <div className="flex items-center justify-between pt-2 border-t border-gray-200/60 text-xs">
+                <div className="flex items-center justify-between pt-2 border-t border-white/10 text-xs">
                   <button
                     onClick={() => handleVoteHelpful(rev.id)}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gold-50 hover:text-gold-700 transition font-bold cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0D0D12] border border-white/10 text-gray-400 hover:bg-white/5 hover:text-white transition font-bold cursor-pointer"
                   >
                     <FiThumbsUp size={12} /> Helpful ({rev.helpfulVotes || 0})
                   </button>
@@ -230,6 +247,14 @@ const ReviewSection = ({ productId }) => {
             );
           })}
         </div>
+      )}
+      
+      {isViewerOpen && (
+        <PhotoViewerModal
+          photos={viewerPhotos}
+          initialIndex={viewerIndex}
+          onClose={() => setIsViewerOpen(false)}
+        />
       )}
     </div>
   );
