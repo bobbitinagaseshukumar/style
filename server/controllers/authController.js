@@ -336,3 +336,83 @@ exports.updateAuthSettingsAdmin = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Authentication settings updated successfully', data: settings });
 });
 
+// ==================== GOOGLE SIGN-IN (Firebase) ====================
+exports.googleLogin = asyncHandler(async (req, res, next) => {
+  const { uid, name, email, photo } = req.body;
+
+  if (!email || !uid) {
+    return next(new ApiError(400, 'Google UID and email are required.'));
+  }
+
+  // 1. Check if user already exists by firebaseUid or email
+  let user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { firebaseUid: uid },
+        { email: email.toLowerCase() },
+      ],
+    },
+  });
+
+  if (user) {
+    // Existing user — update Google profile info and login timestamp
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        firebaseUid: uid,
+        authProvider: 'GOOGLE',
+        avatar: photo || user.avatar,
+        fullName: name || user.fullName,
+        isVerified: true,
+        lastLoginAt: new Date(),
+      },
+    });
+  } else {
+    // New user — create account with Google profile data (no password needed)
+    const customerId = await generateCustomerId();
+
+    user = await prisma.user.create({
+      data: {
+        email: email.toLowerCase(),
+        fullName: name || email.split('@')[0],
+        password: await bcrypt.hash(`GOOGLE_${uid}_${Date.now()}`, 12), // Random password (won't be used)
+        avatar: photo || null,
+        firebaseUid: uid,
+        authProvider: 'GOOGLE',
+        isVerified: true,
+        role: 'CUSTOMER',
+        customerId,
+        lastLoginAt: new Date(),
+      },
+    });
+
+    // Send welcome email asynchronously
+    try {
+      sendWelcomeEmail(user.email, user.fullName);
+    } catch (err) {
+      console.error('Welcome email failed:', err);
+    }
+  }
+
+  // Check if account is blocked/suspended
+  if (user.status === 'BLOCKED' || user.status === 'SUSPENDED') {
+    return next(new ApiError(403, `Your account is ${user.status.toLowerCase()}. Please contact support.`));
+  }
+
+  // Generate JWT token
+  const token = generateToken(user.id, user.role);
+
+  res.status(200).json({
+    success: true,
+    message: `Welcome ${user.fullName}! Google sign-in successful.`,
+    token,
+    user: {
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      avatar: user.avatar,
+      role: user.role,
+      isVerified: user.isVerified,
+    },
+  });
+});

@@ -25,4 +25,7 @@ router.get('/settings/public', authController.getAuthSettingsPublic);
 router.get('/settings/admin', protect, authController.getAuthSettingsAdmin);
 router.put('/settings/admin', protect, authController.updateAuthSettingsAdmin);
 
+// Google Sign-In (Firebase)
+router.post('/google', authController.googleLogin);
+
 module.exports = router;

@@ -12,7 +12,7 @@ import { signInWithGoogle } from '../../firebase';
  * Live Firebase Google & Gmail Sign-In integration
  */
 const SocialAuthButtons = ({ mode = 'login', onSuccess }) => {
-  const [loadingProvider, setLoadingProvider] = useState(null); // 'google' | 'github' | null
+  const [loadingProvider, setLoadingProvider] = useState(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -24,65 +24,43 @@ const SocialAuthButtons = ({ mode = 'login', onSuccess }) => {
 
       console.log("Google Login Success:", user);
 
-      // Handshake with backend to log in or create account for the Google user
-      try {
-        const backendRes = await api.post('/auth/social-login', {
-          provider: 'google',
-          email: user.email,
-          fullName: user.displayName || user.email.split('@')[0],
-          avatar: user.photoURL,
-          firebaseUid: user.uid,
-        });
+      // Send Google user data to backend — POST /api/v1/auth/google
+      const response = await api.post('/auth/google', {
+        uid: user.uid,
+        name: user.displayName,
+        email: user.email,
+        photo: user.photoURL,
+      });
 
-        if (backendRes.data?.success && backendRes.data.token) {
-          dispatch(setCredentials({ user: backendRes.data.user, token: backendRes.data.token }));
-          toast.success(`Welcome ${user.displayName || 'back'}! Signed in via Google.`);
-          if (onSuccess) onSuccess();
-          else navigate('/dashboard');
-          return;
-        }
-      } catch (backendErr) {
-        console.warn("Backend social login handshake warning:", backendErr);
+      const data = response.data;
+      console.log("Backend Response:", data);
+
+      if (data.success && data.token) {
+        // Store token and user in Redux + localStorage
+        dispatch(setCredentials({ user: data.user, token: data.token }));
+        localStorage.setItem('token', data.token);
+        toast.success(`Welcome ${data.user.fullName}! Signed in via Google.`);
+        if (onSuccess) onSuccess();
+        else navigate('/dashboard');
+      } else {
+        toast.success('Google Login Successful');
       }
-
-      toast.success(`Welcome ${user.displayName || user.email}!`);
-      if (onSuccess) onSuccess();
-      else navigate('/dashboard');
     } catch (error) {
       console.error("Google Auth Error:", error);
-      if (!error.message?.includes('popup-closed-by-user')) {
-        toast.error(error.message || 'Google login failed');
+      if (error.message?.includes('popup-closed-by-user')) {
+        // User closed the popup, no error needed
+        return;
       }
+      toast.error(error.response?.data?.message || error.message || 'Google login failed. Please try again.');
     } finally {
       setLoadingProvider(null);
     }
   };
 
-  const handleSocialAuth = async (provider) => {
-    if (provider === 'google') {
-      return handleGoogleLogin();
-    }
-    setLoadingProvider(provider);
+  const handleGithubLogin = async () => {
+    setLoadingProvider('github');
     try {
-      const mockSocialPayload = {
-        provider,
-        email: `demo.${provider}.${Date.now().toString(36)}@styleverse.com`,
-        fullName: `${provider.toUpperCase()} User`,
-        avatar: 'https://avatars.githubusercontent.com/u/9919?v=4',
-        firebaseUid: `firebase_${provider}_${Date.now()}`
-      };
-
-      const fallbackRes = await api.post('/auth/social-login', mockSocialPayload);
-
-      if (fallbackRes.data?.success && fallbackRes.data.token) {
-        dispatch(setCredentials({ user: fallbackRes.data.user, token: fallbackRes.data.token }));
-        toast.success(`Signed in successfully with GitHub!`);
-        if (onSuccess) onSuccess();
-        else navigate('/dashboard');
-      }
-    } catch (err) {
-      console.warn(`Social auth error (${provider}):`, err);
-      toast.error(`Authentication with ${provider.toUpperCase()} failed.`);
+      toast.info('GitHub login coming soon!');
     } finally {
       setLoadingProvider(null);
     }
@@ -134,7 +112,7 @@ const SocialAuthButtons = ({ mode = 'login', onSuccess }) => {
           whileTap={{ scale: 0.985 }}
           type="button"
           disabled={!!loadingProvider}
-          onClick={() => handleSocialAuth('github')}
+          onClick={handleGithubLogin}
           className="flex items-center justify-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold transition shadow-sm cursor-pointer disabled:opacity-50"
         >
           <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
