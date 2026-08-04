@@ -139,4 +139,4 @@ const checkPermission = (permissionKey) => {
     };
 };
 
-module.exports = { protect, authorize, optionalAuth, checkPermission };
+module.exports = { protect, verifyToken: protect, authorize, optionalAuth, checkPermission };

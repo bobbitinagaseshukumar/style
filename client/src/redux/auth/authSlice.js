@@ -37,12 +37,14 @@ export const getMe = createAsyncThunk('auth/getMe', async (_, { rejectWithValue 
   }
 });
 
+const storedToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
     user: null,
-    token: null,
-    isAuthenticated: false,
+    token: storedToken,
+    isAuthenticated: !!storedToken,
     loading: false,
     error: null,
   },
