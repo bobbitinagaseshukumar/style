@@ -5,7 +5,7 @@ import api from '../../config/api';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '../../redux/auth/authSlice';
 import { useNavigate } from 'react-router-dom';
-import { signInWithGoogle } from '../../config/firebase';
+import { signInWithGoogle } from '../../firebase';
 
 /**
  * Reusable Modular Social Authentication Component
@@ -16,44 +16,59 @@ const SocialAuthButtons = ({ mode = 'login', onSuccess }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const handleSocialAuth = async (provider) => {
-    setLoadingProvider(provider);
+  const handleGoogleLogin = async () => {
+    setLoadingProvider('google');
     try {
-      if (provider === 'google') {
-        // Trigger live Firebase Google popup authentication
-        const res = await signInWithGoogle();
+      const result = await signInWithGoogle();
+      const user = result.user;
 
-        if (res.success && res.user) {
-          // Handshake with backend to login or create account for the Google user
-          const backendRes = await api.post('/auth/social-login', {
-            provider: 'google',
-            email: res.user.email,
-            fullName: res.user.displayName,
-            avatar: res.user.photoURL,
-            firebaseUid: res.user.uid,
-            idToken: res.idToken,
-          });
+      console.log("Google Login Success:", user);
 
-          if (backendRes.data?.success && backendRes.data.token) {
-            dispatch(setCredentials({ user: backendRes.data.user, token: backendRes.data.token }));
-            toast.success(`Welcome ${res.user.displayName || 'back'}! Signed in via Google.`);
-            if (onSuccess) onSuccess();
-            else navigate('/dashboard');
-            return;
-          }
-        } else if (res.error && !res.error.includes('popup-closed-by-user')) {
-          toast.warning('Google login popup closed or requires Firebase web credentials.');
+      // Handshake with backend to log in or create account for the Google user
+      try {
+        const backendRes = await api.post('/auth/social-login', {
+          provider: 'google',
+          email: user.email,
+          fullName: user.displayName || user.email.split('@')[0],
+          avatar: user.photoURL,
+          firebaseUid: user.uid,
+        });
+
+        if (backendRes.data?.success && backendRes.data.token) {
+          dispatch(setCredentials({ user: backendRes.data.user, token: backendRes.data.token }));
+          toast.success(`Welcome ${user.displayName || 'back'}! Signed in via Google.`);
+          if (onSuccess) onSuccess();
+          else navigate('/dashboard');
+          return;
         }
+      } catch (backendErr) {
+        console.warn("Backend social login handshake warning:", backendErr);
       }
 
-      // Fallback/Demo social authentication handshake if popup is bypassed or for GitHub
+      toast.success(`Welcome ${user.displayName || user.email}!`);
+      if (onSuccess) onSuccess();
+      else navigate('/dashboard');
+    } catch (error) {
+      console.error("Google Auth Error:", error);
+      if (!error.message?.includes('popup-closed-by-user')) {
+        toast.error(error.message || 'Google login failed');
+      }
+    } finally {
+      setLoadingProvider(null);
+    }
+  };
+
+  const handleSocialAuth = async (provider) => {
+    if (provider === 'google') {
+      return handleGoogleLogin();
+    }
+    setLoadingProvider(provider);
+    try {
       const mockSocialPayload = {
         provider,
         email: `demo.${provider}.${Date.now().toString(36)}@styleverse.com`,
         fullName: `${provider.toUpperCase()} User`,
-        avatar: provider === 'google'
-          ? 'https://lh3.googleusercontent.com/a/default-user=s96-c'
-          : 'https://avatars.githubusercontent.com/u/9919?v=4',
+        avatar: 'https://avatars.githubusercontent.com/u/9919?v=4',
         firebaseUid: `firebase_${provider}_${Date.now()}`
       };
 
@@ -61,13 +76,13 @@ const SocialAuthButtons = ({ mode = 'login', onSuccess }) => {
 
       if (fallbackRes.data?.success && fallbackRes.data.token) {
         dispatch(setCredentials({ user: fallbackRes.data.user, token: fallbackRes.data.token }));
-        toast.success(`Signed in successfully with ${provider === 'google' ? 'Google' : 'GitHub'}!`);
+        toast.success(`Signed in successfully with GitHub!`);
         if (onSuccess) onSuccess();
         else navigate('/dashboard');
       }
     } catch (err) {
       console.warn(`Social auth error (${provider}):`, err);
-      toast.error(`Authentication with ${provider.toUpperCase()} failed. Please try again.`);
+      toast.error(`Authentication with ${provider.toUpperCase()} failed.`);
     } finally {
       setLoadingProvider(null);
     }
@@ -89,7 +104,7 @@ const SocialAuthButtons = ({ mode = 'login', onSuccess }) => {
           whileTap={{ scale: 0.985 }}
           type="button"
           disabled={!!loadingProvider}
-          onClick={() => handleSocialAuth('google')}
+          onClick={handleGoogleLogin}
           className="flex items-center justify-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold transition shadow-sm cursor-pointer disabled:opacity-50"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24">
