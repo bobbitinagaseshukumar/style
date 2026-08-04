@@ -35,6 +35,8 @@ model User {
   blockNotes          String?
   authProvider        String        @default("LOCAL") // LOCAL | GOOGLE | GITHUB
   firebaseUid         String?
+  googleId            String?       @unique
+  profileImage        String?
   notificationPreferences String    @default("{\"newArrivals\":true,\"trending\":true,\"festivalOffers\":true,\"flashSales\":true,\"couponAlerts\":true,\"orderUpdates\":true,\"newsletter\":true}")
 
   // Fine-Grained Customer Permission Switches

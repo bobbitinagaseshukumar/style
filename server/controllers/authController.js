@@ -344,11 +344,12 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, 'Google UID and email are required.'));
   }
 
-  // 1. Check if user already exists by firebaseUid or email
+  // 1. Check if user already exists by firebaseUid, googleId, or email
   let user = await prisma.user.findFirst({
     where: {
       OR: [
         { firebaseUid: uid },
+        { googleId: uid },
         { email: email.toLowerCase() },
       ],
     },
@@ -360,8 +361,10 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
       where: { id: user.id },
       data: {
         firebaseUid: uid,
+        googleId: uid,
         authProvider: 'GOOGLE',
         avatar: photo || user.avatar,
+        profileImage: photo || user.profileImage,
         fullName: name || user.fullName,
         isVerified: true,
         lastLoginAt: new Date(),
@@ -377,7 +380,9 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
         fullName: name || email.split('@')[0],
         password: await bcrypt.hash(`GOOGLE_${uid}_${Date.now()}`, 12), // Random password (won't be used)
         avatar: photo || null,
+        profileImage: photo || null,
         firebaseUid: uid,
+        googleId: uid,
         authProvider: 'GOOGLE',
         isVerified: true,
         role: 'CUSTOMER',
