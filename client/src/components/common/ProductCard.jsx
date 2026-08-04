@@ -11,6 +11,7 @@ import { addToWishlist, removeFromWishlist } from '../../redux/wishlist/wishlist
 import { formatCurrency } from '../../utils/formatCurrency';
 import { toast } from 'react-toastify';
 import QuickViewModal from './QuickViewModal';
+import StarRating from '../reviews/StarRating';
 
 /* ─── Color Map ─────────────────────────────────────────────── */
 const colorHexMap = {
@@ -73,6 +74,7 @@ if (typeof document !== 'undefined' && !document.getElementById(styleId)) {
 const ProductCard = ({ product, index = 0 }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const user = useSelector(state => state.auth?.user);
   const wishlistItems = useSelector(state => state.wishlist?.items || []);
 
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -137,6 +139,11 @@ const ProductCard = ({ product, index = 0 }) => {
   const toggleWishlist = (e) => {
     e.stopPropagation();
     e.preventDefault();
+    if (!user) {
+      toast.info('Please sign in to add items to your wishlist');
+      navigate('/login');
+      return;
+    }
     const pid = product._id || product.id;
     if (isWishlisted) {
       dispatch(removeFromWishlist(pid));
@@ -150,6 +157,11 @@ const ProductCard = ({ product, index = 0 }) => {
   const handleAddToCart = (e) => {
     e.stopPropagation();
     e.preventDefault();
+    if (!user) {
+      toast.info('Please sign in to add items to your cart');
+      navigate('/login');
+      return;
+    }
     dispatch(addToCart({
       id: product._id || product.id,
       name,
@@ -165,6 +177,11 @@ const ProductCard = ({ product, index = 0 }) => {
   const handleBuyNow = (e) => {
     e.stopPropagation();
     e.preventDefault();
+    if (!user) {
+      toast.info('Please sign in to purchase items');
+      navigate('/login');
+      return;
+    }
     setBuyingNow(true);
     dispatch(addToCart({
       id: product._id || product.id,
@@ -304,19 +321,8 @@ const ProductCard = ({ product, index = 0 }) => {
 
           {/* Rating */}
           {rating > 0 && (
-            <div className="flex items-center gap-1 mb-2">
-              <div className="flex items-center gap-[2px]">
-                {[...Array(5)].map((_, i) => (
-                  <FiStar
-                    key={i}
-                    className={`w-3 h-3 ${i < Math.round(rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`}
-                  />
-                ))}
-              </div>
-              <span className="text-[11px] font-semibold text-gray-700 ml-0.5">{Number(rating).toFixed(1)}</span>
-              {reviewCount > 0 && (
-                <span className="text-[10px] text-gray-400">({reviewCount.toLocaleString()})</span>
-              )}
+            <div className="mb-2">
+              <StarRating rating={rating} count={reviewCount} showNumber size="sm" />
             </div>
           )}
 

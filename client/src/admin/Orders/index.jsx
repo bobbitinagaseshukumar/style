@@ -61,6 +61,8 @@ const OrderDetail = ({ order, onClose, onStatusUpdate }) => {
   const [courierName, setCourierName] = useState(order?.courierName || '');
   const [trackingNumber, setTrackingNumber] = useState(order?.trackingNumber || '');
   const [cancelReason, setCancelReason] = useState('');
+  const [cancellationAllowed, setCancellationAllowed] = useState(false);
+  const [cancellationDuration, setCancellationDuration] = useState(60);
 
   const nextStatuses = TRANSITIONS[order?.orderStatus] || ALL_STATUSES;
 
@@ -79,6 +81,8 @@ const OrderDetail = ({ order, onClose, onStatusUpdate }) => {
       if (expectedDeliveryDate) payload.expectedDeliveryDate = expectedDeliveryDate;
       if (deliveryTimeSlot) payload.deliveryTimeSlot = deliveryTimeSlot;
       if (internalNotes) payload.internalNotes = internalNotes;
+      if (cancellationAllowed !== undefined) payload.cancellationAllowed = cancellationAllowed;
+      if (cancellationAllowed && cancellationDuration) payload.cancellationDuration = cancellationDuration;
 
       const { data } = await api.put(`/orders/admin/${order.id}/status`, payload);
 
@@ -294,6 +298,45 @@ const OrderDetail = ({ order, onClose, onStatusUpdate }) => {
                   placeholder="Cancellation reason (optional)"
                   className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs" />
               )}
+
+              {/* Cancellation Window Controls */}
+              <div className="pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between bg-[#141414] border border-white/10 p-3 rounded-xl text-white">
+                  <div>
+                    <p className="text-xs font-bold text-gray-100">Enable Customer Cancellation</p>
+                    <p className="text-[10px] text-gray-400">Allow user to cancel from their dashboard</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={cancellationAllowed}
+                    onChange={(e) => setCancellationAllowed(e.target.checked)}
+                    className="w-4 h-4 rounded text-amber-500 cursor-pointer accent-amber-500"
+                  />
+                </div>
+                {cancellationAllowed && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {[
+                      { label: '15 min', val: 15 },
+                      { label: '30 min', val: 30 },
+                      { label: '1 hour', val: 60 },
+                      { label: '2 hours', val: 120 },
+                      { label: '6 hours', val: 360 },
+                      { label: '12 hours', val: 720 },
+                      { label: '24 hours', val: 1440 }
+                    ].map(d => (
+                      <button
+                        key={d.val} type="button"
+                        onClick={() => setCancellationDuration(d.val)}
+                        className={`px-2 py-1 text-[10px] rounded-lg font-bold transition ${
+                          cancellationDuration === d.val ? 'bg-amber-500 text-black border-amber-500' : 'bg-[#141414] text-white border border-white/10 hover:border-amber-500/50'
+                        } border`}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <button
                 onClick={handleUpdate}

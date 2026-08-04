@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiHeart, FiShoppingBag, FiStar, FiCheck, FiTruck } from 'react-icons/fi';
@@ -7,6 +7,7 @@ import { addToWishlist, removeFromWishlist } from '../../redux/wishlist/wishlist
 import { addToCart } from '../../redux/cart/cartSlice';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { toast } from 'react-toastify';
+import StarRating from '../reviews/StarRating';
 
 /**
  * Clean Premium Product Card (used by ProductGrid)
@@ -14,6 +15,8 @@ import { toast } from 'react-toastify';
  */
 const ProductCard = ({ product }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const user = useSelector(state => state.auth?.user);
   const wishlistItems = useSelector(state => state.wishlist?.items || []);
   const isWishlisted = wishlistItems.some(item => (item._id || item.id) === product._id);
   
@@ -23,6 +26,11 @@ const ProductCard = ({ product }) => {
   const handleWishlist = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user) {
+      toast.info('Please sign in to add items to your wishlist');
+      navigate('/login');
+      return;
+    }
     if (isWishlisted) {
       dispatch(removeFromWishlist(product._id));
       toast.info('Removed from wishlist');
@@ -35,6 +43,11 @@ const ProductCard = ({ product }) => {
   const handleAddToCart = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user) {
+      toast.info('Please sign in to add items to your cart');
+      navigate('/login');
+      return;
+    }
     dispatch(addToCart({
       id: product._id,
       name: product.name,
@@ -127,16 +140,8 @@ const ProductCard = ({ product }) => {
 
         {/* Rating */}
         {rating > 0 && (
-          <div className="flex items-center gap-1 mb-2">
-            <div className="flex items-center gap-[2px]">
-              {[...Array(5)].map((_, i) => (
-                <FiStar
-                  key={i}
-                  className={`w-3 h-3 ${i < Math.round(rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`}
-                />
-              ))}
-            </div>
-            <span className="text-[11px] font-semibold text-gray-700 ml-0.5">{Number(rating).toFixed(1)}</span>
+          <div className="mb-2">
+            <StarRating rating={rating} showNumber size="sm" />
           </div>
         )}
         

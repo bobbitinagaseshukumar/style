@@ -19,6 +19,8 @@ import { addToCart } from '../../redux/cart/cartSlice';
 import { addToWishlist, removeFromWishlist } from '../../redux/wishlist/wishlistSlice';
 import { formatCurrency } from '../../utils/formatCurrency';
 import ReviewSection from '../../components/reviews/ReviewSection';
+import WriteReviewModal from '../../components/reviews/WriteReviewModal';
+import StarRating from '../../components/reviews/StarRating';
 import { toast } from 'react-toastify';
 
 /* ═══ HELPER: SAFE JSON PARSER ═══ */
@@ -319,6 +321,7 @@ export default function ProductDetails() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const wishlistItems = useSelector(s => s.wishlist?.items || []);
+  const user = useSelector(s => s.auth?.user);
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -346,9 +349,11 @@ export default function ProductDetails() {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [showQAForm, setShowQAForm] = useState(false);
   const [reviewSort, setReviewSort] = useState('newest');
-  const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', comment: '' });
   const [qaForm, setQaForm] = useState({ question: '' });
   const [stickyVisible, setStickyVisible] = useState(false);
+  
+  // For external review modal
+  const [reviewOrderData, setReviewOrderData] = useState(null);
 
   /* ── Derived Variant State ── */
   const selectedColor = colorVariants[selectedColorIdx] || {};
@@ -442,6 +447,11 @@ export default function ProductDetails() {
   /* ── Actions ── */
   const handleAddToCart = () => {
     if (!product) return;
+    if (!user) {
+      toast.info('Please sign in to add items to your cart');
+      navigate('/login');
+      return;
+    }
     if (availableSizes.length > 0 && !selectedSize) { toast.error('Please select a size'); return; }
     if (currentStock === 0) { toast.error('Out of stock'); return; }
     dispatch(addToCart({
@@ -463,6 +473,11 @@ export default function ProductDetails() {
 
   const handleWishlist = () => {
     if (!product) return;
+    if (!user) {
+      toast.info('Please sign in to add items to your wishlist');
+      navigate('/login');
+      return;
+    }
     if (isWishlisted) {
       dispatch(removeFromWishlist(product.id));
       toast.info('Removed from wishlist');
@@ -479,18 +494,36 @@ export default function ProductDetails() {
     setDeliveryInfo({ date: estDate, free: currentDiscountPrice > 499, cod: true });
   };
 
-  const handleReviewSubmit = async (e) => {
-    e.preventDefault();
+  const handleWriteReviewClick = async () => {
+    if (!user) {
+      return toast.info('Please log in to write a review');
+    }
     try {
-      await api.post('/reviews', { productId: product.id, ...reviewForm });
-      toast.success('Review submitted successfully!');
-      setShowReviewForm(false);
-      setReviewForm({ rating: 5, title: '', comment: '' });
+      const { data } = await api.get('/orders/my-orders');
+      const orders = data?.data || [];
+      const deliveredOrder = orders.find(o => 
+        o.orderStatus === 'DELIVERED' && 
+        o.items?.some(item => item.productId === product.id)
+      );
+
+      if (deliveredOrder) {
+        const item = deliveredOrder.items.find(i => i.productId === product.id);
+        setReviewOrderData({ order: deliveredOrder, item });
+        setShowReviewForm(true);
+      } else {
+        toast.error('Only customers with a delivered order for this product can write a review.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Could not verify purchase history.');
+    }
+  };
+
+  const onReviewSubmitted = async () => {
+    try {
       const { data } = await api.get(`/reviews/product/${product.id}`);
       setReviews(data?.data?.reviews || []);
-    } catch {
-      toast.error('Please log in to post a review');
-    }
+    } catch {}
   };
 
   const shareUrl = window.location.href;
@@ -591,10 +624,11 @@ export default function ProductDetails() {
             {/* Rating row */}
             <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-100 px-3 py-1 rounded-full">
-                <Stars rating={reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 4.8} size={12} />
-                <span className="text-xs font-bold text-amber-800">
-                  {reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : '4.8'}
-                </span>
+                <StarRating 
+                  rating={reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 4.8} 
+                  size="sm" 
+                  showNumber
+                />
               </div>
               <button onClick={() => setActiveTab('reviews')} className="text-xs text-gray-500 hover:text-amber-600 hover:underline transition">
                 {reviews.length || 12} reviews
@@ -906,7 +940,7 @@ export default function ProductDetails() {
                           </button>
                         ))}
                       </div>
-                      <button onClick={() => setShowReviewForm(true)}
+                      <button onClick={handleWriteReviewClick}
                         className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gray-900 text-amber-400 text-xs font-bold hover:bg-gray-800 transition">
                         <FiMessageSquare size={13} /> Write a Review
                       </button>
@@ -1073,52 +1107,12 @@ export default function ProductDetails() {
       ═══════════════════════════════════════════════════ */}
       <AnimatePresence>
         {showReviewForm && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center px-4"
-            onClick={() => setShowReviewForm(false)}>
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
-              className="bg-white rounded-3xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="font-bold text-gray-900 text-lg">Write a Customer Review</h3>
-                <button onClick={() => setShowReviewForm(false)} className="p-2 rounded-xl hover:bg-gray-100 transition"><FiX size={16}/></button>
-              </div>
-              <form onSubmit={handleReviewSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Overall Rating</label>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map(n => (
-                      <button key={n} type="button" onClick={() => setReviewForm(f => ({ ...f, rating: n }))}
-                        className="p-1 rounded-lg hover:scale-110 transition">
-                        <FiStar size={26} className={n <= reviewForm.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Review Title</label>
-                  <input type="text" value={reviewForm.title} onChange={e => setReviewForm(f => ({ ...f, title: e.target.value }))}
-                    placeholder="e.g. Excellent fit and premium fabric!" required
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs focus:ring-2 focus:ring-amber-400 focus:outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Your Review</label>
-                  <textarea rows={4} value={reviewForm.comment} onChange={e => setReviewForm(f => ({ ...f, comment: e.target.value }))}
-                    placeholder="Describe what you liked or disliked about this product..." required
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs focus:ring-2 focus:ring-amber-400 focus:outline-none resize-none" />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setShowReviewForm(false)}
-                    className="flex-1 py-3 rounded-2xl border-2 border-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-50 transition">
-                    Cancel
-                  </button>
-                  <button type="submit"
-                    className="flex-1 py-3 rounded-2xl bg-gray-900 text-amber-400 text-xs font-black hover:bg-gray-800 transition">
-                    Submit Review
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
+          <WriteReviewModal
+            order={reviewOrderData?.order}
+            item={reviewOrderData?.item || { product }}
+            onClose={() => setShowReviewForm(false)}
+            onReviewSubmitted={onReviewSubmitted}
+          />
         )}
       </AnimatePresence>
 

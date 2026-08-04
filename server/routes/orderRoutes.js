@@ -12,6 +12,7 @@ router.get('/my-orders', orderController.getMyOrders);
 router.get('/admin/all', orderController.adminGetAllOrders);
 router.get('/:id', orderController.getOrderById);
 router.get('/:id/cancellation-eligibility', orderController.getCancellationEligibility);
+router.get('/:id/cancellation-status', orderController.getOrderCancellationStatus);
 router.post('/:id/cancel', orderController.cancelOrder);
 router.put('/:id/cancel', orderController.cancelOrder);
 router.put('/admin/:id/approve', orderController.adminApproveOrder);

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { FiMinus, FiPlus, FiHeart, FiShare2, FiStar } from 'react-icons/fi';
 import { addToCart } from '../../redux/cart/cartSlice';
 import { addToWishlist } from '../../redux/wishlist/wishlistSlice';
@@ -9,11 +10,18 @@ import Button from '../common/Button';
 
 const ProductInfo = ({ product }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const user = useSelector(state => state.auth?.user);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
 
   const handleAddToCart = () => {
+    if (!user) {
+      toast.info('Please sign in to add items to your cart');
+      navigate('/login');
+      return;
+    }
     if (product.sizes?.length > 0 && !selectedSize) {
       toast.error('Please select a size');
       return;
@@ -38,6 +46,11 @@ const ProductInfo = ({ product }) => {
   };
 
   const handleWishlist = () => {
+    if (!user) {
+      toast.info('Please sign in to add items to your wishlist');
+      navigate('/login');
+      return;
+    }
     dispatch(addToWishlist(product));
     toast.success('Added to wishlist');
   };
