@@ -404,10 +404,18 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
     return next(new ApiError(403, `Your account is ${user.status.toLowerCase()}. Please contact support.`));
   }
 
-  // Generate JWT token
+  // Generate JWT token (7d expiration)
   const token = generateToken(user.id, user.role);
 
-  res.status(200).json({
+  // Set secure HTTP-only cookie
+  const cookieOptions = {
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  };
+
+  res.status(200).cookie('token', token, cookieOptions).json({
     success: true,
     message: `Welcome ${user.fullName}! Google sign-in successful.`,
     token,
@@ -416,6 +424,7 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
       fullName: user.fullName,
       email: user.email,
       avatar: user.avatar,
+      profileImage: user.profileImage,
       role: user.role,
       isVerified: user.isVerified,
     },
