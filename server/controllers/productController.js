@@ -5,6 +5,10 @@ const slugify = require('slugify');
 const emailService = require('../services/emailService');
 
 // ==================== GET ALL PRODUCTS ====================
+const isUUID = (str) =>
+  typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str.trim());
+
+// ==================== GET ALL PRODUCTS ====================
 exports.getAllProducts = asyncHandler(async (req, res, next) => {
   const {
     search,
@@ -38,39 +42,59 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
       whereClause.status = status.toUpperCase();
     }
   } else {
-    // Guest & Customer public storefront view: Show all products except deleted/archived items without requiring login
+    // Guest & Customer public storefront view: Show all published products
     whereClause.status = { notIn: ['DELETED', 'ARCHIVED', 'deleted', 'archived'] };
   }
 
   // Text Search
-  if (search) {
+  if (search && search.trim()) {
+    const q = search.trim();
     andConditions.push({
       OR: [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { shortDesc: { contains: search, mode: 'insensitive' } },
-        { sku: { contains: search, mode: 'insensitive' } },
+        { name: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+        { shortDesc: { contains: q, mode: 'insensitive' } },
+        { sku: { contains: q, mode: 'insensitive' } },
       ]
     });
   }
 
-  // Category & Subcategory
-  if (category) {
-    andConditions.push({
-      OR: [
-        { categoryId: category },
-        { category: { slug: category } }
-      ]
-    });
+  // Category Filtering (Supports UUID, slug, and category name)
+  if (category && category !== 'ALL') {
+    const catVal = String(category).trim();
+    if (isUUID(catVal)) {
+      andConditions.push({ categoryId: catVal });
+    } else {
+      andConditions.push({
+        category: {
+          OR: [
+            { slug: { equals: catVal, mode: 'insensitive' } },
+            { slug: { contains: catVal, mode: 'insensitive' } },
+            { name: { contains: catVal, mode: 'insensitive' } },
+          ]
+        }
+      });
+    }
   }
 
+  // SubCategory Filtering (Supports UUID, slug, and subcategory name)
   if (subCategory || subCategoryId) {
-    andConditions.push({
-      OR: [
-        { subCategoryId: subCategory || subCategoryId },
-        { subCategory: { slug: subCategory } }
-      ]
-    });
+    const subVal = String(subCategory || subCategoryId).trim();
+    if (subVal !== 'ALL') {
+      if (isUUID(subVal)) {
+        andConditions.push({ subCategoryId: subVal });
+      } else {
+        andConditions.push({
+          subCategory: {
+            OR: [
+              { slug: { equals: subVal, mode: 'insensitive' } },
+              { slug: { contains: subVal, mode: 'insensitive' } },
+              { name: { contains: subVal, mode: 'insensitive' } },
+            ]
+          }
+        });
+      }
+    }
   }
 
   // Section Badges / Toggles
@@ -98,7 +122,7 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
   else if (sort === 'stock_asc') orderByClause = { stock: 'asc' };
   else if (sort === 'stock_desc') orderByClause = { stock: 'desc' };
 
-  const [products, total] = await Promise.all([
+  let [products, total] = await Promise.all([
     prisma.product.findMany({
       where: whereClause,
       orderBy: orderByClause,
@@ -132,6 +156,45 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
     }),
     prisma.product.count({ where: whereClause })
   ]);
+
+  // Fallback: If querying a specific badge section (e.g. featured=true) returns zero products, fall back to returning recent published products
+  const isBadgeFilter = featured === 'true' || trending === 'true' || newArrival === 'true' || bestSeller === 'true';
+  if (products.length === 0 && isBadgeFilter && includeAll !== 'true') {
+    const fallbackWhere = { status: { notIn: ['DELETED', 'ARCHIVED', 'deleted', 'archived'] } };
+    [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where: fallbackWhere,
+        orderBy: { createdAt: 'desc' },
+        take: parseInt(limit),
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          sku: true,
+          price: true,
+          discountPercent: true,
+          discountPrice: true,
+          stock: true,
+          featured: true,
+          trending: true,
+          newArrival: true,
+          bestSeller: true,
+          isRecommended: true,
+          isPremium: true,
+          shortDesc: true,
+          status: true,
+          sizes: true,
+          colors: true,
+          createdAt: true,
+          images: { select: { id: true, url: true, alt: true } },
+          category: { select: { id: true, name: true, slug: true } },
+          subCategory: { select: { id: true, name: true, slug: true } },
+          brand: { select: { id: true, name: true } }
+        }
+      }),
+      prisma.product.count({ where: fallbackWhere })
+    ]);
+  }
 
   res.status(200).json({
     success: true,

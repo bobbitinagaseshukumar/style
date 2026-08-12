@@ -53,20 +53,25 @@ const Categories = () => {
     fetchSubcategories();
   }, [selectedCategory, categories]);
 
-  // Fetch Products based on Category & Subcategory selections
+  // Fetch Products based on Category & Subcategory selections (With 15-Second Real-Time Polling Sync)
   useEffect(() => {
+    let isMounted = true;
+
     const fetchProducts = async () => {
       try {
-        setLoading(true);
         let url = `/products?limit=50`;
 
         if (selectedCategory) {
           const foundCat = categories.find(c => c.slug === selectedCategory || c.id === selectedCategory);
-          if (foundCat) url += `&category=${foundCat.id}`;
+          if (foundCat) {
+            url += `&category=${foundCat.id}`;
+          } else {
+            url += `&category=${encodeURIComponent(selectedCategory)}`;
+          }
         }
 
         if (selectedSubcategory) {
-          url += `&subCategory=${selectedSubcategory}`;
+          url += `&subCategory=${encodeURIComponent(selectedSubcategory)}`;
         }
 
         if (filterFeatured) url += `&featured=true`;
@@ -77,14 +82,30 @@ const Categories = () => {
 
         const { data } = await api.get(url);
         const prods = data.data?.products || (Array.isArray(data.data) ? data.data : []);
-        setProducts(prods);
+        if (isMounted) {
+          setProducts(prods);
+          setLoading(false);
+        }
       } catch (err) {
         console.error(err);
-      } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
+
     fetchProducts();
+
+    // 15-second Polling for Real-time Device Sync
+    const pollInterval = setInterval(fetchProducts, 15000);
+
+    // Refresh when user returns to window tab
+    const handleFocus = () => fetchProducts();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [selectedCategory, selectedSubcategory, sortOption, filterFeatured, filterTrending, categories]);
 
   const filteredProducts = products.filter(p => (p.discountPrice || p.price) <= maxPrice);

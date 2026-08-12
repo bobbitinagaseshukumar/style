@@ -121,7 +121,21 @@ const AdminProducts = () => {
     }
   }, [page, pageSize, sortBy, statusFilter, categoryFilter, search]);
 
-  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+  // Fetch products and poll every 15s for multi-device sync
+  useEffect(() => {
+    fetchProducts();
+    const interval = setInterval(() => {
+      fetchProducts();
+    }, 15000);
+
+    const handleFocus = () => fetchProducts();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchProducts]);
 
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [search, statusFilter, categoryFilter, sortBy, pageSize]);
