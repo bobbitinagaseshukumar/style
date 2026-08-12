@@ -161,17 +161,19 @@ const QuickViewModal = ({ isOpen, onClose, product }) => {
                   Colors: <span className="text-amber-600">{selectedColor || colors[0]}</span>
                 </span>
                 <div className="flex gap-2">
-                  {colors.map((c) => {
-                    const hex = colorHexMap[c.toLowerCase()] || '#6B7280';
+                  {colors.map((c, i) => {
+                    const cStr = typeof c === 'object' ? (c?.name || c?.hex || '') : String(c || '');
+                    const cLower = cStr.toLowerCase();
+                    const hex = (typeof c === 'object' && c?.hex) ? c.hex : (colorHexMap[cLower] || (cLower.startsWith('#') ? cLower : '#6B7280'));
                     return (
                       <button
-                        key={c}
-                        onClick={() => setSelectedColor(c)}
+                        key={cStr + i}
+                        onClick={() => setSelectedColor(cStr)}
                         className={`w-6 h-6 rounded-full border-2 transition-all ${
-                          selectedColor === c ? 'ring-2 ring-amber-500 scale-110' : 'border-gray-300'
+                          selectedColor === cStr ? 'ring-2 ring-amber-500 scale-110' : 'border-gray-300'
                         }`}
                         style={{ backgroundColor: hex }}
-                        title={c}
+                        title={cStr}
                       />
                     );
                   })}

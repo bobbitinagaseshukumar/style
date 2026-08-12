@@ -330,12 +330,14 @@ const ProductCard = ({ product, index = 0 }) => {
           {colors.length > 0 && (
             <div className="flex items-center gap-1.5 mb-2">
               {colors.slice(0, 6).map((color, i) => {
-                const hex = colorHexMap[color.toLowerCase()] || '#6B7280';
+                const colorStr = typeof color === 'object' ? (color?.name || color?.hex || '') : String(color || '');
+                const colorLower = colorStr.toLowerCase();
+                const hex = (typeof color === 'object' && color?.hex) ? color.hex : (colorHexMap[colorLower] || (colorLower.startsWith('#') ? colorLower : '#6B7280'));
                 const isSelected = selectedColorIdx === i;
-                const isWhite = ['white', 'cream', 'beige'].includes(color.toLowerCase());
+                const isWhite = ['white', 'cream', 'beige'].includes(colorLower);
                 return (
                   <button
-                    key={color + i}
+                    key={colorStr + i}
                     onClick={(e) => handleColorClick(e, color, i)}
                     className={`w-4 h-4 rounded-full transition-all duration-200 ${
                       isSelected
@@ -343,8 +345,8 @@ const ProductCard = ({ product, index = 0 }) => {
                         : `hover:scale-110 ${isWhite ? 'border border-gray-200' : 'border border-transparent'}`
                     }`}
                     style={{ backgroundColor: hex }}
-                    title={color}
-                    aria-label={`Color: ${color}`}
+                    title={colorStr}
+                    aria-label={`Color: ${colorStr}`}
                   />
                 );
               })}

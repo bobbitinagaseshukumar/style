@@ -94,17 +94,21 @@ const ProductInfo = ({ product }) => {
             <span className="font-medium text-charcoal-900">Color: <span className="text-gray-500 font-normal">{selectedColor || 'Select'}</span></span>
           </div>
           <div className="flex gap-3">
-            {product.colors.map((color) => (
-              <button
-                key={color}
-                onClick={() => setSelectedColor(color)}
-                className={`w-10 h-10 rounded-full border-2 focus:outline-none transition-all ${
-                  selectedColor === color ? 'border-gold-500 p-1' : 'border-transparent hover:border-gray-300'
-                }`}
-              >
-                <span className="block w-full h-full rounded-full border border-gray-200" style={{ backgroundColor: color.toLowerCase() }} />
-              </button>
-            ))}
+            {product.colors.map((color, i) => {
+              const cStr = typeof color === 'object' ? (color?.name || color?.hex || '') : String(color || '');
+              const hex = (typeof color === 'object' && color?.hex) ? color.hex : (cStr.startsWith('#') ? cStr : cStr.toLowerCase());
+              return (
+                <button
+                  key={cStr + i}
+                  onClick={() => setSelectedColor(cStr)}
+                  className={`w-10 h-10 rounded-full border-2 focus:outline-none transition-all ${
+                    selectedColor === cStr ? 'border-gold-500 p-1' : 'border-transparent hover:border-gray-300'
+                  }`}
+                >
+                  <span className="block w-full h-full rounded-full border border-gray-200" style={{ backgroundColor: hex }} />
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
