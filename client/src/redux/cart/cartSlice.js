@@ -45,10 +45,27 @@ const cartSlice = createSlice({
     },
 
     removeFromCart: (state, action) => {
-      const { id, size, color } = action.payload;
-      state.items = state.items.filter(
-        (item) => !(item.id === id && item.size === size && item.color === color)
-      );
+      const payload = action.payload;
+      if (!payload) return;
+
+      if (typeof payload === 'string' || typeof payload === 'number') {
+        state.items = state.items.filter((item, idx) => item.id !== payload && item._id !== payload && idx !== payload);
+      } else if (typeof payload === 'object') {
+        const targetId = payload.id || payload._id;
+        const targetSize = payload.size;
+        const targetColor = payload.color;
+        
+        state.items = state.items.filter((item, idx) => {
+          if (payload.index !== undefined && idx === payload.index) return false;
+          
+          const matchId = targetId ? (item.id === targetId || item._id === targetId) : true;
+          const matchSize = targetSize !== undefined ? item.size === targetSize : true;
+          const matchColor = targetColor !== undefined ? item.color === targetColor : true;
+
+          // If id matches and size/color match (or not specified), filter out
+          return !(matchId && matchSize && matchColor);
+        });
+      }
       saveCartToStorage(state.items);
     },
 

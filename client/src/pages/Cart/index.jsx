@@ -68,8 +68,8 @@ const Cart = () => {
               {items.map((item, idx) => (
                 <div key={idx} className="bg-white border border-gray-200 rounded-3xl p-4 sm:p-6 shadow-sm flex flex-col sm:flex-row gap-4 sm:gap-6 sm:items-center">
                   <div className="flex gap-4 items-start w-full sm:w-auto">
-                    <img src={item.image} alt={item.name} className="w-24 h-32 object-cover rounded-2xl bg-gray-50 shrink-0" />
-                    <button onClick={() => dispatch(removeFromCart(item))} className="sm:hidden text-gray-400 hover:text-red-600 p-2 rounded-lg transition ml-auto">
+                    <img src={formatImageUrl(item.image, item.name)} alt={item.name} className="w-24 h-32 object-cover rounded-2xl bg-gray-50 shrink-0 border border-gray-100" />
+                    <button onClick={() => dispatch(removeFromCart({ ...item, index: idx }))} className="sm:hidden text-gray-400 hover:text-red-600 p-2 rounded-lg transition ml-auto">
                       <FiTrash2 className="w-5 h-5" />
                     </button>
                   </div>
@@ -102,7 +102,7 @@ const Cart = () => {
                     </div>
                   </div>
 
-                  <button onClick={() => dispatch(removeFromCart(item))} className="hidden sm:block text-gray-400 hover:text-red-600 p-2 rounded-lg transition">
+                  <button onClick={() => dispatch(removeFromCart({ ...item, index: idx }))} className="hidden sm:block text-gray-400 hover:text-red-600 p-2 rounded-lg transition">
                     <FiTrash2 className="w-5 h-5" />
                   </button>
                 </div>
