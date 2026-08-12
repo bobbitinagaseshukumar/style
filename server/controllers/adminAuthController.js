@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { sendOTPEmail } = require('../services/emailService');
 
 // Generate JWT Token helper
 const generateToken = (id, role, tokenVersion = 0) => {
@@ -140,65 +141,31 @@ exports.adminLoginStep1 = asyncHandler(async (req, res, next) => {
     data: { failedLoginAttempts: 0, lockoutUntil: null }
   });
 
-  // Check 30-Day Trusted Device
-  if (deviceFingerprint) {
-    const trustedDevice = await prisma.adminTrustedDevice.findFirst({
-      where: {
-        adminId: admin.id,
-        deviceFingerprint,
-        trustedUntil: { gt: new Date() }
-      }
-    });
-
-    if (trustedDevice) {
-      // Bypasses OTP for trusted device
-      const token = generateToken(admin.id, admin.role, admin.tokenVersion);
-      await prisma.user.update({
-        where: { id: admin.id },
-        data: { lastLoginAt: new Date() }
-      });
-
-      await logLoginAttempt(admin.id, cleanEmail, req, 'SUCCESS', 'Bypassed OTP via 30-Day Trusted Device');
-
-      return res.status(200).json({
-        success: true,
-        step: 'AUTHENTICATED',
-        message: 'Welcome back, Administrator!',
-        data: {
-          token,
-          user: {
-            id: admin.id,
-            fullName: admin.fullName,
-            email: admin.email,
-            role: admin.role,
-            adminRole: admin.adminRole,
-            avatar: admin.avatar,
-            adminPermissions: admin.adminPermissions ? JSON.parse(admin.adminPermissions) : {}
-          }
-        }
-      });
-    }
-  }
-
-  // Generate 6-Digit Email OTP
+  // Generate 6-Digit Email OTP (Expiry: 5 Minutes)
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-  const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 Minutes Expiry
+  const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
   await prisma.user.update({
     where: { id: admin.id },
     data: { otpCode, otpExpiresAt }
   });
 
-  await logLoginAttempt(admin.id, cleanEmail, req, 'OTP_REQUIRED', '6-Digit Email OTP generated');
+  // Send 6-digit OTP to Admin's email via Brevo
+  try {
+    await sendOTPEmail(admin.email, admin.fullName, otpCode);
+  } catch (mailErr) {
+    console.error('[ADMIN OTP EMAIL FAILED]', mailErr.message);
+  }
+
+  await logLoginAttempt(admin.id, cleanEmail, req, 'OTP_REQUIRED', '6-Digit Email OTP generated & sent to admin email');
 
   res.status(200).json({
     success: true,
     step: 'OTP_REQUIRED',
-    message: `A 6-digit verification code has been sent to your registered email: ${cleanEmail}`,
+    message: `Security OTP sent! A 6-digit verification code has been sent to your email: ${cleanEmail}`,
     data: {
       adminId: admin.id,
-      email: cleanEmail,
-      otpCode // Returning in response payload for instant testing & display
+      email: cleanEmail
     }
   });
 });
@@ -287,10 +254,17 @@ exports.resendAdminOTP = asyncHandler(async (req, res, next) => {
     data: { otpCode, otpExpiresAt }
   });
 
+  // Send fresh 6-digit OTP to Admin's email via Brevo
+  try {
+    await sendOTPEmail(admin.email, admin.fullName, otpCode);
+  } catch (mailErr) {
+    console.error('[ADMIN RESEND OTP EMAIL FAILED]', mailErr.message);
+  }
+
   res.status(200).json({
     success: true,
-    message: `A new 6-digit OTP code has been sent to ${admin.email}`,
-    data: { otpCode }
+    message: `A new 6-digit OTP code has been sent to your email: ${admin.email}`,
+    data: { adminId: admin.id }
   });
 });
 
