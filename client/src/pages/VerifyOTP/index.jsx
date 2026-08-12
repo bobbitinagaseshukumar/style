@@ -40,6 +40,16 @@ const VerifyOTP = () => {
     }
   };
 
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').trim();
+    if (/^\d{6}$/.test(pastedData)) {
+      const digits = pastedData.split('');
+      setOtpDigits(digits);
+      inputRefs[5].current?.focus();
+    }
+  };
+
   const handleKeyDown = (index, e) => {
     if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
       inputRefs[index - 1].current.focus();
@@ -113,6 +123,7 @@ const VerifyOTP = () => {
               value={digit}
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
+              onPaste={handlePaste}
               className="w-11 h-13 text-center text-xl font-bold rounded-xl border-2 border-gray-200 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 focus:outline-none bg-white shadow-sm"
             />
           ))}

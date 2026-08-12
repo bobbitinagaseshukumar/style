@@ -29,7 +29,7 @@ const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const cartItems = useSelector((state) => state.cart.items || []);
   const wishlistItems = useSelector((state) => state.wishlist?.items || []);
-  const notifications = useSelector((state) => state.notifications?.unreadCount || 0);
+  const notificationsCount = useSelector((state) => state.notification?.unreadCount || 0);
 
   // Overlay state — Single Drawer Guarantee
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -290,9 +290,9 @@ const Navbar = () => {
                     aria-label="Notifications"
                   >
                     <FiBell className="w-[18px] h-[18px]" />
-                    {notifications > 0 && (
+                    {notificationsCount > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 bg-yellow-400 text-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                        {notifications}
+                        {notificationsCount}
                       </span>
                     )}
                   </Link>
