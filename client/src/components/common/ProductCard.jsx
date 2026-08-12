@@ -121,9 +121,9 @@ const ProductCard = ({ product, index = 0 }) => {
         });
       }
     } catch {}
-    const formatted = [...new Set(list)].map(url => formatImageUrl(url, name));
+    const formatted = [...new Set(list)].map(url => formatImageUrl(url, name)).filter(Boolean);
     if (formatted.length > 0) return formatted;
-    return [`https://images.unsplash.com/photo-1542272604-780c36856d67?w=800`];
+    return [''];
   };
 
   const displayImages = extractImages();

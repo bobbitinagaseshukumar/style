@@ -7,7 +7,7 @@
  */
 export const formatImageUrl = (url, fallbackName = 'Product') => {
   if (!url || typeof url !== 'string') {
-    return 'https://images.unsplash.com/photo-1542272604-780c36856d67?w=800';
+    return '';
   }
 
   const trimmed = url.trim();
@@ -17,9 +17,9 @@ export const formatImageUrl = (url, fallbackName = 'Product') => {
     return trimmed;
   }
 
-  // 2. Reject temporary local browser blob: URLs (cannot be loaded across tabs/devices)
+  // 2. Reject temporary local browser blob: URLs
   if (trimmed.startsWith('blob:')) {
-    return 'https://images.unsplash.com/photo-1542272604-780c36856d67?w=800';
+    return '';
   }
 
   // 3. Handle relative server paths (/uploads/...)

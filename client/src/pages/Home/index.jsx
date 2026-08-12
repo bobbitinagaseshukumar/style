@@ -78,11 +78,14 @@ const Home = () => {
   const [dynamicSections, setDynamicSections] = useState([]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchHomeData = async () => {
       try {
-        const [bannersRes, categoriesRes, featuredRes, trendingRes, newArrivalsRes, bestSellerRes, trendSelRes, settingsRes, dynSecRes] = await Promise.allSettled([
+        const [bannersRes, categoriesRes, allProductsRes, featuredRes, trendingRes, newArrivalsRes, bestSellerRes, trendSelRes, settingsRes, dynSecRes] = await Promise.allSettled([
           api.get('/cms/banners?activeOnly=true'),
           api.get('/categories?showOnHomepage=true&limit=8'),
+          api.get('/products?limit=50&sort=newest'),
           api.get('/products?featured=true&limit=8'),
           api.get('/products?trending=true&limit=8'),
           api.get('/products?newArrival=true&limit=8'),
@@ -91,6 +94,8 @@ const Home = () => {
           api.get('/cms/settings'),
           api.get('/cms/homepage/sections/public'),
         ]);
+
+        if (!isMounted) return;
 
         if (dynSecRes.status === 'fulfilled' && dynSecRes.value.data?.data) {
           setDynamicSections(dynSecRes.value.data.data);
@@ -112,7 +117,7 @@ const Home = () => {
           setCategories(categoriesRes.value.data.data);
         }
 
-        // Extract products from each targeted API response
+        // Extract products helper
         const extractProducts = (res) => {
           if (res.status !== 'fulfilled') return [];
           const d = res.value?.data;
@@ -123,22 +128,39 @@ const Home = () => {
           return [];
         };
 
-        const featuredList = extractProducts(featuredRes);
-        const trendingList = extractProducts(trendingRes);
-        const newArrivalsList = extractProducts(newArrivalsRes);
-        const bestSellerList = extractProducts(bestSellerRes);
+        const allProductsList = extractProducts(allProductsRes);
+        let featuredList = extractProducts(featuredRes);
+        let trendingList = extractProducts(trendingRes);
+        let newArrivalsList = extractProducts(newArrivalsRes);
+        let bestSellerList = extractProducts(bestSellerRes);
+
+        // Fallbacks: If specific badge endpoints returned empty, show all admin products
+        if (featuredList.length === 0) featuredList = allProductsList;
+        if (trendingList.length === 0) trendingList = allProductsList;
+        if (newArrivalsList.length === 0) newArrivalsList = allProductsList;
+        if (bestSellerList.length === 0) bestSellerList = allProductsList;
 
         setProducts({
-          featured: featuredList.slice(0, 8),
-          trending: trendingList.slice(0, 8),
-          newArrivals: newArrivalsList.slice(0, 8),
-          todaysDeals: bestSellerList.slice(0, 8),
+          featured: featuredList.slice(0, 12),
+          trending: trendingList.slice(0, 12),
+          newArrivals: newArrivalsList.slice(0, 12),
+          todaysDeals: bestSellerList.slice(0, 12),
         });
       } catch (err) {
         console.error('Home page data fetch error:', err);
       }
     };
+
     fetchHomeData();
+    const interval = setInterval(fetchHomeData, 15000);
+    const handleFocus = () => fetchHomeData();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   const heroSliders = banners.filter(b => (b.type === 'HERO_SLIDER' || !b.type) && (b.isActive !== false));
