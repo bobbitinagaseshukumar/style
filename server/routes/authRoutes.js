@@ -17,6 +17,7 @@ router.post('/verify-otp', authLimiter, verifyOTPValidator, validate, authContro
 router.post('/login', authLimiter, loginValidator, validate, authController.login);
 router.post('/resend-otp', authLimiter, authController.resendOTP);
 router.post('/forgot-password', authLimiter, forgotPasswordValidator, validate, authController.forgotPassword);
+router.post('/verify-reset-otp', authLimiter, authController.verifyResetOTP);
 router.post('/reset-password', authLimiter, resetPasswordValidator, validate, authController.resetPassword);
 router.post('/logout', authController.logout);
 router.get('/me', protect, authController.getMe);

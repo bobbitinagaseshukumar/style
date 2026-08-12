@@ -11,6 +11,11 @@ router.post('/login', adminAuthController.adminLoginStep1);
 router.post('/verify-otp', adminAuthController.verifyAdminOTP);
 router.post('/resend-otp', adminAuthController.resendAdminOTP);
 
+// Admin Forgot Password Flow (Email OTP)
+router.post('/forgot-password', adminAuthController.adminForgotPassword);
+router.post('/verify-reset-otp', adminAuthController.adminVerifyResetOTP);
+router.post('/reset-password', adminAuthController.adminResetPassword);
+
 // Logged-in Admin Account Profile & Security Settings
 router.get('/me', ...adminOnly, adminAuthController.getAdminProfile);
 router.put('/profile', ...adminOnly, adminAuthController.updateAdminProfile);

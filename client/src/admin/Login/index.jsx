@@ -207,6 +207,13 @@ const AdminLogin = () => {
                 </div>
                 <span className="text-[11px] text-stone-400 group-hover:text-stone-300 transition-colors tracking-wide">Keep me signed in</span>
               </label>
+
+              <Link
+                to="/admin/forgot-password"
+                className="text-[11px] text-amber-500/80 hover:text-amber-400 font-medium transition-colors hover:underline"
+              >
+                Forgot Password?
+              </Link>
             </div>
 
             <button

@@ -267,6 +267,26 @@ exports.forgotPassword = asyncHandler(async (req, res, next) => {
   });
 });
 
+// ==================== VERIFY RESET OTP ====================
+exports.verifyResetOTP = asyncHandler(async (req, res, next) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) return next(new ApiError(400, 'Email and OTP code are required'));
+
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+  if (!user) return next(new ApiError(404, 'Account not found with this email'));
+
+  const result = await verifyOTPCode(user.id, otp);
+  if (!result.valid) {
+    return next(new ApiError(400, result.message));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'OTP code verified successfully! You can now enter your new password.',
+    data: { email: user.email, verified: true }
+  });
+});
+
 // ==================== RESET PASSWORD ====================
 exports.resetPassword = asyncHandler(async (req, res, next) => {
   const { userId, email, otp, newPassword } = req.body;

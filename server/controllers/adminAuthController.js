@@ -834,3 +834,139 @@ exports.toggleMaintenanceMode = asyncHandler(async (req, res, next) => {
   });
 });
 
+// ==================== ADMIN FORGOT PASSWORD: STEP 1 (SEND OTP) ====================
+exports.adminForgotPassword = asyncHandler(async (req, res, next) => {
+  const { email } = req.body;
+  if (!email) {
+    return next(new ApiError(400, 'Please enter your admin email address'));
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const admin = await prisma.user.findUnique({ where: { email: cleanEmail } });
+
+  if (!admin || !['ADMIN', 'SUPER_ADMIN'].includes(admin.role)) {
+    return next(new ApiError(404, 'No admin account found with this email address'));
+  }
+
+  if (admin.status === 'BLOCKED') {
+    return next(new ApiError(403, 'Your admin account is blocked. Please contact Super Admin.'));
+  }
+
+  // Generate 6-Digit Email OTP (Expiry: 15 Minutes)
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+  await prisma.user.update({
+    where: { id: admin.id },
+    data: { otpCode, otpExpiresAt }
+  });
+
+  try {
+    const emailService = require('../services/emailService');
+    await emailService.sendPasswordResetEmail(admin.email, admin.fullName, otpCode);
+    console.log(`[ADMIN FORGOT PASSWORD OTP] 6-digit OTP (${otpCode}) sent to ${admin.email}`);
+  } catch (mailErr) {
+    console.error('[ADMIN FORGOT PASSWORD MAIL FAILED]', mailErr);
+    return next(new ApiError(500, 'Failed to send password reset email. Please try again.'));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `A 6-digit password reset OTP has been sent to ${admin.email}`,
+    data: { adminId: admin.id, email: admin.email }
+  });
+});
+
+// ==================== ADMIN FORGOT PASSWORD: STEP 2 (VERIFY OTP) ====================
+exports.adminVerifyResetOTP = asyncHandler(async (req, res, next) => {
+  const { email, otpCode } = req.body;
+
+  if (!email || !otpCode) {
+    return next(new ApiError(400, 'Email address and 6-digit OTP code are required'));
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const admin = await prisma.user.findUnique({ where: { email: cleanEmail } });
+
+  if (!admin || !['ADMIN', 'SUPER_ADMIN'].includes(admin.role)) {
+    return next(new ApiError(404, 'Admin account not found'));
+  }
+
+  const cleanInputOtp = String(otpCode).replace(/\s+/g, '').trim();
+  const cleanStoredOtp = admin.otpCode ? String(admin.otpCode).trim() : null;
+
+  if (!cleanStoredOtp || cleanStoredOtp !== cleanInputOtp) {
+    return next(new ApiError(400, 'Invalid verification code. Please check your email for the 6-digit code.'));
+  }
+
+  if (admin.otpExpiresAt && new Date() > new Date(admin.otpExpiresAt)) {
+    return next(new ApiError(400, 'Verification code has expired. Please request a new code.'));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'OTP verified successfully! You can now create your new password.',
+    data: { email: admin.email, verified: true }
+  });
+});
+
+// ==================== ADMIN FORGOT PASSWORD: STEP 3 (RESET PASSWORD) ====================
+exports.adminResetPassword = asyncHandler(async (req, res, next) => {
+  const { email, otpCode, newPassword } = req.body;
+
+  if (!email || !otpCode || !newPassword) {
+    return next(new ApiError(400, 'Email, OTP code, and new password are required'));
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const admin = await prisma.user.findUnique({ where: { email: cleanEmail } });
+
+  if (!admin || !['ADMIN', 'SUPER_ADMIN'].includes(admin.role)) {
+    return next(new ApiError(404, 'Admin account not found'));
+  }
+
+  const cleanInputOtp = String(otpCode).replace(/\s+/g, '').trim();
+  const cleanStoredOtp = admin.otpCode ? String(admin.otpCode).trim() : null;
+
+  if (!cleanStoredOtp || cleanStoredOtp !== cleanInputOtp) {
+    return next(new ApiError(400, 'Invalid or expired verification code. Please restart reset process.'));
+  }
+
+  if (admin.otpExpiresAt && new Date() > new Date(admin.otpExpiresAt)) {
+    return next(new ApiError(400, 'Verification code has expired. Please request a new code.'));
+  }
+
+  if (newPassword.length < 8) {
+    return next(new ApiError(400, 'New password must be at least 8 characters long'));
+  }
+
+  // Hash new password with bcrypt 12 salt rounds (overwrites old password completely)
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+  await prisma.user.update({
+    where: { id: admin.id },
+    data: {
+      password: hashedPassword,
+      otpCode: null,
+      otpExpiresAt: null,
+      failedLoginAttempts: 0,
+      lockoutUntil: null,
+    }
+  });
+
+  // Send password changed email confirmation
+  try {
+    const emailService = require('../services/emailService');
+    emailService.sendPasswordChangedEmail(admin.email, admin.fullName);
+  } catch (err) {
+    console.error('Password changed email error:', err);
+  }
+
+  await logLoginAttempt(admin.id, admin.email, req, 'PASSWORD_RESET', 'Admin password successfully reset via Email OTP');
+
+  res.status(200).json({
+    success: true,
+    message: 'Admin password updated successfully! Please log in with your new password.',
+  });
+});
+

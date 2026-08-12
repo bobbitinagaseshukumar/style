@@ -299,20 +299,41 @@ const Login = ({ initialMode }) => {
     }
   };
 
+  const [forgotLoading, setForgotLoading] = useState(false);
+
   const handleForgotPasswordSubmit = async (e) => {
     e.preventDefault();
-    if (forgotStep === 1) {
-      if (!forgotEmail) return toast.error('Enter your registered email');
-      toast.success('OTP sent to your email!');
-      setForgotStep(2);
-    } else if (forgotStep === 2) {
-      if (otp.length < 4) return toast.error('Enter valid OTP');
-      setForgotStep(3);
-    } else {
-      if (newPassword.length < 6) return toast.error('Password must be 6+ chars');
-      toast.success('Password reset successfully! Please login.');
-      setForgotModalOpen(false);
-      setForgotStep(1);
+    if (forgotLoading) return;
+
+    try {
+      setForgotLoading(true);
+      if (forgotStep === 1) {
+        if (!forgotEmail) return toast.error('Enter your registered email address');
+        const res = await api.post('/auth/forgot-password', { email: forgotEmail.trim() });
+        toast.success(res.data?.message || '6-digit OTP code sent to your email!');
+        setForgotStep(2);
+      } else if (forgotStep === 2) {
+        if (!otp || otp.trim().length !== 6) return toast.error('Enter 6-digit OTP code');
+        await api.post('/auth/verify-reset-otp', { email: forgotEmail.trim(), otp: otp.trim() });
+        toast.success('OTP code verified! Now enter your new password.');
+        setForgotStep(3);
+      } else {
+        if (!newPassword || newPassword.length < 6) return toast.error('Password must be at least 6 characters');
+        const res = await api.post('/auth/reset-password', {
+          email: forgotEmail.trim(),
+          otp: otp.trim(),
+          newPassword
+        });
+        toast.success(res.data?.message || 'Password reset successfully! Please login with your new password.');
+        setForgotModalOpen(false);
+        setForgotStep(1);
+        setOtp('');
+        setNewPassword('');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Verification failed. Please check and try again.');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -728,14 +749,14 @@ const Login = ({ initialMode }) => {
 
                   {forgotStep === 2 && (
                     <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
-                      <p className="text-gray-400 mb-3 leading-relaxed">Enter 4-digit OTP sent to <span className="text-amber-400">{forgotEmail}</span>:</p>
+                      <p className="text-gray-400 mb-3 leading-relaxed">Enter 6-digit OTP code sent to <span className="text-amber-400">{forgotEmail}</span>:</p>
                       <input
                         type="text"
-                        maxLength={4}
+                        maxLength={6}
                         required
                         value={otp}
                         onChange={(e) => setOtp(e.target.value)}
-                        placeholder="1234"
+                        placeholder="123456"
                         className="w-full px-4 py-3 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white text-center font-bold tracking-widest text-lg focus:outline-none focus:border-amber-400 input-glow transition-all"
                       />
                     </motion.div>

@@ -14,6 +14,7 @@ import Login from '../pages/Login';
 import Register from '../pages/Register';
 import AdminLogin from '../admin/Login';
 import AdminVerifyOTP from '../admin/Login/AdminVerifyOTP';
+import AdminForgotPassword from '../admin/Login/AdminForgotPassword';
 
 // Helper function for dynamic imports with auto-reload retry on stale Vercel deployment chunk hash mismatches
 const lazyRetry = (componentImport) =>
@@ -167,10 +168,11 @@ const AppRoutes = () => {
           <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
 
-        {/* Dedicated Admin Login & 2FA OTP Pages (Outside Customer Flow & Outside Admin Layout) */}
+        {/* Dedicated Admin Login, Forgot Password & 2FA OTP Pages */}
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/admin/verify-otp" element={<AdminVerifyOTP />} />
+        <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
 
         {/* Admin Dashboard & Management Routes */}
         <Route element={<AdminRoute><AdminLayout /></AdminRoute>}>
