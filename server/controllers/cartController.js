@@ -79,8 +79,8 @@ exports.addToCart = asyncHandler(async (req, res, next) => {
 exports.updateCartItem = asyncHandler(async (req, res, next) => {
     const { itemId, quantity } = req.body;
 
-    const cartItem = await prisma.cartItem.findUnique({
-        where: { id: itemId },
+    const cartItem = await prisma.cartItem.findFirst({
+        where: { id: itemId, cart: { userId: req.user.id } },
         include: { product: true }
     });
 
@@ -104,6 +104,12 @@ exports.updateCartItem = asyncHandler(async (req, res, next) => {
 
 exports.removeCartItem = asyncHandler(async (req, res, next) => {
     const { itemId } = req.params;
+
+    const cartItem = await prisma.cartItem.findFirst({
+        where: { id: itemId, cart: { userId: req.user.id } }
+    });
+
+    if (!cartItem) return next(new ApiError(404, 'Cart item not found'));
 
     await prisma.cartItem.delete({
         where: { id: itemId }

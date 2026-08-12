@@ -76,7 +76,8 @@ const Categories = () => {
         else if (sortOption === 'price_desc') url += `&sort=price_desc`;
 
         const { data } = await api.get(url);
-        setProducts(data.data?.products || []);
+        const prods = data.data?.products || (Array.isArray(data.data) ? data.data : []);
+        setProducts(prods);
       } catch (err) {
         console.error(err);
       } finally {

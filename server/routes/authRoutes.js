@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, authorize } = require('../middleware/authMiddleware');
 const validate = require('../middleware/validatorMiddleware');
 const {
     registerValidator,
@@ -22,8 +22,8 @@ router.get('/me', protect, authController.getMe);
 
 // Auth Settings Routes (Enterprise Auth Manager)
 router.get('/settings/public', authController.getAuthSettingsPublic);
-router.get('/settings/admin', protect, authController.getAuthSettingsAdmin);
-router.put('/settings/admin', protect, authController.updateAuthSettingsAdmin);
+router.get('/settings/admin', protect, authorize('ADMIN', 'SUPER_ADMIN'), authController.getAuthSettingsAdmin);
+router.put('/settings/admin', protect, authorize('ADMIN', 'SUPER_ADMIN'), authController.updateAuthSettingsAdmin);
 
 // Google Sign-In (Firebase)
 router.post('/google', authController.googleLogin);

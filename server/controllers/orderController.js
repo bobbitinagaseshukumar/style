@@ -272,8 +272,11 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
 
 // ==================== GET ORDER DETAILS ====================
 exports.getOrderById = asyncHandler(async (req, res, next) => {
+  const isServerAdmin = req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN';
+  const whereClause = isServerAdmin ? { id: req.params.id } : { id: req.params.id, userId: req.user.id };
+
   const order = await prisma.order.findFirst({
-    where: { id: req.params.id },
+    where: whereClause,
     include: {
       items: { include: { product: { include: { images: true } } } },
       address: true,
@@ -636,7 +639,9 @@ exports.adminRejectOrder = asyncHandler(async (req, res, next) => {
 // ==================== GET CANCELLATION ELIGIBILITY (LIVE TIMING) ====================
 exports.getCancellationEligibility = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const order = await prisma.order.findUnique({ where: { id } });
+  const isServerAdmin = req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN';
+  const whereClause = isServerAdmin ? { id } : { id, userId: req.user.id };
+  const order = await prisma.order.findFirst({ where: whereClause });
   if (!order) return next(new ApiError(404, 'Order not found'));
 
   const now = new Date();
@@ -677,7 +682,9 @@ exports.getCancellationEligibility = asyncHandler(async (req, res, next) => {
 // ==================== GET CANCELLATION STATUS ====================
 exports.getOrderCancellationStatus = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const order = await prisma.order.findUnique({ where: { id } });
+  const isServerAdmin = req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN';
+  const whereClause = isServerAdmin ? { id } : { id, userId: req.user.id };
+  const order = await prisma.order.findFirst({ where: whereClause });
   if (!order) return next(new ApiError(404, 'Order not found'));
 
   let { cancellationAllowed, cancellationEnd } = order;

@@ -61,8 +61,14 @@ exports.addToWishlist = asyncHandler(async (req, res, next) => {
 exports.removeFromWishlist = asyncHandler(async (req, res, next) => {
     const { itemId } = req.params;
 
+    const item = await prisma.wishlistItem.findFirst({
+        where: { id: itemId, wishlist: { userId: req.user.id } }
+    });
+
+    if (!item) return next(new ApiError(404, 'Wishlist item not found'));
+
     await prisma.wishlistItem.delete({
-        where: { id: itemId }
+        where: { id: item.id }
     });
 
     res.status(200).json({
