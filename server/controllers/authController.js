@@ -193,6 +193,44 @@ exports.login = asyncHandler(async (req, res, next) => {
   });
 });
 
+// ==================== RESEND CUSTOMER OTP ====================
+exports.resendOTP = asyncHandler(async (req, res, next) => {
+  const { userId, email } = req.body;
+
+  let user = null;
+  if (userId) {
+    user = await prisma.user.findUnique({ where: { id: userId } });
+  } else if (email) {
+    user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+  }
+
+  if (!user) {
+    return next(new ApiError(404, 'Account not found. Please register first.'));
+  }
+
+  if (user.status === 'SUSPENDED' || user.status === 'BLOCKED') {
+    return next(new ApiError(403, `Your account is ${user.status.toLowerCase()}. Please contact support.`));
+  }
+
+  // Generate fresh OTP — createOTP automatically deletes all previous OTPs for this user
+  const otp = await createOTP(user.id);
+
+  // Send OTP email via Brevo — fail loudly if delivery fails
+  try {
+    await sendOTPEmail(user.email, user.fullName, otp);
+    console.log(`[CUSTOMER RESEND OTP] New OTP sent to ${user.email}`);
+  } catch (mailErr) {
+    console.error('[CUSTOMER RESEND OTP EMAIL FAILED]', mailErr.message);
+    return next(new ApiError(500, 'Failed to send OTP email. Please try again in a moment.'));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `A new 6-digit OTP code has been sent to ${user.email}`,
+    data: { userId: user.id, email: user.email },
+  });
+});
+
 // ==================== FORGOT PASSWORD ====================
 exports.forgotPassword = asyncHandler(async (req, res, next) => {
   const { email } = req.body;
