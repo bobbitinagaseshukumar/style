@@ -56,16 +56,24 @@ const blobToBase64 = (blob) =>
 
 const uploadImages = async (images) => {
   const urls = [];
-  for (const img of images) {
-    // Already uploaded images (edit mode) — keep existing URL
-    if (!img.blob && img.url) {
-      urls.push(img.url);
-      continue;
+  for (const rawImg of images) {
+    let imgObj = typeof rawImg === 'string' ? { url: rawImg } : rawImg;
+    let targetBlob = imgObj?.blob || null;
+    let targetUrl = imgObj?.url || (typeof rawImg === 'string' ? rawImg : '');
+
+    // If targetUrl is a local browser blob: URL, fetch the blob from memory if blob object is missing
+    if (targetUrl && targetUrl.startsWith('blob:') && !targetBlob) {
+      try {
+        const resp = await fetch(targetUrl);
+        targetBlob = await resp.blob();
+      } catch (err) {
+        console.warn('[FAILED TO FETCH BLOB URL]', err);
+      }
     }
 
-    if (img.blob) {
+    if (targetBlob) {
       const formData = new FormData();
-      formData.append('image', img.blob, `product-${Date.now()}.webp`);
+      formData.append('image', targetBlob, `product-${Date.now()}.webp`);
       try {
         const { data } = await api.post('/upload/image', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
@@ -78,16 +86,19 @@ const uploadImages = async (images) => {
         console.warn('[IMAGE UPLOAD ENDPOINT FAILED - USING BASE64 FALLBACK]', err);
       }
 
-      // Convert Blob to Base64 Data URL so product creation ALWAYS succeeds
+      // Convert Blob to Base64 Data URL so image is permanent across all devices
       try {
-        const b64 = await blobToBase64(img.blob);
+        const b64 = await blobToBase64(targetBlob);
         urls.push(b64);
+        continue;
       } catch (b64Err) {
         console.error('[BASE64 CONVERSION FAILED]', b64Err);
-        if (img.url) urls.push(img.url);
       }
-    } else if (img.url) {
-      urls.push(img.url);
+    }
+
+    // Only keep existing URL if it is a valid web URL or Data URL (NOT a local blob: URL)
+    if (targetUrl && !targetUrl.startsWith('blob:')) {
+      urls.push(targetUrl);
     }
   }
 

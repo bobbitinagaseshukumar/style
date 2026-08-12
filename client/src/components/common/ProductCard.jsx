@@ -95,11 +95,37 @@ const ProductCard = ({ product, index = 0 }) => {
   const slug = product.slug || product._id || product.id || '';
   const brand = product.brand?.name || product.brandName || product.category?.name || '';
 
-  const rawImages = product.images?.length > 0
-    ? product.images.map(img => (typeof img === 'string' ? img : img.url))
-    : [`https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=600&background=F5F5F5&color=333&bold=true`];
+  // Extract valid non-blob product images
+  const extractImages = () => {
+    const list = [];
+    if (Array.isArray(product.images)) {
+      product.images.forEach(img => {
+        const u = typeof img === 'string' ? img : img?.url;
+        if (u && typeof u === 'string' && !u.startsWith('blob:')) list.push(u);
+      });
+    }
+    if (product.image && typeof product.image === 'string' && !product.image.startsWith('blob:')) {
+      list.push(product.image);
+    }
+    try {
+      const parsedColors = typeof product.colors === 'string' ? JSON.parse(product.colors) : product.colors;
+      if (Array.isArray(parsedColors)) {
+        parsedColors.forEach(c => {
+          if (Array.isArray(c?.images)) {
+            c.images.forEach(img => {
+              const u = typeof img === 'string' ? img : img?.url;
+              if (u && typeof u === 'string' && !u.startsWith('blob:')) list.push(u);
+            });
+          }
+        });
+      }
+    } catch {}
+    const unique = [...new Set(list)];
+    if (unique.length > 0) return unique;
+    return [`https://images.unsplash.com/photo-1542272604-780c36856d67?w=800`];
+  };
 
-  const displayImages = rawImages.length > 0 ? rawImages : [rawImages[0]];
+  const displayImages = extractImages();
   const primaryImage = activeImageIdx < displayImages.length ? displayImages[activeImageIdx] : displayImages[0];
   const hoverImage = displayImages.length > 1 ? displayImages[1] : null;
 
