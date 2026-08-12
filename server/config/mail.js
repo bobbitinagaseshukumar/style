@@ -39,7 +39,7 @@ const sendEmailViaBrevo = async ({ to, subject, htmlContent, senderName, senderE
   const payload = JSON.stringify({
     sender: {
       name: senderName || env.FROM_NAME || 'KVLR Styles',
-      email: senderEmail || env.FROM_EMAIL || 'noreply@styleverse.com',
+      email: senderEmail || env.FROM_EMAIL || 'nagaseshukumarbobbiti@gmail.com',
     },
     to: recipientList,
     subject: subject,

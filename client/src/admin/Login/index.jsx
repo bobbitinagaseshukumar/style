@@ -147,15 +147,19 @@ const AdminLogin = () => {
             )}
           </AnimatePresence>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-6">
+            {/* Decoy hidden inputs to absorb browser forced autofill */}
+            <input type="text" name="username" style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1 }} tabIndex={-1} readOnly />
+            <input type="password" name="password" style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1 }} tabIndex={-1} readOnly />
+
             <div className="space-y-1 group">
               <label className="text-[10px] uppercase tracking-widest text-stone-500 font-medium group-focus-within:text-amber-500 transition-colors">Email Address</label>
               <div className="relative">
                 <FiMail className="absolute left-0 top-1/2 -translate-y-1/2 text-stone-500 group-focus-within:text-amber-500 transition-colors" size={16} />
                 <input
                   type="email"
-                  name="email"
-                  autoComplete="username"
+                  name="admin_portal_login_identifier"
+                  autoComplete="off"
                   required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -171,8 +175,8 @@ const AdminLogin = () => {
                 <FiLock className="absolute left-0 top-1/2 -translate-y-1/2 text-stone-500 group-focus-within:text-amber-500 transition-colors" size={16} />
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  autoComplete="current-password"
+                  name="admin_portal_login_passkey"
+                  autoComplete="new-password"
                   required
                   value={password}
                   onChange={e => setPassword(e.target.value)}
