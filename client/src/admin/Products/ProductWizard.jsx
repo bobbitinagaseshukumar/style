@@ -145,7 +145,7 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
     estimatedDelivery: '3-5 Business Days',
     returnPeriod: '7 days',
     refundPolicy: 'Full refund within 7 days',
-    status: editProduct?.isVisible ? 'published' : 'draft',
+    status: editProduct ? (editProduct.status?.toLowerCase() || (editProduct.isVisible ? 'published' : 'draft')) : 'published',
     featured: editProduct?.featured || false,
     trending: editProduct?.trending || false,
     newArrival: editProduct?.newArrival || false,
@@ -183,7 +183,7 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
   const prev = () => { setValidationError(null); setCurrentStep(c => Math.max(0, c - 1)); };
 
   /* ── Submit ────────────────────────────────────────────────── */
-  const handleSubmit = async (publishStatus = 'draft') => {
+  const handleSubmit = async (publishStatus = 'published') => {
     // Validate all steps before publishing
     if (publishStatus === 'published') {
       for (const step of STEPS) {
@@ -216,6 +216,9 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
         ? +(parseFloat(form.mrp) * (1 - discountPct / 100)).toFixed(2)
         : sellingPrice;
 
+      const isPub = publishStatus === 'published' || form.status === 'published' || form.status === 'PUBLISHED';
+      const targetStatus = isPub ? 'PUBLISHED' : (form.status || 'PUBLISHED').toUpperCase();
+
       const payload = {
         name: form.name,
         sku: form.sku,
@@ -237,7 +240,8 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
         trending: form.trending,
         newArrival: form.newArrival,
         bestSeller: form.bestSeller,
-        isVisible: publishStatus === 'published',
+        status: targetStatus,
+        isVisible: targetStatus === 'PUBLISHED',
         images: uploadedUrls,
         // Extended fields stored as meta
         fabric: form.fabric,

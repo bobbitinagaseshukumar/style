@@ -307,7 +307,11 @@ exports.updateProduct = asyncHandler(async (req, res, next) => {
   if (updateData.isFestival !== undefined) updateData.isFestival = updateData.isFestival === 'true' || updateData.isFestival === true;
   if (updateData.showOnHomepage !== undefined) updateData.showOnHomepage = updateData.showOnHomepage === 'true' || updateData.showOnHomepage === true;
 
-  if (updateData.status) updateData.status = updateData.status.toUpperCase();
+  if (updateData.status) {
+    updateData.status = updateData.status.toUpperCase();
+  } else if (updateData.isVisible === true) {
+    updateData.status = 'PUBLISHED';
+  }
 
   if (updateData.sizes && typeof updateData.sizes !== 'string') updateData.sizes = JSON.stringify(updateData.sizes);
   if (updateData.colors && typeof updateData.colors !== 'string') updateData.colors = JSON.stringify(updateData.colors);
