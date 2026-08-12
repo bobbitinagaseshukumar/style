@@ -27,6 +27,7 @@ const AdminLogin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading || verified) return;
     if (!email || !password) {
       toast.error('Please enter admin email and password');
       return;

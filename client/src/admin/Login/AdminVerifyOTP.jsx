@@ -78,6 +78,7 @@ const AdminVerifyOTP = () => {
   // Submit OTP Verification
   const handleVerify = async (e) => {
     e?.preventDefault();
+    if (loading) return;
     const fullOtp = otp.join('');
     if (fullOtp.length !== 6) {
       toast.error('Please enter complete 6-digit OTP code');

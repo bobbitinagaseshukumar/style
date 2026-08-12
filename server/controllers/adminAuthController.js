@@ -141,9 +141,9 @@ exports.adminLoginStep1 = asyncHandler(async (req, res, next) => {
     data: { failedLoginAttempts: 0, lockoutUntil: null }
   });
 
-  // Generate 6-Digit Email OTP (Expiry: 5 Minutes)
+  // Generate 6-Digit Email OTP (Expiry: 15 Minutes)
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-  const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+  const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
   await prisma.user.update({
     where: { id: admin.id },
@@ -174,25 +174,36 @@ exports.adminLoginStep1 = asyncHandler(async (req, res, next) => {
 
 // ==================== STEP 2: VERIFY ADMIN EMAIL OTP ====================
 exports.verifyAdminOTP = asyncHandler(async (req, res, next) => {
-  const { adminId, otpCode, trustDevice, deviceFingerprint, deviceName } = req.body;
+  const { adminId, email, otpCode, trustDevice, deviceFingerprint, deviceName } = req.body;
 
-  if (!adminId || !otpCode) {
-    return next(new ApiError(400, 'Admin ID and 6-digit OTP code are required'));
+  if ((!adminId && !email) || !otpCode) {
+    return next(new ApiError(400, 'Admin ID / Email and 6-digit OTP code are required'));
   }
 
-  const admin = await prisma.user.findUnique({ where: { id: adminId } });
+  let admin = null;
+  if (adminId) {
+    admin = await prisma.user.findUnique({ where: { id: adminId } });
+  }
+  if (!admin && email) {
+    admin = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+  }
+
   if (!admin) {
     return next(new ApiError(404, 'Admin account not found'));
   }
 
-  if (!admin.otpCode || admin.otpCode !== otpCode.trim()) {
-    await logLoginAttempt(admin.id, admin.email, req, 'FAILED', 'Invalid OTP code entered');
-    return next(new ApiError(400, 'Invalid verification code. Please check and try again.'));
+  const cleanInputOtp = String(otpCode).replace(/\s+/g, '').trim();
+  const cleanStoredOtp = admin.otpCode ? String(admin.otpCode).trim() : null;
+
+  if (!cleanStoredOtp || cleanStoredOtp !== cleanInputOtp) {
+    console.log(`[OTP MISMATCH] User: ${admin.email} | Stored: "${cleanStoredOtp}" | Provided: "${cleanInputOtp}"`);
+    await logLoginAttempt(admin.id, admin.email, req, 'FAILED', `Invalid OTP entered (Provided: ${cleanInputOtp})`);
+    return next(new ApiError(400, 'Invalid verification code. Please check your email for the latest 6-digit code.'));
   }
 
-  if (new Date() > new Date(admin.otpExpiresAt)) {
+  if (admin.otpExpiresAt && new Date() > new Date(admin.otpExpiresAt)) {
     await logLoginAttempt(admin.id, admin.email, req, 'FAILED', 'Expired OTP code');
-    return next(new ApiError(400, 'Verification code has expired. Please request a new code.'));
+    return next(new ApiError(400, 'Verification code has expired. Please click Resend OTP to request a new code.'));
   }
 
   // Clear OTP
@@ -254,7 +265,7 @@ exports.resendAdminOTP = asyncHandler(async (req, res, next) => {
 
   // Generate a fresh 6-digit OTP and clear any previous code
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-  const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+  const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
   await prisma.user.update({
     where: { id: adminId },
