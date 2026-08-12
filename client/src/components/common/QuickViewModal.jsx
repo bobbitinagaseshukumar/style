@@ -6,6 +6,7 @@ import { addToCart } from '../../redux/cart/cartSlice';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
+import { formatImageUrl } from '../../utils/formatImageUrl';
 
 const colorHexMap = {
   black: '#121212',
@@ -24,17 +25,47 @@ const colorHexMap = {
   gray: '#6B7280',
 };
 
+const getColorString = (c) => {
+  if (!c) return '';
+  if (typeof c === 'string') return c;
+  if (typeof c === 'object') return c.name || c.hex || c.color || '';
+  return String(c);
+};
+
 const QuickViewModal = ({ isOpen, onClose, product }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   if (!product) return null;
 
-  const images = product.images?.length > 0
-    ? product.images.map(img => (typeof img === 'string' ? img : img.url))
-    : ['https://via.placeholder.com/400'];
+  const rawImages = (() => {
+    const list = [];
+    if (Array.isArray(product.images) && product.images.length > 0) {
+      product.images.forEach(img => {
+        const u = typeof img === 'string' ? img : img?.url;
+        if (u) list.push(u);
+      });
+    }
+    if (product.image) list.push(product.image);
+    try {
+      const parsed = typeof product.colors === 'string' ? JSON.parse(product.colors) : product.colors;
+      if (Array.isArray(parsed)) {
+        parsed.forEach(c => {
+          if (Array.isArray(c?.images)) {
+            c.images.forEach(img => {
+              const u = typeof img === 'string' ? img : img?.url;
+              if (u) list.push(u);
+            });
+          }
+        });
+      }
+    } catch {}
+    const unique = [...new Set(list)].map(url => formatImageUrl(url, product.name));
+    if (unique.length > 0) return unique;
+    return ['https://images.unsplash.com/photo-1542272604-780c36856d67?w=800'];
+  })();
 
-  const [selectedImg, setSelectedImg] = useState(images[0]);
+  const [selectedImg, setSelectedImg] = useState(rawImages[0]);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
 
@@ -56,6 +87,9 @@ const QuickViewModal = ({ isOpen, onClose, product }) => {
     }
   })();
 
+  const firstColorStr = colors.length > 0 ? getColorString(colors[0]) : '';
+  const activeColorDisplay = selectedColor || firstColorStr;
+
   const price = product.price || 0;
   const discountPrice = product.discountPrice || 0;
   const discountPercent = product.discountPercent || 0;
@@ -68,7 +102,7 @@ const QuickViewModal = ({ isOpen, onClose, product }) => {
       price: finalPrice,
       image: selectedImg,
       size: selectedSize || (sizes[0] || ''),
-      color: selectedColor || (colors[0] || ''),
+      color: activeColorDisplay,
       quantity: 1,
     }));
     toast.success(`"${product.name}" added to cart! 🛍️`);
@@ -82,7 +116,7 @@ const QuickViewModal = ({ isOpen, onClose, product }) => {
       price: finalPrice,
       image: selectedImg,
       size: selectedSize || (sizes[0] || ''),
-      color: selectedColor || (colors[0] || ''),
+      color: activeColorDisplay,
       quantity: 1,
     }));
     onClose();
@@ -103,9 +137,9 @@ const QuickViewModal = ({ isOpen, onClose, product }) => {
             )}
           </div>
 
-          {images.length > 1 && (
+          {rawImages.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {images.map((img, idx) => (
+              {rawImages.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setSelectedImg(img)}
@@ -158,11 +192,11 @@ const QuickViewModal = ({ isOpen, onClose, product }) => {
             {colors.length > 0 && (
               <div>
                 <span className="font-bold text-gray-700 block mb-1.5 uppercase text-[10px]">
-                  Colors: <span className="text-amber-600">{selectedColor || colors[0]}</span>
+                  Colors: <span className="text-amber-600">{activeColorDisplay}</span>
                 </span>
                 <div className="flex gap-2">
                   {colors.map((c, i) => {
-                    const cStr = typeof c === 'object' ? (c?.name || c?.hex || '') : String(c || '');
+                    const cStr = getColorString(c);
                     const cLower = cStr.toLowerCase();
                     const hex = (typeof c === 'object' && c?.hex) ? c.hex : (colorHexMap[cLower] || (cLower.startsWith('#') ? cLower : '#6B7280'));
                     return (
@@ -170,7 +204,7 @@ const QuickViewModal = ({ isOpen, onClose, product }) => {
                         key={cStr + i}
                         onClick={() => setSelectedColor(cStr)}
                         className={`w-6 h-6 rounded-full border-2 transition-all ${
-                          selectedColor === cStr ? 'ring-2 ring-amber-500 scale-110' : 'border-gray-300'
+                          activeColorDisplay === cStr ? 'ring-2 ring-amber-500 scale-110' : 'border-gray-300'
                         }`}
                         style={{ backgroundColor: hex }}
                         title={cStr}
@@ -190,15 +224,15 @@ const QuickViewModal = ({ isOpen, onClose, product }) => {
                 <div className="flex flex-wrap gap-2">
                   {sizes.map((s) => (
                     <button
-                      key={s}
-                      onClick={() => setSelectedSize(s)}
+                      key={typeof s === 'object' ? (s.size || s.name) : s}
+                      onClick={() => setSelectedSize(typeof s === 'object' ? (s.size || s.name) : s)}
                       className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition ${
-                        selectedSize === s
+                        selectedSize === (typeof s === 'object' ? (s.size || s.name) : s)
                           ? 'border-amber-500 bg-amber-50 text-amber-800'
                           : 'border-gray-200 text-gray-700 hover:border-gray-300'
                       }`}
                     >
-                      {s}
+                      {typeof s === 'object' ? (s.size || s.name || '') : String(s)}
                     </button>
                   ))}
                 </div>
