@@ -269,6 +269,21 @@ const GlobalImageEditor = ({
     }
   }, [isOpen]);
 
+  // Keyboard shortcuts (Escape = Cancel, Enter = Done)
+  useEffect(() => {
+    if (!isOpen || !imageSrc) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !uploading) {
+        handleCancel();
+      } else if (e.key === 'Enter' && !uploading && e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+        e.preventDefault();
+        handleApply();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, imageSrc, uploading, croppedAreaPixels, totalRotation, flip]);
+
   // Build presets
   const presets = aspectPresets || DEFAULT_PRESETS.filter(p => {
     if (p.value === null) return enableFreeCrop;
