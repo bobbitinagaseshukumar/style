@@ -18,38 +18,65 @@ const MegaMenu = ({ category, onMouseEnter, onMouseLeave }) => {
     const fetchCategoryData = async () => {
       setLoading(true);
       try {
-        // Fetch categories — the API returns subcategories nested inside each category object
-        const res = await api.get('/categories');
-        const allCats = res.data?.data || [];
+        // Fetch categories and subcategories concurrently
+        const [catsRes, subsRes] = await Promise.allSettled([
+          api.get('/categories'),
+          api.get('/subcategories?activeOnly=true')
+        ]);
 
-        // Find the parent category matching the slug/key/name
-        const parent = allCats.find(c =>
-          c.slug === category ||
-          c.id === category ||
-          c.name.toLowerCase() === category.toLowerCase()
-        );
+        const allCats = catsRes.status === 'fulfilled' ? (catsRes.value.data?.data || []) : [];
+        const allSubs = subsRes.status === 'fulfilled' ? (subsRes.value.data?.data || []) : [];
+
+        const targetKey = String(category || '').toLowerCase().trim();
+
+        // Smart Category Matcher (resolves aliases like 'men' -> "Men's Wear", 'women' -> "Women's Sarees")
+        const parent = allCats.find(c => {
+          const cId = String(c.id || '').toLowerCase();
+          const cSlug = String(c.slug || '').toLowerCase();
+          const cName = String(c.name || '').toLowerCase();
+
+          if (cId === targetKey || cSlug === targetKey || cName === targetKey) return true;
+          if (cSlug.includes(targetKey) || targetKey.includes(cSlug)) return true;
+          if (cName.includes(targetKey) || targetKey.includes(cName)) return true;
+
+          // Special alias matching for header menu titles
+          if (targetKey === 'men' && (cSlug.includes('men') || cName.includes('men'))) return true;
+          if (targetKey === 'women' && (cSlug.includes('women') || cName.includes('women'))) return true;
+          if (targetKey === 'kids' && (cSlug.includes('kid') || cName.includes('kid'))) return true;
+          if (targetKey === 'jewellery' && (cSlug.includes('jewel') || cName.includes('jewel'))) return true;
+
+          return false;
+        });
+
         setParentCat(parent);
 
-        if (parent) {
-          // FIX: Use the nested subcategories array returned by the API
-          // The API includes { subcategories: [...] } inside each category
-          const subs = parent.subcategories || [];
+        let finalSubs = [];
 
-          // If subcategories are empty in the nested object, try fetching from the dedicated endpoint
-          if (subs.length === 0) {
-            try {
-              const subRes = await api.get(`/subcategories?activeOnly=true&categoryId=${parent.id}`);
-              const subData = subRes.data?.data || [];
-              setSubcategories(subData);
-            } catch {
-              setSubcategories([]);
-            }
+        if (parent) {
+          // 1. Check nested subcategories array on parent category
+          if (Array.isArray(parent.subcategories) && parent.subcategories.length > 0) {
+            finalSubs = parent.subcategories;
           } else {
-            setSubcategories(subs);
+            // 2. Filter from all active subcategories matching categoryId or category.id
+            finalSubs = allSubs.filter(s =>
+              s.categoryId === parent.id ||
+              s.category?.id === parent.id ||
+              s.category?.slug === parent.slug
+            );
           }
-        } else {
-          setSubcategories([]);
         }
+
+        // 3. Fallback: if parent category object was not found directly, filter all active subcategories by search key
+        if (finalSubs.length === 0 && allSubs.length > 0) {
+          finalSubs = allSubs.filter(s => {
+            const catName = String(s.category?.name || '').toLowerCase();
+            const catSlug = String(s.category?.slug || '').toLowerCase();
+            const subSlug = String(s.slug || '').toLowerCase();
+            return catName.includes(targetKey) || catSlug.includes(targetKey) || subSlug.includes(targetKey);
+          });
+        }
+
+        setSubcategories(finalSubs);
       } catch (err) {
         console.error('Failed to fetch mega menu categories:', err);
       } finally {
