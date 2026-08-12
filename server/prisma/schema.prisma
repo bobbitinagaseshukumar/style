@@ -81,6 +81,9 @@ model User {
 
   trustedDevices      AdminTrustedDevice[]
   loginHistory        AdminLoginHistory[]
+
+  @@index([firebaseUid])
+  @@index([googleId])
 }
 
 model AdminTrustedDevice {
@@ -252,6 +255,14 @@ model Product {
   reviews         Review[]
   stockAlerts     BackInStockSubscription[]
   recentlyViewed  RecentlyViewed[]
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([status, categoryId])
+  @@index([status, featured])
+  @@index([status, trending])
+  @@index([status, newArrival])
+  @@index([createdAt])
 }
 
 model ProductImage {

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../../components/common/Button';
 import api from '../../config/api';
 import { formatDate } from '../../utils/formatDate';
-import BannerCropperModal from '../Banner/BannerCropperModal';
+import GlobalImageEditor from '../../components/common/GlobalImageEditor';
 import {
   FiPlus, FiTrash2, FiEdit, FiSearch, FiX, FiCopy, FiCheck,
   FiStar, FiUploadCloud, FiCheckCircle, FiUser, FiMapPin,
@@ -340,7 +340,7 @@ const CustomerReviewsManager = () => {
         )}
       </AnimatePresence>
 
-      <BannerCropperModal isOpen={cropperOpen} onClose={() => setCropperOpen(false)} imageSrc={cropperSrc} onCropComplete={url => { setForm({ ...form, avatarUrl: url }); toast.success('Photo updated!'); }} />
+      <GlobalImageEditor isOpen={cropperOpen} onClose={() => setCropperOpen(false)} imageSrc={cropperSrc} onComplete={url => { setForm({ ...form, avatarUrl: url }); toast.success('Photo updated!'); }} title="Edit Review Avatar" aspectRatio={1} showFileSelect={false} />
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

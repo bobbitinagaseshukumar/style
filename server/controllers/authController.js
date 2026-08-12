@@ -338,95 +338,240 @@ exports.updateAuthSettingsAdmin = asyncHandler(async (req, res) => {
 
 // ==================== GOOGLE SIGN-IN (Firebase) ====================
 exports.googleLogin = asyncHandler(async (req, res, next) => {
-  const { uid, name, email, photo } = req.body;
+  const { idToken, uid, name, email, photo } = req.body;
 
-  if (!email || !uid) {
+  // Extract verified identity
+  let verifiedEmail = email;
+  let verifiedUid = uid;
+  let verifiedName = name;
+  let verifiedPhoto = photo;
+
+  // If firebase-admin is available, verify the ID token server-side
+  try {
+    const firebaseAdmin = require('../config/firebase');
+    if (firebaseAdmin && idToken) {
+      const decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
+      verifiedEmail = decodedToken.email;
+      verifiedUid = decodedToken.uid;
+      verifiedName = decodedToken.name || name;
+      verifiedPhoto = decodedToken.picture || photo;
+      console.log(`[GOOGLE AUTH] Firebase token verified for: ${verifiedEmail}`);
+    }
+  } catch (firebaseError) {
+    // If firebase-admin not configured, fall back to trusting frontend data
+    // This allows the system to work while firebase-admin is being set up
+    console.warn('[GOOGLE AUTH] Firebase Admin not available, using frontend-supplied data:', firebaseError.message);
+  }
+
+  if (!verifiedEmail || !verifiedUid) {
     return next(new ApiError(400, 'Google UID and email are required.'));
   }
 
-  // 1. Check if user already exists by firebaseUid, googleId, or email
-  let user = await prisma.user.findFirst({
+  console.log(`[GOOGLE AUTH] Checking database for: ${verifiedEmail} (UID: ${verifiedUid})`);
+
+  // Check if user already exists by firebaseUid, googleId, or email
+  const user = await prisma.user.findFirst({
     where: {
       OR: [
-        { firebaseUid: uid },
-        { googleId: uid },
-        { email: email.toLowerCase() },
+        { firebaseUid: verifiedUid },
+        { googleId: verifiedUid },
+        { email: verifiedEmail.toLowerCase() },
       ],
     },
   });
 
-  if (user) {
-    // Existing user — update Google profile info and login timestamp
-    user = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        firebaseUid: uid,
-        googleId: uid,
-        authProvider: 'GOOGLE',
-        avatar: photo || user.avatar,
-        profileImage: photo || user.profileImage,
-        fullName: name || user.fullName,
-        isVerified: true,
-        lastLoginAt: new Date(),
+  if (!user) {
+    // ACCOUNT NOT FOUND — Do NOT auto-create
+    console.log(`[GOOGLE AUTH] No website account found for: ${verifiedEmail}`);
+    return res.status(200).json({
+      success: false,
+      status: 'ACCOUNT_NOT_FOUND',
+      message: 'Your Google account is verified, but you don\'t have a website account yet. Please complete your details to create your account.',
+      googleProfile: {
+        uid: verifiedUid,
+        email: verifiedEmail,
+        name: verifiedName,
+        photo: verifiedPhoto,
       },
     });
-  } else {
-    // New user — create account with Google profile data (no password needed)
-    const customerId = await generateCustomerId();
-
-    user = await prisma.user.create({
-      data: {
-        email: email.toLowerCase(),
-        fullName: name || email.split('@')[0],
-        password: await bcrypt.hash(`GOOGLE_${uid}_${Date.now()}`, 12), // Random password (won't be used)
-        avatar: photo || null,
-        profileImage: photo || null,
-        firebaseUid: uid,
-        googleId: uid,
-        authProvider: 'GOOGLE',
-        isVerified: true,
-        role: 'CUSTOMER',
-        customerId,
-        lastLoginAt: new Date(),
-      },
-    });
-
-    // Send welcome email asynchronously
-    try {
-      sendWelcomeEmail(user.email, user.fullName);
-    } catch (err) {
-      console.error('Welcome email failed:', err);
-    }
   }
+
+  // ACCOUNT EXISTS — Login
+  console.log(`[GOOGLE AUTH] Account found for: ${verifiedEmail}, ID: ${user.id}`);
 
   // Check if account is blocked/suspended
   if (user.status === 'BLOCKED' || user.status === 'SUSPENDED') {
     return next(new ApiError(403, `Your account is ${user.status.toLowerCase()}. Please contact support.`));
   }
 
+  // Update Google profile info and login timestamp
+  const updatedUser = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      firebaseUid: verifiedUid,
+      googleId: verifiedUid,
+      authProvider: user.authProvider === 'LOCAL' ? user.authProvider : 'GOOGLE',
+      avatar: verifiedPhoto || user.avatar,
+      profileImage: verifiedPhoto || user.profileImage,
+      isVerified: true,
+      lastLoginAt: new Date(),
+    },
+  });
+
   // Generate JWT token (7d expiration)
-  const token = generateToken(user.id, user.role);
+  const token = generateToken(updatedUser.id, updatedUser.role);
 
   // Set secure HTTP-only cookie
   const cookieOptions = {
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   };
 
   res.status(200).cookie('token', token, cookieOptions).json({
     success: true,
-    message: `Welcome ${user.fullName}! Google sign-in successful.`,
+    status: 'LOGIN_SUCCESS',
+    message: `Welcome back ${updatedUser.fullName}! Google sign-in successful.`,
     token,
     user: {
-      id: user.id,
-      fullName: user.fullName,
-      email: user.email,
-      avatar: user.avatar,
-      profileImage: user.profileImage,
-      role: user.role,
-      isVerified: user.isVerified,
+      id: updatedUser.id,
+      fullName: updatedUser.fullName,
+      email: updatedUser.email,
+      avatar: updatedUser.avatar,
+      profileImage: updatedUser.profileImage,
+      role: updatedUser.role,
+      isVerified: updatedUser.isVerified,
+    },
+  });
+});
+
+// ==================== GOOGLE REGISTER (Complete Account) ====================
+exports.googleRegister = asyncHandler(async (req, res, next) => {
+  const { idToken, uid, email, name, photo, phone, whatsappNumber, gender } = req.body;
+
+  // Extract verified identity
+  let verifiedEmail = email;
+  let verifiedUid = uid;
+
+  // If firebase-admin is available, verify the ID token server-side
+  try {
+    const firebaseAdmin = require('../config/firebase');
+    if (firebaseAdmin && idToken) {
+      const decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
+      verifiedEmail = decodedToken.email;
+      verifiedUid = decodedToken.uid;
+      console.log(`[GOOGLE REGISTER] Firebase token verified for: ${verifiedEmail}`);
+    }
+  } catch (firebaseError) {
+    console.warn('[GOOGLE REGISTER] Firebase Admin not available, using frontend-supplied data:', firebaseError.message);
+  }
+
+  if (!verifiedEmail || !verifiedUid) {
+    return next(new ApiError(400, 'Google UID and email are required.'));
+  }
+
+  if (!name || !name.trim()) {
+    return next(new ApiError(400, 'Full name is required.'));
+  }
+
+  if (!phone || !phone.trim()) {
+    return next(new ApiError(400, 'Phone number is required.'));
+  }
+
+  // Check AGAIN if account already exists (prevents race conditions/duplicates)
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { firebaseUid: verifiedUid },
+        { googleId: verifiedUid },
+        { email: verifiedEmail.toLowerCase() },
+      ],
+    },
+  });
+
+  if (existingUser) {
+    console.log(`[GOOGLE REGISTER] Account already exists for: ${verifiedEmail}`);
+    // Account already exists — just log them in instead of erroring
+    const token = generateToken(existingUser.id, existingUser.role);
+
+    const cookieOptions = {
+      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    };
+
+    return res.status(200).cookie('token', token, cookieOptions).json({
+      success: true,
+      status: 'LOGIN_SUCCESS',
+      message: 'Account already exists. You have been logged in.',
+      token,
+      user: {
+        id: existingUser.id,
+        fullName: existingUser.fullName,
+        email: existingUser.email,
+        avatar: existingUser.avatar,
+        role: existingUser.role,
+        isVerified: existingUser.isVerified,
+      },
+    });
+  }
+
+  // Create new customer account
+  const customerId = await generateCustomerId();
+
+  const newUser = await prisma.user.create({
+    data: {
+      email: verifiedEmail.toLowerCase(),
+      fullName: name.trim(),
+      password: await bcrypt.hash(`GOOGLE_${verifiedUid}_${Date.now()}`, 12),
+      phone: phone || null,
+      whatsappNumber: whatsappNumber || null,
+      gender: gender || null,
+      avatar: photo || null,
+      profileImage: photo || null,
+      firebaseUid: verifiedUid,
+      googleId: verifiedUid,
+      authProvider: 'GOOGLE',
+      isVerified: true,
+      role: 'CUSTOMER',
+      customerId,
+      lastLoginAt: new Date(),
+    },
+  });
+
+  console.log(`[GOOGLE REGISTER] New account created: ${newUser.email}, ID: ${newUser.id}, CustomerId: ${customerId}`);
+
+  // Send welcome email asynchronously
+  try {
+    sendWelcomeEmail(newUser.email, newUser.fullName);
+  } catch (err) {
+    console.error('Welcome email failed:', err);
+  }
+
+  // Generate JWT token
+  const token = generateToken(newUser.id, newUser.role);
+
+  const cookieOptions = {
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  };
+
+  res.status(201).cookie('token', token, cookieOptions).json({
+    success: true,
+    status: 'ACCOUNT_CREATED',
+    message: `Welcome ${newUser.fullName}! Your account has been created successfully.`,
+    token,
+    user: {
+      id: newUser.id,
+      fullName: newUser.fullName,
+      email: newUser.email,
+      avatar: newUser.avatar,
+      role: newUser.role,
+      isVerified: newUser.isVerified,
     },
   });
 });

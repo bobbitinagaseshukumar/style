@@ -8,7 +8,7 @@ import {
   FiMove, FiRefreshCw, FiZap, FiStar, FiTag, FiSliders
 } from 'react-icons/fi';
 import api from '../../config/api';
-import BannerCropperModal from '../Banner/BannerCropperModal';
+import GlobalImageEditor from '../../components/common/GlobalImageEditor';
 import { toast } from 'react-toastify';
 
 /* ─────────────────────────────────────────────
@@ -991,11 +991,20 @@ const HomepageSectionManager = () => {
 
       {/* Banner Cropper */}
       {cropperOpen && rawImageSrc && (
-        <BannerCropperModal
+        <GlobalImageEditor
+          isOpen={cropperOpen}
           imageSrc={rawImageSrc}
-          onSave={handleCroppedImageSave}
+          onComplete={handleCroppedImageSave}
           onClose={() => setCropperOpen(false)}
           aspectRatio={4 / 1}
+          aspectPresets={[
+            { label: '4:1', value: 4 },
+            { label: '16:9', value: 16/9 },
+            { label: '3:1', value: 3 },
+            { label: 'Free', value: null },
+          ]}
+          title="Edit Section Image"
+          showFileSelect={false}
         />
       )}
     </div>

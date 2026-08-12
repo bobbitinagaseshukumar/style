@@ -146,17 +146,24 @@ const Orders = () => {
 
         {/* Filter Tabs */}
         <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
-          {['ALL', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((st) => (
+          {[
+            { id: 'ALL', label: 'ALL' },
+            { id: 'PENDING_APPROVAL', label: 'PENDING' },
+            { id: 'CONFIRMED', label: 'CONFIRMED' },
+            { id: 'SHIPPED', label: 'SHIPPED' },
+            { id: 'DELIVERED', label: 'DELIVERED' },
+            { id: 'CANCELLED', label: 'CANCELLED' }
+          ].map((st) => (
             <button
-              key={st}
-              onClick={() => setFilterStatus(st)}
+              key={st.id}
+              onClick={() => setFilterStatus(st.id)}
               className={`px-4 py-2 rounded-full text-xs font-semibold transition ${
-                filterStatus === st
+                filterStatus === st.id
                   ? 'bg-charcoal-900 text-gold-400 shadow'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {st}
+              {st.label}
             </button>
           ))}
         </div>
@@ -192,24 +199,28 @@ const Orders = () => {
                         <FiPrinter /> Invoice
                       </button>
 
-                      {order.cancellationAllowed && new Date(order.cancellationEnd) > new Date() ? (
+                      {order.cancellationAllowed && order.cancellationEnd && new Date(order.cancellationEnd) > new Date() ? (
                         <CancellationTimer order={order} onCancel={handleCancelOrder} />
-                      ) : (
-                        ['PENDING', 'CONFIRMED', 'PROCESSING'].includes(order.orderStatus) && (
-                          <button
-                            onClick={() => {
-                              if(window.confirm('Are you sure you want to cancel this order?')) {
-                                handleCancelOrder(order.id);
-                              }
-                            }}
-                            className="px-3 py-1.5 rounded-full border border-red-200 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-1.5"
-                          >
-                            <FiXCircle /> Cancel Order
-                          </button>
-                        )
-                      )}
+                      ) : order.orderStatus === 'PENDING_APPROVAL' ? (
+                        <span className="px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-600 flex items-center gap-1.5">
+                          <FiClock /> Awaiting Approval
+                        </span>
+                      ) : null}
                     </div>
                   </div>
+
+                  {/* BANNERS */}
+                  {order.orderStatus === 'PENDING_APPROVAL' && (
+                    <div className="bg-amber-50 text-amber-700 p-3 rounded-xl text-xs font-medium border border-amber-200 flex items-center gap-2">
+                      <span>⏳</span> Your order is awaiting seller approval
+                    </div>
+                  )}
+                  {order.orderStatus === 'REJECTED' && (
+                    <div className="bg-red-50 text-red-700 p-3 rounded-xl text-xs font-medium border border-red-200 flex items-center gap-2">
+                      <span>❌</span> Order Rejected by Seller
+                      {order.cancellationReason && <span className="ml-1 opacity-80">- {order.cancellationReason}</span>}
+                    </div>
+                  )}
 
                   {/* ORDER TIMELINE PROGRESS BAR */}
                   {order.orderStatus !== 'CANCELLED' && (

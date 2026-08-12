@@ -9,7 +9,7 @@ import { signInWithGoogle } from '../../firebase';
 
 /**
  * Reusable Modular Social Authentication Component
- * Live Firebase Google & Gmail Sign-In integration
+ * Firebase Google Sign-In → Backend Account Check → Login or Register redirect
  */
 const SocialAuthButtons = ({ mode = 'login', onSuccess }) => {
   const [loadingProvider, setLoadingProvider] = useState(null);
@@ -19,39 +19,57 @@ const SocialAuthButtons = ({ mode = 'login', onSuccess }) => {
   const handleGoogleLogin = async () => {
     setLoadingProvider('google');
     try {
+      // Step 1: Firebase Google popup authentication
       const result = await signInWithGoogle();
-      const user = result.user;
+      const firebaseUser = result.user;
 
-      console.log("Google Login Success:", user);
+      // Step 2: Get the Firebase ID token for server-side verification
+      const idToken = await firebaseUser.getIdToken();
 
-      // Send Google user data to backend — POST /api/v1/auth/google
+      console.log('[GOOGLE AUTH] Firebase authenticated:', firebaseUser.email);
+
+      // Step 3: Send ID token to backend for account check
       const response = await api.post('/auth/google', {
-        uid: user.uid,
-        name: user.displayName,
-        email: user.email,
-        photo: user.photoURL,
+        idToken,
+        uid: firebaseUser.uid,
+        name: firebaseUser.displayName,
+        email: firebaseUser.email,
+        photo: firebaseUser.photoURL,
       });
 
       const data = response.data;
-      console.log("Backend Response:", data);
+      console.log('[GOOGLE AUTH] Backend response:', data);
 
-      if (data.success && data.token) {
-        // Store token and user in Redux + localStorage
+      if (data.status === 'LOGIN_SUCCESS' && data.token) {
+        // Existing account — login directly
         dispatch(setCredentials({ user: data.user, token: data.token }));
         localStorage.setItem('token', data.token);
-        toast.success(`Welcome ${data.user.fullName}! Signed in via Google.`);
+        toast.success(`Welcome back ${data.user.fullName}!`);
         if (onSuccess) onSuccess();
         else navigate('/dashboard');
+      } else if (data.status === 'ACCOUNT_NOT_FOUND') {
+        // New Google user — redirect to registration with Google profile
+        toast.info('Please complete your account details to continue.');
+        // Store Google profile temporarily for the registration page
+        sessionStorage.setItem('googleProfile', JSON.stringify(data.googleProfile));
+        navigate('/register?google=true');
       } else {
-        toast.success('Google Login Successful');
+        toast.error('Unexpected response from server. Please try again.');
       }
     } catch (error) {
-      console.error("Google Auth Error:", error);
-      if (error.message?.includes('popup-closed-by-user')) {
-        // User closed the popup, no error needed
-        return;
+      console.error('[GOOGLE AUTH ERROR]:', error);
+      // Handle popup closed by user
+      if (
+        error?.code === 'auth/popup-closed-by-user' ||
+        error?.message?.includes('popup-closed-by-user')
+      ) {
+        return; // Silent — user intentionally closed
       }
-      toast.error(error.response?.data?.message || error.message || 'Google login failed. Please try again.');
+      toast.error(
+        error.response?.data?.message ||
+        error.message ||
+        'Google login failed. Please try again.'
+      );
     } finally {
       setLoadingProvider(null);
     }

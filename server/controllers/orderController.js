@@ -74,6 +74,23 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
   const totalAmount = Math.max(0, subtotal - calcDiscount + calcShipping);
   const orderNumber = genOrderNumber();
 
+  // Idempotency check: prevent duplicate orders within 30 seconds
+  const recentOrder = await prisma.order.findFirst({
+    where: {
+      userId: req.user.id,
+      createdAt: { gte: new Date(Date.now() - 30000) },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (recentOrder) {
+    return res.status(200).json({
+      success: true,
+      message: 'Order already placed!',
+      data: recentOrder,
+      duplicate: true,
+    });
+  }
+
   const order = await prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
       data: {
@@ -328,6 +345,23 @@ exports.cancelOrder = asyncHandler(async (req, res, next) => {
         link: '/orders',
       },
     });
+
+    // Notify all admins about the cancellation
+    const admins = await tx.user.findMany({
+      where: { role: 'ADMIN' },
+      select: { id: true },
+    });
+    for (const admin of admins) {
+      await tx.notification.create({
+        data: {
+          userId: admin.id,
+          title: `❌ Order Cancelled (#${order.orderNumber})`,
+          message: `Customer cancelled order #${order.orderNumber}. Reason: ${reason || 'Not specified'}`,
+          type: 'ADMIN_ORDER',
+          link: '/admin/orders',
+        },
+      });
+    }
   });
 
   res.status(200).json({ success: true, message: 'Order cancelled successfully.' });

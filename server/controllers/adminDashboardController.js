@@ -131,6 +131,8 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
   const cancelledOrdersCount = statusMap['CANCELLED'] || 0;
   const refundedOrdersCount = statusMap['REFUNDED'] || 0;
 
+  const pendingApprovalCount = statusMap['PENDING_APPROVAL'] || 0;
+
   // Product Status Breakdown
   const totalProductsCount = allProducts.length;
   const publishedProductsCount = allProducts.filter(p => (p.status || 'PUBLISHED') === 'PUBLISHED').length;
@@ -209,6 +211,7 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
       orders: {
         total: totalOrdersCount,
         pending: pendingOrdersCount,
+        pendingApproval: pendingApprovalCount,
         confirmed: confirmedOrdersCount,
         packed: packedOrdersCount,
         shipped: shippedOrdersCount,

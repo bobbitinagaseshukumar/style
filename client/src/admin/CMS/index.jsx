@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
 import Button from '../../components/common/Button';
+import GlobalImageEditor from '../../components/common/GlobalImageEditor';
 import { 
   FiFileText, FiSettings, FiPhoneCall, FiMessageCircle, FiShare2, 
   FiLayout, FiInfo, FiSearch, FiMail, FiUsers, FiSave, FiEdit3, 
@@ -65,6 +66,9 @@ const AdminCMS = () => {
   // Data States
   const [inquiries, setInquiries] = useState([]);
   const [subscribers, setSubscribers] = useState([]);
+
+  // Image Editor State
+  const [imageEditor, setImageEditor] = useState({ open: false, field: '', src: null, title: '', aspect: 1 });
 
   useEffect(() => {
     fetchSettings();
@@ -162,21 +166,17 @@ const AdminCMS = () => {
     }
   };
 
-  const handleImageUpload = async (e, field) => {
+  const handleImageSelect = (e, field, title = 'Edit Image', aspect = 1) => {
     const file = e.target.files[0];
     if (!file) return;
-    
-    const formData = new FormData();
-    formData.append('image', file);
-    
-    try {
-      toast.info('Uploading image...');
-      const res = await api.post('/upload/image', formData);
-      handleSettingChange(field, res.data.url);
-      toast.success('Image uploaded');
-    } catch (error) {
-      toast.error('Upload failed');
-    }
+    const reader = new FileReader();
+    reader.onload = () => setImageEditor({ open: true, field, src: reader.result, title, aspect });
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageEditorComplete = (url) => {
+    handleSettingChange(imageEditor.field, url);
+    setImageEditor({ open: false, field: '', src: null, title: '', aspect: 1 });
   };
 
   const markMessageRead = async (id) => {
@@ -331,7 +331,7 @@ const AdminCMS = () => {
                       {settings.logoUrl && <img src={settings.logoUrl} alt="Logo" className="h-12 bg-white/10 rounded px-2" />}
                       <label className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:bg-white/10 transition-all text-white">
                         <FiUpload /> Upload Logo
-                        <input type="file" className="hidden" accept="image/*" onChange={e => handleImageUpload(e, 'logoUrl')} />
+                        <input type="file" className="hidden" accept="image/*" onChange={e => handleImageSelect(e, 'logoUrl', 'Edit Store Logo', null)} />
                       </label>
                     </div>
                   </div>
@@ -341,7 +341,7 @@ const AdminCMS = () => {
                       {settings.faviconUrl && <img src={settings.faviconUrl} alt="Favicon" className="h-8 w-8 bg-white/10 rounded" />}
                       <label className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:bg-white/10 transition-all text-white">
                         <FiUpload /> Upload Favicon
-                        <input type="file" className="hidden" accept="image/*" onChange={e => handleImageUpload(e, 'faviconUrl')} />
+                        <input type="file" className="hidden" accept="image/*" onChange={e => handleImageSelect(e, 'faviconUrl', 'Edit Favicon', 1)} />
                       </label>
                     </div>
                   </div>
@@ -657,7 +657,7 @@ const AdminCMS = () => {
                       {settings.ogImageUrl && <img src={settings.ogImageUrl} alt="OG" className="w-full max-h-40 object-cover rounded-lg border border-white/10" />}
                       <label className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:bg-white/10 transition-all text-white">
                         <FiUpload /> Upload Image
-                        <input type="file" className="hidden" accept="image/*" onChange={e => handleImageUpload(e, 'ogImageUrl')} />
+                        <input type="file" className="hidden" accept="image/*" onChange={e => handleImageSelect(e, 'ogImageUrl', 'Edit Social Share Image', 16/9)} />
                       </label>
                     </div>
                   </div>
@@ -753,6 +753,15 @@ const AdminCMS = () => {
           )}
         </motion.div>
       </div>
+      <GlobalImageEditor
+        isOpen={imageEditor.open}
+        imageSrc={imageEditor.src}
+        onClose={() => setImageEditor({ open: false, field: '', src: null, title: '', aspect: 1 })}
+        onComplete={handleImageEditorComplete}
+        aspectRatio={imageEditor.aspect}
+        title={imageEditor.title}
+        showFileSelect={false}
+      />
     </div>
   );
 };

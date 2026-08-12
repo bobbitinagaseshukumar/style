@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../../components/common/Button';
 import api from '../../config/api';
 import { formatDate } from '../../utils/formatDate';
-import BannerCropperModal from './BannerCropperModal';
+import GlobalImageEditor from '../../components/common/GlobalImageEditor';
 import {
   FiPlus, FiTrash2, FiEdit, FiSearch, FiX, FiCopy, FiCheck,
   FiFilter, FiEye, FiEyeOff, FiImage, FiRefreshCw, FiUploadCloud,
@@ -766,11 +766,20 @@ const AdminBanner = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/*   IMAGE CROOPER MODAL                                   */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <BannerCropperModal
+      <GlobalImageEditor
         isOpen={cropperOpen}
         onClose={() => setCropperOpen(false)}
+        onComplete={handleCropComplete}
         imageSrc={cropperSrc}
-        onCropComplete={handleCropComplete}
+        aspectRatio={16/9}
+        aspectPresets={[
+          { label: '16:9', value: 16/9 },
+          { label: '3:1', value: 3 },
+          { label: '4:3', value: 4/3 },
+          { label: '1:1', value: 1 },
+          { label: 'Free', value: null },
+        ]}
+        title="Edit Banner Image"
       />
 
       {/* ═══════════════════════════════════════════════════════ */}

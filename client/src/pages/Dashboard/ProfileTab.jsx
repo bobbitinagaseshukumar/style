@@ -7,7 +7,7 @@ import {
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
-import BannerCropperModal from '../../admin/Banner/BannerCropperModal';
+import GlobalImageEditor from '../../components/common/GlobalImageEditor';
 
 const ProfileTab = () => {
   const user = useSelector((s) => s.auth.user);

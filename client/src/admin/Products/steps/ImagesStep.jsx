@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiUpload, FiX, FiStar, FiMove, FiEdit2 } from 'react-icons/fi';
-import ImageCropModal from '../ImageCropModal';
+import GlobalImageEditor from '../../../components/common/GlobalImageEditor';
 
 const MAX_IMAGES = 20;
 const ACCEPTED = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -180,15 +180,23 @@ const ImagesStep = ({ images, setImages }) => {
       <p className="text-xs text-gray-400">{images.length} / {MAX_IMAGES} images added</p>
 
       {/* Crop Modal */}
-      <AnimatePresence>
-        {cropSrc && (
-          <ImageCropModal
-            imageSrc={cropSrc.dataUrl}
-            onDone={handleCropDone}
-            onCancel={() => setCropSrc(null)}
-          />
-        )}
-      </AnimatePresence>
+      <GlobalImageEditor
+        isOpen={!!cropSrc}
+        imageSrc={cropSrc?.dataUrl}
+        onClose={() => setCropSrc(null)}
+        onComplete={(url, blob) => handleCropDone({ url, blob })}
+        aspectRatio={3/4}
+        aspectPresets={[
+          { label: 'Free', value: null },
+          { label: '1:1', value: 1 },
+          { label: '4:3', value: 4/3 },
+          { label: '3:4', value: 3/4 },
+          { label: '16:9', value: 16/9 },
+        ]}
+        title="Edit Product Image"
+        uploadOnApply={false}
+        showFileSelect={false}
+      />
     </div>
   );
 };

@@ -48,7 +48,9 @@ const validate = (stepId, { images, form, colors }) => {
 /* ─── Upload images to server/Cloudinary ─────────────────────── */
 const uploadImages = async (images) => {
   const urls = [];
+  let failedCount = 0;
   for (const img of images) {
+    // Already uploaded images (edit mode) — keep existing URL
     if (!img.blob) { urls.push(img.url); continue; }
     const formData = new FormData();
     formData.append('image', img.blob, `product-${Date.now()}.webp`);
@@ -56,10 +58,22 @@ const uploadImages = async (images) => {
       const { data } = await api.post('/upload/image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      urls.push(data.url);
-    } catch {
-      urls.push(img.url); // fallback to local blob url if upload fails
+      if (data.url) {
+        urls.push(data.url);
+      } else {
+        throw new Error('No URL returned from upload');
+      }
+    } catch (err) {
+      console.error('[IMAGE UPLOAD FAILED]', err);
+      failedCount++;
+      // Do NOT fallback to blob URL — blob URLs break across devices/sessions
     }
+  }
+  if (failedCount > 0 && urls.length === 0) {
+    throw new Error(`All ${failedCount} image(s) failed to upload. Please check your internet connection and try again.`);
+  }
+  if (failedCount > 0) {
+    console.warn(`[IMAGE UPLOAD] ${failedCount} image(s) failed, ${urls.length} succeeded.`);
   }
   return urls;
 };

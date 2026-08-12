@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../../components/common/Button';
 import api from '../../config/api';
-import BannerCropperModal from '../Banner/BannerCropperModal';
+import GlobalImageEditor from '../../components/common/GlobalImageEditor';
 import {
   FiPlus, FiTrash2, FiEdit, FiX, FiCopy, FiCheck,
   FiUploadCloud, FiToggleLeft, FiToggleRight, FiAward,
@@ -308,7 +308,7 @@ const HeritageBrandsManager = () => {
         )}
       </AnimatePresence>
 
-      <BannerCropperModal isOpen={cropperOpen} onClose={() => setCropperOpen(false)} imageSrc={cropperSrc} onCropComplete={url => { setForm({ ...form, [cropTargetField]: url }); toast.success('Image cropped!'); }} />
+      <GlobalImageEditor isOpen={cropperOpen} onClose={() => setCropperOpen(false)} imageSrc={cropperSrc} onComplete={url => { setForm({ ...form, [cropTargetField]: url }); toast.success('Image cropped!'); }} aspectRatio={1} title="Edit Brand Image" showFileSelect={false} />
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../../components/common/Button';
 import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
-import BannerCropperModal from '../Banner/BannerCropperModal';
+import GlobalImageEditor from '../../components/common/GlobalImageEditor';
 import {
   FiPlus, FiTrash2, FiEdit, FiSearch, FiX, FiCopy, FiCheck,
   FiLayers, FiImage, FiUploadCloud, FiPause, FiPlay
@@ -296,7 +296,7 @@ const ProductCollectionsManager = () => {
         )}
       </AnimatePresence>
 
-      <BannerCropperModal isOpen={cropperOpen} onClose={() => setCropperOpen(false)} imageSrc={cropperSrc} onCropComplete={url => { setForm({ ...form, bannerUrl: url }); toast.success('Banner cropped!'); }} />
+      <GlobalImageEditor isOpen={cropperOpen} onClose={() => setCropperOpen(false)} imageSrc={cropperSrc} onComplete={url => { setForm({ ...form, bannerUrl: url }); toast.success('Banner cropped!'); }} aspectRatio={16/9} title="Edit Collection Banner" showFileSelect={false} />
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

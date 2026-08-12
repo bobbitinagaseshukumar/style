@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiPlus, FiTrash2, FiUpload, FiChevronDown, FiChevronUp, FiX } from 'react-icons/fi';
-import ImageCropModal from '../ImageCropModal';
+import GlobalImageEditor from '../../../components/common/GlobalImageEditor';
 
 const ACCEPTED = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
@@ -209,11 +209,22 @@ const ColorVariantCard = ({ color, index, availableSizes, onChange, onRemove, is
       </AnimatePresence>
 
       {/* Crop Modal for this color */}
-      <AnimatePresence>
-        {cropSrc && (
-          <ImageCropModal imageSrc={cropSrc} onDone={handleCropDone} onCancel={() => setCropSrc(null)} />
-        )}
-      </AnimatePresence>
+      <GlobalImageEditor
+        isOpen={!!cropSrc}
+        imageSrc={cropSrc}
+        onClose={() => setCropSrc(null)}
+        onComplete={(url, blob) => handleCropDone({ url, blob })}
+        aspectRatio={1}
+        aspectPresets={[
+          { label: 'Free', value: null },
+          { label: '1:1', value: 1 },
+          { label: '3:4', value: 3/4 },
+          { label: '4:3', value: 4/3 },
+        ]}
+        title="Edit Color Image"
+        uploadOnApply={false}
+        showFileSelect={false}
+      />
     </div>
   );
 };

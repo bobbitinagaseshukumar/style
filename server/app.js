@@ -28,6 +28,7 @@ const emailRoutes = require('./routes/emailRoutes');
 const seoController = require('./controllers/seoController');
 const healthController = require('./controllers/healthController');
 const { apiLimiter } = require('./middleware/rateLimiter');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -38,9 +39,27 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: '*',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5173',
+      process.env.CLIENT_URL,
+    ].filter(Boolean);
+    // Also allow any .vercel.app domain for preview deployments
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS] Blocked request from origin: ${origin}`);
+      callback(null, true); // Still allow but log — change to callback(new Error('CORS')) to block
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
 }));
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
@@ -109,6 +128,7 @@ app.use('/api/v1/blog', blogRoutes);
 app.use('/api/v1/support', supportRoutes);
 app.use('/api/v1/settings', settingsRoutes);
 app.use('/api/v1/email', emailRoutes);
+app.use('/api/v1/upload', uploadRoutes);
 
 // Centralized Error Middleware
 app.use(errorHandler);

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../../components/common/Button';
 import api from '../../config/api';
-import BannerCropperModal from '../Banner/BannerCropperModal';
+import GlobalImageEditor from '../../components/common/GlobalImageEditor';
 import {
   FiPlus, FiTrash2, FiEdit, FiX, FiCopy, FiCheck,
   FiUploadCloud, FiToggleLeft, FiToggleRight, FiShare2,
@@ -357,7 +357,7 @@ const SocialFollowManager = () => {
         )}
       </AnimatePresence>
 
-      <BannerCropperModal isOpen={cropperOpen} onClose={() => setCropperOpen(false)} imageSrc={cropperSrc} onCropComplete={url => { setForm({ ...form, customIconUrl: url }); toast.success('Custom Icon updated!'); }} />
+      <GlobalImageEditor isOpen={cropperOpen} onClose={() => setCropperOpen(false)} imageSrc={cropperSrc} onComplete={url => { setForm({ ...form, customIconUrl: url }); toast.success('Custom Icon updated!'); }} aspectRatio={1} title="Edit Social Icon" showFileSelect={false} />
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

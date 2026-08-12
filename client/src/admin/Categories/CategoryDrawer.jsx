@@ -6,7 +6,7 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
-import ImageCropperModal from './ImageCropperModal';
+import GlobalImageEditor from '../../components/common/GlobalImageEditor';
 
 const CategoryDrawer = ({ isOpen, onClose, editCategory = null, onSaved }) => {
   const [form, setForm] = useState({
@@ -450,12 +450,26 @@ const CategoryDrawer = ({ isOpen, onClose, editCategory = null, onSaved }) => {
       </motion.div>
 
       {/* Image Cropper Modal */}
-      <ImageCropperModal
+      <GlobalImageEditor
         isOpen={cropperModal.open}
         title={`Crop ${cropperModal.target === 'banner' ? 'Category Banner' : 'Category Thumbnail'}`}
-        aspectPreset={cropperModal.aspect}
+        aspectRatio={cropperModal.aspect}
+        aspectPresets={
+          cropperModal.target === 'banner'
+            ? [
+                { label: '3:1', value: 3 },
+                { label: '16:9', value: 16 / 9 },
+                { label: '4:3', value: 4 / 3 }
+              ]
+            : [
+                { label: '1:1', value: 1 },
+                { label: '3:4', value: 3 / 4 },
+                { label: '4:5', value: 4 / 5 }
+              ]
+        }
         onClose={() => setCropperModal({ ...cropperModal, open: false })}
-        onCropComplete={handleCropComplete}
+        onComplete={(url) => handleCropComplete(url)}
+        showFileSelect={true}
       />
     </div>
   );

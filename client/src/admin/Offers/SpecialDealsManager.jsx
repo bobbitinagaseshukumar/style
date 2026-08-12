@@ -4,7 +4,7 @@ import Button from '../../components/common/Button';
 import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDate } from '../../utils/formatDate';
-import BannerCropperModal from '../Banner/BannerCropperModal';
+import GlobalImageEditor from '../../components/common/GlobalImageEditor';
 import {
   FiPlus, FiTrash2, FiEdit, FiSearch, FiX, FiCopy, FiCheck,
   FiEye, FiEyeOff, FiImage, FiRefreshCw, FiUploadCloud,
@@ -478,11 +478,14 @@ const SpecialDealsManager = () => {
       </AnimatePresence>
 
       {/* Image Cropper */}
-      <BannerCropperModal
+      <GlobalImageEditor
         isOpen={cropperOpen}
         onClose={() => setCropperOpen(false)}
         imageSrc={cropperSrc}
-        onCropComplete={url => { setForm({ ...form, bannerUrl: url }); toast.success('Banner cropped & updated! ✨'); }}
+        onComplete={url => { setForm({ ...form, bannerUrl: url }); toast.success('Banner cropped & updated! ✨'); }}
+        aspectRatio={16/9}
+        title="Edit Deal Image"
+        showFileSelect={false}
       />
 
       {/* Delete Confirmation */}

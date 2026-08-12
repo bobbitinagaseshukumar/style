@@ -117,9 +117,12 @@ const RippleButton = ({ children, onClick, className, disabled, type = 'button' 
 const Login = ({ initialMode }) => {
   const [searchParams] = useSearchParams();
   const modeParam = searchParams.get('mode');
+  const isGoogleMode = searchParams.get('google') === 'true';
 
   // 3D Flip State (0 = Login, 180 = Register)
-  const [isRegister, setIsRegister] = useState(initialMode === 'register' || modeParam === 'register');
+  const [isRegister, setIsRegister] = useState(initialMode === 'register' || modeParam === 'register' || isGoogleMode);
+
+  const [googleProfile, setGoogleProfile] = useState(null);
 
   // Form State
   const [form, setForm] = useState({
@@ -148,6 +151,23 @@ const Login = ({ initialMode }) => {
   const [dynamicFields, setDynamicFields] = useState([]);
 
   useEffect(() => {
+    if (isGoogleMode) {
+      const stored = sessionStorage.getItem('googleProfile');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setGoogleProfile(parsed);
+          setForm((prev) => ({
+            ...prev,
+            fullName: parsed.name || '',
+            email: parsed.email || '',
+          }));
+        } catch (e) {
+          console.error('Error parsing googleProfile from sessionStorage', e);
+        }
+      }
+    }
+
     const fetchDynamicFields = async () => {
       try {
         const res = await api.get('/auth-form/form-fields?formType=REGISTER');
@@ -235,10 +255,23 @@ const Login = ({ initialMode }) => {
     setLoading(true);
 
     try {
-      const endpoint = isRegister ? '/auth/register' : '/auth/login';
-      const payload = isRegister
-        ? { fullName: form.fullName, email: form.email, password: form.password, mobile: form.mobile }
-        : { email: form.email, password: form.password };
+      const isGoogleReg = isRegister && isGoogleMode;
+      const endpoint = isGoogleReg ? '/auth/google/register' : (isRegister ? '/auth/register' : '/auth/login');
+      
+      const payload = isGoogleReg
+        ? {
+            fullName: form.fullName,
+            email: form.email,
+            password: form.password,
+            mobile: form.mobile,
+            uid: googleProfile?.uid,
+            name: googleProfile?.name,
+            photo: googleProfile?.photo,
+            idToken: googleProfile?.idToken
+          }
+        : isRegister
+          ? { fullName: form.fullName, email: form.email, password: form.password, mobile: form.mobile }
+          : { email: form.email, password: form.password };
 
       const res = await api.post(endpoint, payload);
 
@@ -247,6 +280,9 @@ const Login = ({ initialMode }) => {
           localStorage.setItem('remembered_email', form.email);
         } else {
           localStorage.removeItem('remembered_email');
+        }
+        if (isGoogleMode) {
+          sessionStorage.removeItem('googleProfile');
         }
         setAuthSuccess(true);
         dispatch(setCredentials({ user: res.data.user, token: res.data.token }));
@@ -497,6 +533,13 @@ const Login = ({ initialMode }) => {
                   <p className="text-xs text-gray-400">Join KVLR Styles to unlock VIP deals and instant order tracking.</p>
                 </div>
 
+                {isGoogleMode && googleProfile && (
+                  <div className="mb-4 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs flex items-center gap-2 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                    <FiCheckCircle className="shrink-0" />
+                    <span>Your Google account is verified. Please complete your details.</span>
+                  </div>
+                )}
+
                 {error && isRegister && (
                   <div className="mb-4 p-3 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
                     <FiAlertCircle className="shrink-0" />
@@ -531,10 +574,11 @@ const Login = ({ initialMode }) => {
                         name="email"
                         autoComplete="new-password"
                         required
+                        disabled={isGoogleMode}
                         value={form.email}
                         onChange={handleChange}
                         placeholder="name@domain.com"
-                        className={`w-full pl-10 pr-4 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 ${error && isRegister && !form.email ? 'border-red-500' : ''}`}
+                        className={`w-full pl-10 pr-4 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 ${isGoogleMode ? 'opacity-50 cursor-not-allowed' : ''} ${error && isRegister && !form.email ? 'border-red-500' : ''}`}
                       />
                     </div>
                   </div>

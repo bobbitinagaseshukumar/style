@@ -5,7 +5,7 @@ import {
   FiX, FiUploadCloud, FiCheck, FiCrop, FiImage, FiGrid, FiLayers
 } from 'react-icons/fi';
 import api from '../../config/api';
-import SubcategoryCropperModal from './SubcategoryCropperModal';
+import GlobalImageEditor from '../../components/common/GlobalImageEditor';
 
 const SubcategoryDrawer = ({ isOpen, onClose, editSubcategory, categories = [], onSaved }) => {
   const [form, setForm] = useState({
@@ -280,13 +280,21 @@ const SubcategoryDrawer = ({ isOpen, onClose, editSubcategory, categories = [], 
       </motion.div>
 
       {/* Cropper Modal */}
-      {cropperOpen && (
-        <SubcategoryCropperModal
-          imageSrc={cropperRawSrc}
-          onClose={() => setCropperOpen(false)}
-          onCropComplete={handleCropDone}
-        />
-      )}
+      <GlobalImageEditor
+        isOpen={cropperOpen}
+        imageSrc={cropperRawSrc}
+        onClose={() => setCropperOpen(false)}
+        onComplete={(url) => handleCropDone(url)}
+        aspectRatio={1}
+        aspectPresets={[
+          { label: '1:1', value: 1 },
+          { label: '3:4', value: 3/4 },
+          { label: '4:5', value: 4/5 },
+          { label: '16:9', value: 16/9 },
+        ]}
+        title="Crop Subcategory Image"
+        showFileSelect={false}
+      />
     </div>
   );
 };

@@ -31,6 +31,7 @@ const STATUS_CONFIG = {
 const ALL_STATUSES = Object.keys(STATUS_CONFIG);
 
 const TRANSITIONS = {
+  PENDING_APPROVAL: ['CONFIRMED', 'REJECTED'],
   PENDING:          ['CONFIRMED', 'CANCELLED'],
   WHATSAPP_PENDING: ['CONFIRMED', 'CANCELLED'],
   CONFIRMED:        ['PACKED', 'CANCELLED'],
@@ -63,6 +64,9 @@ const OrderDetail = ({ order, onClose, onStatusUpdate }) => {
   const [cancelReason, setCancelReason] = useState('');
   const [cancellationAllowed, setCancellationAllowed] = useState(false);
   const [cancellationDuration, setCancellationDuration] = useState(60);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   const nextStatuses = TRANSITIONS[order?.orderStatus] || ALL_STATUSES;
 
@@ -119,6 +123,45 @@ const OrderDetail = ({ order, onClose, onStatusUpdate }) => {
       onClose();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Update failed');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleApproveSubmit = async () => {
+    try {
+      setUpdating(true);
+      const payload = {
+        deliveryDate: expectedDeliveryDate,
+        deliveryTime: deliveryTimeSlot,
+        deliveryNotes: internalNotes,
+        cancellationAllowed,
+        cancellationDurationMinutes: cancellationDuration
+      };
+      const { data } = await api.put(`/orders/admin/${order.id}/approve`, payload);
+      toast.success('Order approved successfully');
+      onStatusUpdate(order.id, data.data);
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Approve failed');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleRejectSubmit = async () => {
+    if (!rejectReason) {
+      toast.error('Please provide a rejection reason');
+      return;
+    }
+    try {
+      setUpdating(true);
+      const { data } = await api.put(`/orders/admin/${order.id}/reject`, { reason: rejectReason });
+      toast.success('Order rejected');
+      onStatusUpdate(order.id, { ...order, orderStatus: 'REJECTED' });
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Reject failed');
     } finally {
       setUpdating(false);
     }
@@ -240,6 +283,99 @@ const OrderDetail = ({ order, onClose, onStatusUpdate }) => {
               <p className="text-xs font-bold text-blue-700 mb-2">Shipment Info</p>
               {order.courierName && <p className="text-sm text-blue-800">Courier: <strong>{order.courierName}</strong></p>}
               {order.trackingNumber && <p className="text-sm text-blue-800">Tracking: <strong className="font-mono">{order.trackingNumber}</strong></p>}
+            </div>
+          )}
+
+          {/* Cancellation Info */}
+          {order.cancellationAllowed && order.cancellationEnd && (
+            <div className={`rounded-2xl p-4 border ${new Date(order.cancellationEnd) > new Date() ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
+              <p className="text-xs font-bold uppercase tracking-widest mb-1 flex items-center gap-1.5 text-gray-500">
+                <FiClock size={11} /> Cancellation Window
+              </p>
+              <p className="text-sm font-bold text-gray-800">
+                Until {new Date(order.cancellationEnd).toLocaleString('en-IN')}
+              </p>
+              <p className={`text-xs mt-1 ${new Date(order.cancellationEnd) > new Date() ? 'text-blue-600 font-bold' : 'text-gray-500'}`}>
+                {new Date(order.cancellationEnd) > new Date() ? 'Active (Customer can cancel)' : 'Expired'}
+              </p>
+            </div>
+          )}
+
+          {/* Pending Approval Actions */}
+          {order.orderStatus === 'PENDING_APPROVAL' && (
+            <div className="border border-amber-200 rounded-2xl p-4 space-y-3 bg-amber-50">
+              <p className="text-sm font-bold text-amber-800 flex items-center gap-2">
+                <FiCheckCircle size={14} /> Pending Approval Actions
+              </p>
+              
+              {!isApproving && !isRejecting && (
+                <div className="flex gap-2">
+                  <button onClick={() => setIsApproving(true)} className="flex-1 py-2 rounded-xl bg-amber-500 text-white font-bold text-xs hover:bg-amber-600 transition">
+                    Approve Order
+                  </button>
+                  <button onClick={() => setIsRejecting(true)} className="flex-1 py-2 rounded-xl bg-red-100 text-red-600 font-bold text-xs hover:bg-red-200 transition">
+                    Reject Order
+                  </button>
+                </div>
+              )}
+
+              {isApproving && (
+                <div className="space-y-3 pt-2 border-t border-amber-200/50">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-amber-700 uppercase">Delivery Date</label>
+                      <input type="text" value={expectedDeliveryDate} onChange={e => setExpectedDeliveryDate(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-amber-200 text-xs" placeholder="e.g. 15 Aug" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-amber-700 uppercase">Delivery Time</label>
+                      <input type="text" value={deliveryTimeSlot} onChange={e => setDeliveryTimeSlot(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-amber-200 text-xs" placeholder="10 AM - 1 PM" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-amber-700 uppercase mb-1">Delivery Notes</label>
+                    <textarea value={internalNotes} onChange={e => setInternalNotes(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-amber-200 text-xs" rows="2" placeholder="Notes..." />
+                  </div>
+                  <div className="flex items-center justify-between bg-white/50 border border-amber-200 p-2 rounded-xl">
+                    <span className="text-xs font-bold text-amber-800">Enable Cancellation</span>
+                    <input type="checkbox" checked={cancellationAllowed} onChange={e => setCancellationAllowed(e.target.checked)} className="w-4 h-4 text-amber-500 rounded" />
+                  </div>
+                  {cancellationAllowed && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-amber-700 uppercase mb-1">Cancellation Window</label>
+                      <select value={cancellationDuration} onChange={e => setCancellationDuration(Number(e.target.value))} className="w-full px-3 py-2 rounded-xl border border-amber-200 text-xs">
+                        <option value={30}>30 min</option>
+                        <option value={60}>1 hour</option>
+                        <option value={120}>2 hours</option>
+                        <option value={240}>4 hours</option>
+                        <option value={480}>8 hours</option>
+                        <option value={720}>12 hours</option>
+                        <option value={1440}>24 hours</option>
+                      </select>
+                    </div>
+                  )}
+                  <div className="flex gap-2 mt-3">
+                    <button onClick={() => setIsApproving(false)} className="px-4 py-2 rounded-xl bg-white text-gray-600 font-bold text-xs border border-amber-200 hover:bg-gray-50">Cancel</button>
+                    <button onClick={handleApproveSubmit} disabled={updating} className="flex-1 py-2 rounded-xl bg-amber-500 text-white font-bold text-xs hover:bg-amber-600 disabled:opacity-50">
+                      {updating ? 'Approving...' : 'Confirm Approval'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isRejecting && (
+                <div className="space-y-3 pt-2 border-t border-amber-200/50">
+                  <div>
+                    <label className="block text-[10px] font-bold text-red-700 uppercase mb-1">Rejection Reason</label>
+                    <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-red-200 text-xs" rows="2" placeholder="Reason..." />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setIsRejecting(false)} className="px-4 py-2 rounded-xl bg-white text-gray-600 font-bold text-xs border border-red-200 hover:bg-gray-50">Cancel</button>
+                    <button onClick={handleRejectSubmit} disabled={updating} className="flex-1 py-2 rounded-xl bg-red-600 text-white font-bold text-xs hover:bg-red-700 disabled:opacity-50">
+                      {updating ? 'Rejecting...' : 'Confirm Rejection'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
