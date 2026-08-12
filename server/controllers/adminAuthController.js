@@ -165,8 +165,7 @@ exports.adminLoginStep1 = asyncHandler(async (req, res, next) => {
     message: `Security OTP sent! A 6-digit verification code has been sent to your email: ${cleanEmail}`,
     data: {
       adminId: admin.id,
-      email: cleanEmail,
-      otpCode
+      email: cleanEmail
     }
   });
 });
@@ -274,7 +273,7 @@ exports.resendAdminOTP = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: `A new 6-digit OTP code has been sent to your email: ${admin.email}`,
-    data: { adminId: admin.id, email: admin.email, otpCode }
+    data: { adminId: admin.id, email: admin.email }
   });
 });
 

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '../../redux/auth/authSlice';
-import { FiShield, FiKey, FiRefreshCw, FiArrowRight, FiCheck, FiArrowLeft, FiZap } from 'react-icons/fi';
+import { FiShield, FiKey, FiRefreshCw, FiCheck, FiArrowLeft } from 'react-icons/fi';
 import api from '../../config/api';
 
 const AdminVerifyOTP = () => {
@@ -13,13 +13,12 @@ const AdminVerifyOTP = () => {
   const dispatch = useDispatch();
 
   const stateData = location.state || {};
-  const { adminId, email, otpCode: initialOtpCode, trustDevice, deviceFingerprint, deviceName } = stateData;
+  const { adminId, email, trustDevice, deviceFingerprint, deviceName } = stateData;
 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(60);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [activeOtpCode, setActiveOtpCode] = useState(initialOtpCode || '');
 
   const inputsRef = useRef([]);
 
@@ -45,17 +44,6 @@ const AdminVerifyOTP = () => {
       setTimeout(() => inputsRef.current[0]?.focus(), 300);
     }
   }, [adminId]);
-
-  // Quick 1-click Auto-fill OTP Code
-  const handleAutoFill = (codeToFill) => {
-    const codeStr = String(codeToFill || activeOtpCode).trim();
-    if (codeStr.length === 6) {
-      const digits = codeStr.split('');
-      setOtp(digits);
-      toast.info(`OTP code ${codeStr} auto-filled!`);
-      setTimeout(() => inputsRef.current[5]?.focus(), 100);
-    }
-  };
 
   // Handle box input
   const handleChange = (index, value) => {
@@ -125,16 +113,10 @@ const AdminVerifyOTP = () => {
   const handleResend = async () => {
     try {
       setResending(true);
-      const res = await api.post('/admin/auth/resend-otp', { adminId });
-      
-      const newCode = res.data?.data?.otpCode;
-      if (newCode) {
-        setActiveOtpCode(newCode);
-      }
+      await api.post('/admin/auth/resend-otp', { adminId });
+      toast.success(`Fresh 6-digit OTP sent to your email (${email})`);
 
-      toast.success(`Fresh 6-digit OTP sent to ${email}`);
-
-      // Clear old OTP digits and reset timer so user enters the NEW code
+      // Clear old OTP digits and reset timer so user enters the NEW code from email
       setOtp(['', '', '', '', '', '']);
       setTimer(60);
 
@@ -179,34 +161,11 @@ const AdminVerifyOTP = () => {
           </p>
         </div>
 
-        {/* Live Active OTP Display Banner */}
-        {activeOtpCode && (
-          <motion.div 
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-3 bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 border border-amber-500/40 rounded-2xl flex flex-col items-center gap-1.5"
-          >
-            <div className="text-[11px] text-amber-300 font-medium flex items-center gap-1.5">
-              <FiZap className="text-amber-400 animate-pulse" size={13} />
-              <span>Active Security Code: <strong className="font-mono text-base text-amber-400 tracking-wider font-bold ml-1">{activeOtpCode}</strong></span>
-            </div>
-            <button
-              type="button"
-              onClick={() => handleAutoFill(activeOtpCode)}
-              className="text-[10px] font-bold text-amber-400 hover:text-amber-300 uppercase tracking-widest bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1 rounded-full border border-amber-500/30 transition cursor-pointer"
-            >
-              ⚡ 1-Click Auto-Fill Code
-            </button>
-          </motion.div>
-        )}
-
         {/* Security info banner */}
-        {!activeOtpCode && (
-          <div className="p-3 bg-amber-500/8 border border-amber-500/20 rounded-2xl text-[11px] text-amber-300/80 flex items-center gap-2">
-            <FiShield className="shrink-0 text-amber-400" size={14} />
-            <span>Check your email inbox for the 6-digit verification code. Code expires in 5 minutes.</span>
-          </div>
-        )}
+        <div className="p-3 bg-amber-500/8 border border-amber-500/20 rounded-2xl text-[11px] text-amber-300/80 flex items-center gap-2">
+          <FiShield className="shrink-0 text-amber-400" size={14} />
+          <span>Check your email inbox for the 6-digit verification code. Code expires in 5 minutes.</span>
+        </div>
 
         <form onSubmit={handleVerify} className="space-y-6">
           {/* 6-Digit Box Inputs */}

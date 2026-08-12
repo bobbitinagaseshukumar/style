@@ -17,9 +17,8 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // Pre-fill default Super Admin credentials for instant access & native autofill compatibility
-  const [email, setEmail] = useState('nagaseshukumarbobbiti@gmail.com');
-  const [password, setPassword] = useState('seshu@2409');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [trustDevice, setTrustDevice] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -63,7 +62,6 @@ const AdminLogin = () => {
           state: {
             adminId: data.adminId,
             email: data.email,
-            otpCode: data.otpCode,
             trustDevice,
             deviceFingerprint,
             deviceName
