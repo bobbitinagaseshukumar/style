@@ -17,8 +17,9 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // Pre-fill default Super Admin credentials for instant access & native autofill compatibility
+  const [email, setEmail] = useState('nagaseshukumarbobbiti@gmail.com');
+  const [password, setPassword] = useState('seshu@2409');
   const [showPassword, setShowPassword] = useState(false);
   const [trustDevice, setTrustDevice] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -148,17 +149,15 @@ const AdminLogin = () => {
             )}
           </AnimatePresence>
 
-          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-6">
-            <input type="text" name="prevent_autofill_email" style={{ display: 'none' }} tabIndex={-1} readOnly />
-            <input type="password" name="prevent_autofill_password" style={{ display: 'none' }} tabIndex={-1} readOnly />
-
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-1 group">
               <label className="text-[10px] uppercase tracking-widest text-stone-500 font-medium group-focus-within:text-amber-500 transition-colors">Email Address</label>
               <div className="relative">
                 <FiMail className="absolute left-0 top-1/2 -translate-y-1/2 text-stone-500 group-focus-within:text-amber-500 transition-colors" size={16} />
                 <input
                   type="email"
-                  name="admin_auth_user_email"
+                  name="email"
+                  autoComplete="username"
                   required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -174,7 +173,8 @@ const AdminLogin = () => {
                 <FiLock className="absolute left-0 top-1/2 -translate-y-1/2 text-stone-500 group-focus-within:text-amber-500 transition-colors" size={16} />
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  name="admin_auth_user_password"
+                  name="password"
+                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={e => setPassword(e.target.value)}
