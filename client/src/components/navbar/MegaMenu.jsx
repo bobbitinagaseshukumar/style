@@ -6,8 +6,8 @@ import api from '../../config/api';
 
 /**
  * Dynamic Mega Menu
- * Only displays subcategories that actually exist in the database.
- * If zero subcategories exist, no empty dropdown section is shown.
+ * Displays subcategories fetched from the API's nested subcategories array.
+ * If zero subcategories exist, shows a simple "View All" link.
  */
 const MegaMenu = ({ category, onMouseEnter, onMouseLeave }) => {
   const [subcategories, setSubcategories] = useState([]);
@@ -18,16 +18,35 @@ const MegaMenu = ({ category, onMouseEnter, onMouseLeave }) => {
     const fetchCategoryData = async () => {
       setLoading(true);
       try {
+        // Fetch categories — the API returns subcategories nested inside each category object
         const res = await api.get('/categories');
         const allCats = res.data?.data || [];
-        // Find parent category matching the slug/key
-        const parent = allCats.find(c => c.slug === category || c.id === category || c.name.toLowerCase() === category.toLowerCase());
+
+        // Find the parent category matching the slug/key/name
+        const parent = allCats.find(c =>
+          c.slug === category ||
+          c.id === category ||
+          c.name.toLowerCase() === category.toLowerCase()
+        );
         setParentCat(parent);
 
         if (parent) {
-          // Filter subcategories that belong to this parent category
-          const subs = allCats.filter(c => c.parentId === parent.id || c.parentCategory === parent.id);
-          setSubcategories(subs);
+          // FIX: Use the nested subcategories array returned by the API
+          // The API includes { subcategories: [...] } inside each category
+          const subs = parent.subcategories || [];
+
+          // If subcategories are empty in the nested object, try fetching from the dedicated endpoint
+          if (subs.length === 0) {
+            try {
+              const subRes = await api.get(`/subcategories?activeOnly=true&categoryId=${parent.id}`);
+              const subData = subRes.data?.data || [];
+              setSubcategories(subData);
+            } catch {
+              setSubcategories([]);
+            }
+          } else {
+            setSubcategories(subs);
+          }
         } else {
           setSubcategories([]);
         }
@@ -74,13 +93,13 @@ const MegaMenu = ({ category, onMouseEnter, onMouseLeave }) => {
               </h4>
 
               {subcategories.length === 0 ? (
-                <p className="text-xs text-gray-400 italic">No subcategories available in database.</p>
+                <p className="text-xs text-gray-400 italic">No subcategories available yet.</p>
               ) : (
                 <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {subcategories.map((sub) => (
                     <li key={sub.id}>
                       <Link
-                        to={`/categories/${sub.slug}`}
+                        to={`/categories/${parentCat?.slug || category}?sub=${sub.slug}`}
                         className="group flex items-center gap-2 text-sm text-white/70 hover:text-white transition-colors duration-200"
                       >
                         <span className="w-0 group-hover:w-3 overflow-hidden transition-all duration-200 inline-block">

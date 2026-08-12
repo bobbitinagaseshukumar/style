@@ -125,10 +125,10 @@ const FALLBACK_COLLECTION_PRODUCTS = {
 };
 
 const CollectionShowcase = ({ title, subtitle, categorySlug, bannerImage, bgLight = false }) => {
-  const [products, setProducts] = useState(
-    FALLBACK_COLLECTION_PRODUCTS[categorySlug] || FALLBACK_COLLECTION_PRODUCTS.default
-  );
+  // FIX: Start with empty products — only show real products from the database
+  const [products, setProducts] = useState([]);
   const [isHidden, setIsHidden] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -141,18 +141,24 @@ const CollectionShowcase = ({ title, subtitle, categorySlug, bannerImage, bgLigh
             return;
           }
           const prodRes = await api.get(`/products?category=${foundCat.id}&limit=4`);
-          if (prodRes.data?.data?.products?.length > 0) {
-            setProducts(prodRes.data.data.products);
-          }
+          const realProducts = prodRes.data?.data?.products || [];
+          setProducts(realProducts);
+        } else {
+          // Category not found in DB — hide the section
+          setIsHidden(true);
         }
       } catch (err) {
         console.error(`Failed to load ${categorySlug}:`, err);
+      } finally {
+        setLoaded(true);
       }
     };
     fetchData();
   }, [categorySlug]);
 
+  // Hide section if category is hidden or no real products exist
   if (isHidden) return null;
+  if (loaded && products.length === 0) return null;
 
   return (
     <section className={`py-12 lg:py-16 ${bgLight ? 'bg-gray-50' : 'bg-white'}`}>

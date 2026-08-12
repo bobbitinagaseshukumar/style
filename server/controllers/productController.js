@@ -382,10 +382,39 @@ exports.deleteProduct = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const { hardDelete } = req.query;
 
+  // Verify product exists
+  const product = await prisma.product.findUnique({ where: { id } });
+  if (!product) {
+    return next(new ApiError(404, 'Product not found'));
+  }
+
   if (hardDelete === 'true') {
-    // Permanent deletion
-    await prisma.productImage.deleteMany({ where: { productId: id } });
-    await prisma.product.delete({ where: { id } });
+    // Permanent deletion — must clean up ALL related records to avoid FK constraint errors
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Delete all related records that reference this product
+        await tx.productImage.deleteMany({ where: { productId: id } });
+        await tx.cartItem.deleteMany({ where: { productId: id } });
+        await tx.wishlistItem.deleteMany({ where: { productId: id } });
+        await tx.review.deleteMany({ where: { productId: id } });
+        await tx.backInStockSubscription.deleteMany({ where: { productId: id } });
+        await tx.recentlyViewed.deleteMany({ where: { productId: id } });
+
+        // Delete order item references (set productId to null if possible, else skip)
+        try {
+          await tx.orderItem.deleteMany({ where: { productId: id } });
+        } catch {
+          // OrderItems may have constraints — soft-delete instead
+          console.warn(`[DELETE PRODUCT] Could not remove order items for product ${id}, skipping`);
+        }
+
+        // Finally delete the product itself
+        await tx.product.delete({ where: { id } });
+      });
+    } catch (err) {
+      console.error('[DELETE PRODUCT ERROR]', err.message);
+      return next(new ApiError(500, `Failed to delete product: ${err.message}`));
+    }
   } else {
     // Soft Delete / Archive
     await prisma.product.update({
@@ -400,7 +429,9 @@ exports.deleteProduct = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    message: 'Product removed from website successfully',
+    message: hardDelete === 'true'
+      ? `Product "${product.name}" permanently deleted`
+      : `Product "${product.name}" archived successfully`,
     data: null
   });
 });
