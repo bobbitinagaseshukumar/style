@@ -2,6 +2,7 @@ const prisma = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const slugify = require('slugify');
+const emailService = require('../services/emailService');
 
 // ==================== GET ALL PRODUCTS ====================
 exports.getAllProducts = asyncHandler(async (req, res, next) => {
@@ -273,6 +274,13 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
     include: { images: true, category: true, subCategory: true }
   });
 
+  // Broadcast notification to all customers if published
+  if (fullProduct && (fullProduct.status === 'PUBLISHED' || fullProduct.isVisible)) {
+    setImmediate(() => {
+      emailService.sendNewProductNotificationToCustomers(fullProduct);
+    });
+  }
+
   res.status(201).json({
     success: true,
     message: 'Product created and published successfully',
@@ -354,6 +362,13 @@ exports.updateProduct = asyncHandler(async (req, res, next) => {
     where: { id },
     include: { images: true, category: true, subCategory: true }
   });
+
+  // Broadcast notification to all customers if status changed to PUBLISHED
+  if (updatedFullProduct && (updatedFullProduct.status === 'PUBLISHED' || updatedFullProduct.isVisible)) {
+    setImmediate(() => {
+      emailService.sendNewProductNotificationToCustomers(updatedFullProduct);
+    });
+  }
 
   res.status(200).json({
     success: true,

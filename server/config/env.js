@@ -14,7 +14,9 @@ const env = {
   SMTP_PORT: parseInt(process.env.SMTP_PORT || '587', 10),
   SMTP_USER: process.env.SMTP_USER,
   SMTP_PASS: process.env.SMTP_PASS,
+  BREVO_API_KEY: process.env.BREVO_API_KEY,
   FROM_EMAIL: process.env.FROM_EMAIL || 'noreply@styleverse.com',
+  FROM_NAME: process.env.FROM_NAME || 'KVLR Styles',
 };
 
 module.exports = env;
