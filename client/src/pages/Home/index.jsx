@@ -80,10 +80,13 @@ const Home = () => {
   useEffect(() => {
     const fetchHomeData = async () => {
       try {
-        const [bannersRes, categoriesRes, allProdsRes, trendSelRes, settingsRes, dynSecRes] = await Promise.allSettled([
+        const [bannersRes, categoriesRes, featuredRes, trendingRes, newArrivalsRes, bestSellerRes, trendSelRes, settingsRes, dynSecRes] = await Promise.allSettled([
           api.get('/cms/banners?activeOnly=true'),
           api.get('/categories?showOnHomepage=true&limit=8'),
-          api.get('/products?limit=50'),
+          api.get('/products?featured=true&limit=8'),
+          api.get('/products?trending=true&limit=8'),
+          api.get('/products?newArrival=true&limit=8'),
+          api.get('/products?bestSeller=true&limit=8'),
           api.get('/cms/trending-selection/public'),
           api.get('/cms/settings'),
           api.get('/cms/homepage/sections/public'),
@@ -109,28 +112,27 @@ const Home = () => {
           setCategories(categoriesRes.value.data.data);
         }
 
-        const rawResData = allProdsRes.status === 'fulfilled' ? allProdsRes.value?.data : null;
-        let allProds = [];
-        if (Array.isArray(rawResData?.data?.products)) {
-          allProds = rawResData.data.products;
-        } else if (Array.isArray(rawResData?.data)) {
-          allProds = rawResData.data;
-        } else if (Array.isArray(rawResData?.products)) {
-          allProds = rawResData.products;
-        } else if (Array.isArray(rawResData)) {
-          allProds = rawResData;
-        }
+        // Extract products from each targeted API response
+        const extractProducts = (res) => {
+          if (res.status !== 'fulfilled') return [];
+          const d = res.value?.data;
+          if (Array.isArray(d?.data?.products)) return d.data.products;
+          if (Array.isArray(d?.data)) return d.data;
+          if (Array.isArray(d?.products)) return d.products;
+          if (Array.isArray(d)) return d;
+          return [];
+        };
 
-        const featuredList = allProds.filter(p => p.featured).length > 0 ? allProds.filter(p => p.featured).slice(0, 8) : allProds.slice(0, 8);
-        const trendingList = allProds.filter(p => p.trending).length > 0 ? allProds.filter(p => p.trending).slice(0, 8) : allProds.slice(0, 8);
-        const newArrivalsList = allProds.filter(p => p.newArrival).length > 0 ? allProds.filter(p => p.newArrival).slice(0, 8) : allProds.slice(0, 8);
-        const bestSellerList = allProds.filter(p => p.bestSeller).length > 0 ? allProds.filter(p => p.bestSeller).slice(0, 8) : allProds.slice(0, 8);
+        const featuredList = extractProducts(featuredRes);
+        const trendingList = extractProducts(trendingRes);
+        const newArrivalsList = extractProducts(newArrivalsRes);
+        const bestSellerList = extractProducts(bestSellerRes);
 
         setProducts({
-          featured: featuredList,
-          trending: trendingList,
-          newArrivals: newArrivalsList,
-          todaysDeals: bestSellerList,
+          featured: featuredList.slice(0, 8),
+          trending: trendingList.slice(0, 8),
+          newArrivals: newArrivalsList.slice(0, 8),
+          todaysDeals: bestSellerList.slice(0, 8),
         });
       } catch (err) {
         console.error('Home page data fetch error:', err);

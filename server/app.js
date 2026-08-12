@@ -54,7 +54,11 @@ app.use(cors({
       callback(null, true);
     } else {
       console.warn(`[CORS] Blocked request from origin: ${origin}`);
-      callback(null, true); // Still allow but log — change to callback(new Error('CORS')) to block
+      if (process.env.NODE_ENV === 'production') {
+        callback(new Error('Not allowed by CORS'));
+      } else {
+        callback(null, true); // Allow in development
+      }
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -127,7 +131,6 @@ app.use('/api/v1/marketplace', marketplaceRoutes);
 app.use('/api/v1/blog', blogRoutes);
 app.use('/api/v1/support', supportRoutes);
 app.use('/api/v1/settings', settingsRoutes);
-app.use('/api/v1/email', emailRoutes);
 app.use('/api/v1/upload', uploadRoutes);
 
 // Centralized Error Middleware

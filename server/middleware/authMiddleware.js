@@ -61,7 +61,7 @@ const protect = asyncHandler(async (req, res, next) => {
             }
         }
 
-        if (user.canLogin === false && req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
+        if (user.canLogin === false && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
             return next(new ApiError(403, 'Account login is disabled by administrator.'));
         }
 

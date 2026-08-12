@@ -124,23 +124,9 @@ exports.login = asyncHandler(async (req, res, next) => {
   const normalizedEmail = email.toLowerCase().trim();
   let user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
-  // Auto-provision user account if email does not exist yet (Seamless Onboarding)
+  // Account must exist — do NOT auto-create accounts
   if (!user) {
-    const defaultPassword = password || 'Password123!';
-    const hashedPassword = await bcrypt.hash(defaultPassword, 12);
-    const defaultName = normalizedEmail.split('@')[0].replace(/[._]/g, ' ');
-    const formattedName = defaultName.charAt(0).toUpperCase() + defaultName.slice(1);
-
-    user = await prisma.user.create({
-      data: {
-        fullName: formattedName,
-        email: normalizedEmail,
-        password: hashedPassword,
-        role: normalizedEmail.includes('admin') ? 'ADMIN' : 'CUSTOMER',
-        isVerified: true,
-        status: 'ACTIVE',
-      },
-    });
+    return next(new ApiError(401, 'No account found with this email. Please register first.'));
   }
 
   if (user.status === 'SUSPENDED') {
@@ -161,7 +147,7 @@ exports.login = asyncHandler(async (req, res, next) => {
   // Option B: Password Login
   if (password) {
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch && password !== 'Password123!') {
+    if (!isMatch) {
       return next(new ApiError(401, 'Invalid password. Please check your credentials or click Forgot Password.'));
     }
   }
@@ -290,7 +276,7 @@ exports.getMe = asyncHandler(async (req, res, next) => {
     },
   });
 
-  if (!user) return next(new ApiError(44, 'User not found'));
+  if (!user) return next(new ApiError(404, 'User not found'));
 
   res.status(200).json({ success: true, data: user });
 });

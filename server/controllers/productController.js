@@ -241,7 +241,7 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
       tags: typeof tags === 'string' ? tags : JSON.stringify(tags || []),
       featured: featured === 'true' || featured === true,
       trending: trending === 'true' || trending === true,
-      newArrival: newArrival === 'true' || newArrival === true || true,
+      newArrival: newArrival === 'true' || newArrival === true,
       bestSeller: bestSeller === 'true' || bestSeller === true,
       isRecommended: isRecommended === 'true' || isRecommended === true,
       isPremium: isPremium === 'true' || isPremium === true,
