@@ -170,6 +170,15 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
     return () => clearTimeout(t);
   }, [form, colors, images, autosaveStatus]);
 
+  const mainRef = useRef(null);
+
+  /* ── Auto scroll to top on step change ───────────────────────── */
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [currentStep]);
+
   /* ── Navigation ────────────────────────────────────────────── */
   const goTo = (idx) => {
     const err = validate(STEPS[currentStep].id, { images, form, colors });
@@ -184,11 +193,17 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
 
   /* ── Submit ────────────────────────────────────────────────── */
   const handleSubmit = async (publishStatus = 'published') => {
-    // Validate all steps before publishing
+    // Validate all steps before publishing and jump to failing step if needed
     if (publishStatus === 'published') {
-      for (const step of STEPS) {
+      for (let i = 0; i < STEPS.length; i++) {
+        const step = STEPS[i];
         const err = validate(step.id, { images, form, colors });
-        if (err) { toast.error(`${step.label}: ${err}`); return; }
+        if (err) {
+          toast.error(`${step.label}: ${err}`);
+          setCurrentStep(i);
+          if (mainRef.current) mainRef.current.scrollTop = 0;
+          return;
+        }
       }
     }
 
@@ -339,7 +354,7 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
           </aside>
 
           {/* Step Content */}
-          <main className="flex-1 overflow-y-auto px-6 py-6">
+          <main ref={mainRef} className="flex-1 overflow-y-auto px-6 py-6">
             {/* Mobile Step Pills */}
             <div className="flex gap-1.5 mb-6 md:hidden overflow-x-auto pb-1">
               {STEPS.map((step, idx) => (

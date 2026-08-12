@@ -198,9 +198,19 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
   }
 
   let slug = slugify(name, { lower: true, strict: true });
-  const existing = await prisma.product.findUnique({ where: { slug } });
-  if (existing) {
-    slug = `${slug}-${Date.now()}`;
+  if (!slug) slug = `product-${Date.now()}`;
+  const existingSlug = await prisma.product.findFirst({ where: { slug } });
+  if (existingSlug) {
+    slug = `${slug}-${Date.now().toString(36)}`;
+  }
+
+  let cleanSku = (sku && typeof sku === 'string' && sku.trim())
+    ? sku.trim()
+    : `SV-PROD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+  const existingSku = await prisma.product.findFirst({ where: { sku: cleanSku } });
+  if (existingSku) {
+    cleanSku = `${cleanSku}-${Date.now().toString(36)}`;
   }
 
   const calculatedDiscountPrice = discountPrice
@@ -211,7 +221,7 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
     data: {
       name,
       slug,
-      sku: sku || `SV-PROD-${Date.now()}`,
+      sku: cleanSku,
       price: parseFloat(price),
       discountPercent: discountPercent ? parseFloat(discountPercent) : 0,
       discountPrice: calculatedDiscountPrice,
