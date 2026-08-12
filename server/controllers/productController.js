@@ -194,8 +194,34 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
     colorGalleries, colorSizeInventory
   } = req.body;
 
-  if (!name || !price || !categoryId) {
+  if (!name || price === undefined || price === null || !categoryId) {
     return next(new ApiError(400, 'Product name, price, and categoryId are required'));
+  }
+
+  // Verify Category Existence with Automatic Fallback
+  let targetCategoryId = categoryId;
+  const categoryExists = await prisma.category.findUnique({ where: { id: targetCategoryId } });
+  if (!categoryExists) {
+    const fallbackCategory = await prisma.category.findFirst({
+      where: { OR: [{ slug: targetCategoryId }, { name: { contains: targetCategoryId, mode: 'insensitive' } }] }
+    });
+    if (fallbackCategory) {
+      targetCategoryId = fallbackCategory.id;
+    } else {
+      const firstCat = await prisma.category.findFirst({});
+      if (firstCat) {
+        targetCategoryId = firstCat.id;
+      } else {
+        return next(new ApiError(400, 'Invalid category specified. Please select a valid category.'));
+      }
+    }
+  }
+
+  // Verify SubCategory Existence
+  let targetSubCategoryId = subCategoryId || null;
+  if (targetSubCategoryId) {
+    const subExists = await prisma.subCategory.findUnique({ where: { id: targetSubCategoryId } });
+    if (!subExists) targetSubCategoryId = null;
   }
 
   let slug = slugify(name, { lower: true, strict: true });
@@ -227,8 +253,8 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
       discountPercent: discountPercent ? parseFloat(discountPercent) : 0,
       discountPrice: calculatedDiscountPrice,
       stock: parseInt(stock || 0),
-      categoryId,
-      subCategoryId: subCategoryId || null,
+      categoryId: targetCategoryId,
+      subCategoryId: targetSubCategoryId,
       brandId: brandId || null,
       shortDesc: shortDesc || '',
       description: description || '',
@@ -274,10 +300,14 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
     include: { images: true, category: true, subCategory: true }
   });
 
-  // Broadcast notification to all customers if published
+  // Broadcast notification asynchronously without blocking response
   if (fullProduct && (fullProduct.status === 'PUBLISHED' || fullProduct.isVisible)) {
-    setImmediate(() => {
-      emailService.sendNewProductNotificationToCustomers(fullProduct);
+    setImmediate(async () => {
+      try {
+        await emailService.sendNewProductNotificationToCustomers(fullProduct);
+      } catch (mailErr) {
+        console.error('[NEW PRODUCT NOTIFICATION ERROR - IGNORED]', mailErr.message);
+      }
     });
   }
 

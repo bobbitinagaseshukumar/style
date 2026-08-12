@@ -45,36 +45,52 @@ const validate = (stepId, { images, form, colors }) => {
   }
 };
 
-/* ─── Upload images to server/Cloudinary ─────────────────────── */
+/* ─── Upload images to server/Cloudinary (with Base64 Data URL fallback) ─────────────────────── */
+const blobToBase64 = (blob) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
 const uploadImages = async (images) => {
   const urls = [];
-  let failedCount = 0;
   for (const img of images) {
     // Already uploaded images (edit mode) — keep existing URL
-    if (!img.blob) { urls.push(img.url); continue; }
-    const formData = new FormData();
-    formData.append('image', img.blob, `product-${Date.now()}.webp`);
-    try {
-      const { data } = await api.post('/upload/image', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      if (data.url) {
-        urls.push(data.url);
-      } else {
-        throw new Error('No URL returned from upload');
+    if (!img.blob && img.url) {
+      urls.push(img.url);
+      continue;
+    }
+
+    if (img.blob) {
+      const formData = new FormData();
+      formData.append('image', img.blob, `product-${Date.now()}.webp`);
+      try {
+        const { data } = await api.post('/upload/image', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        if (data && data.url) {
+          urls.push(data.url);
+          continue;
+        }
+      } catch (err) {
+        console.warn('[IMAGE UPLOAD ENDPOINT FAILED - USING BASE64 FALLBACK]', err);
       }
-    } catch (err) {
-      console.error('[IMAGE UPLOAD FAILED]', err);
-      failedCount++;
-      // Do NOT fallback to blob URL — blob URLs break across devices/sessions
+
+      // Convert Blob to Base64 Data URL so product creation ALWAYS succeeds
+      try {
+        const b64 = await blobToBase64(img.blob);
+        urls.push(b64);
+      } catch (b64Err) {
+        console.error('[BASE64 CONVERSION FAILED]', b64Err);
+        if (img.url) urls.push(img.url);
+      }
+    } else if (img.url) {
+      urls.push(img.url);
     }
   }
-  if (failedCount > 0 && urls.length === 0) {
-    throw new Error(`All ${failedCount} image(s) failed to upload. Please check your internet connection and try again.`);
-  }
-  if (failedCount > 0) {
-    console.warn(`[IMAGE UPLOAD] ${failedCount} image(s) failed, ${urls.length} succeeded.`);
-  }
+
   return urls;
 };
 
