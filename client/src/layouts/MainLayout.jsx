@@ -9,9 +9,12 @@ import MobileBottomNav from '../components/common/MobileBottomNav';
 import ChatbotWidget from '../components/common/ChatbotWidget';
 import LivePurchaseToast from '../components/common/LivePurchaseToast';
 
+import AmbientBackground from '../components/common/3D/AmbientBackground';
+
 const MainLayout = () => {
   return (
     <div className="flex flex-col min-h-screen bg-white text-charcoal-900 font-sans relative overflow-x-hidden">
+      <AmbientBackground />
       <CustomCursor />
       <ParticleCanvas />
       <Navbar />

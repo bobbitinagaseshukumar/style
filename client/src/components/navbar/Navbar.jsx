@@ -155,48 +155,70 @@ const Navbar = () => {
               <FiMenu className="w-6 h-6" />
             </button>
 
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2 group">
-              <motion.span
-                className="font-serif text-xl sm:text-2xl font-bold text-white"
+            {/* 3D Logo */}
+            <Link to="/" className="flex items-center gap-2.5 group relative shine-sweep py-1">
+              <motion.div
+                whileHover={{ rotate: 12, scale: 1.1 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-yellow-500 via-amber-400 to-yellow-300 flex items-center justify-center text-black font-black text-base shadow-lg shadow-yellow-500/20"
               >
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600">
+                V
+              </motion.div>
+              <motion.span
+                whileHover={{ scale: 1.04 }}
+                transition={{ duration: 0.2 }}
+                className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center"
+              >
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 drop-shadow-sm">
                   Style
                 </span>
-                <span>Verse</span>
+                <span className="text-white/90">Verse</span>
               </motion.span>
             </Link>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center gap-1">
-              {navItems.map((item) => (
-                <div
-                  key={item.title}
-                  className="relative"
-                  onMouseEnter={() => item.megaKey ? openMega(item.megaKey) : null}
-                  onMouseLeave={() => item.megaKey ? closeMega() : null}
-                >
-                  <Link
-                    to={item.link}
-                    className={`
-                      flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 group
-                      ${activeMegaMenu === item.megaKey
-                        ? 'text-yellow-400'
-                        : 'text-white/70 hover:text-white'}
-                    `}
+            {/* Desktop Navigation with 3D Hover & Animated Underline */}
+            <div className="hidden lg:flex items-center gap-1.5">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.link;
+                return (
+                  <div
+                    key={item.title}
+                    className="relative"
+                    onMouseEnter={() => item.megaKey ? openMega(item.megaKey) : null}
+                    onMouseLeave={() => item.megaKey ? closeMega() : null}
                   >
-                    {item.title}
-                    {item.subcategories?.length > 0 && (
-                      <motion.span
-                        animate={{ rotate: activeMegaMenu === item.megaKey ? 180 : 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <FiChevronDown size={12} className="opacity-60" />
-                      </motion.span>
-                    )}
-                  </Link>
-                </div>
-              ))}
+                    <Link
+                      to={item.link}
+                      className={`
+                        relative flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group
+                        hover:-translate-y-0.5 hover:scale-[1.03]
+                        ${activeMegaMenu === item.megaKey || isActive
+                          ? 'text-yellow-400 font-bold'
+                          : 'text-white/80 hover:text-white'}
+                      `}
+                    >
+                      <span>{item.title}</span>
+                      {item.subcategories?.length > 0 && (
+                        <motion.span
+                          animate={{ rotate: activeMegaMenu === item.megaKey ? 180 : 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <FiChevronDown size={12} className="opacity-70 group-hover:text-yellow-400 transition-colors" />
+                        </motion.span>
+                      )}
+                      
+                      {/* Animated Gold Underline Glow */}
+                      {(isActive || activeMegaMenu === item.megaKey) && (
+                        <motion.div
+                          layoutId="navbar-underline"
+                          className="absolute bottom-0 left-3 right-3 h-0.5 bg-gradient-to-r from-yellow-400 to-amber-500 rounded-full shadow-[0_0_8px_rgba(234,179,8,0.8)]"
+                          transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                        />
+                      )}
+                    </Link>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Right Icons */}
