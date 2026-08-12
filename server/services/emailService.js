@@ -7,106 +7,107 @@ const env = require('../config/env');
  * Powered by Brevo API for instant high-deliverability transactional emails
  * & automated customer broadcasts when new products are published.
  */
-class EmailService {
-  /**
-   * Base Email Layout Wrapper (Luxury Dark / Gold Design)
-   */
-  wrapTemplate({ headline, description, bannerImage, products = [], buttonText, buttonUrl, unsubscribeUrl }) {
-    const goldAccent = '#D4AF37';
-    const darkBg = '#0D0D0D';
-    const siteUrl = env.CLIENT_URL || 'http://localhost:3000';
+/**
+ * Base Email Layout Wrapper (Luxury Dark / Gold Design)
+ */
+function wrapTemplate({ headline, description, bannerImage, products = [], buttonText, buttonUrl, unsubscribeUrl }) {
+  const goldAccent = '#D4AF37';
+  const darkBg = '#0D0D0D';
+  const siteUrl = env.CLIENT_URL || 'http://localhost:3000';
 
-    const productGridHtml = products.length > 0 ? `
-      <div style="margin-top: 24px;">
-        ${products.map(p => `
-          <div style="background-color: #181818; border: 1px solid rgba(212,175,55,0.3); border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: center;">
-            ${(p.images?.[0]?.url || p.image || p.imageUrl) ? `
-              <img src="${p.images?.[0]?.url || p.image || p.imageUrl}" alt="${p.name}" style="max-width: 100%; height: 220px; object-fit: cover; border-radius: 10px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.1);" />
+  const productGridHtml = products.length > 0 ? `
+    <div style="margin-top: 24px;">
+      ${products.map(p => `
+        <div style="background-color: #181818; border: 1px solid rgba(212,175,55,0.3); border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: center;">
+          ${(p.images?.[0]?.url || p.image || p.imageUrl) ? `
+            <img src="${p.images?.[0]?.url || p.image || p.imageUrl}" alt="${p.name}" style="max-width: 100%; height: 220px; object-fit: cover; border-radius: 10px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.1);" />
+          ` : ''}
+          <h4 style="color: #ffffff; font-size: 16px; font-weight: 700; margin: 6px 0; font-family: sans-serif;">${p.name}</h4>
+          ${p.shortDesc ? `<p style="color: #aaaaaa; font-size: 12px; margin: 4px 0 10px 0; line-height: 1.4;">${p.shortDesc}</p>` : ''}
+          <div style="margin: 8px 0;">
+            <span style="color: ${goldAccent}; font-weight: 800; font-size: 18px;">₹${(p.discountPrice || p.price || 0).toLocaleString('en-IN')}</span>
+            ${(p.price && p.discountPrice && p.price > p.discountPrice) ? `
+              <span style="color: #777777; text-decoration: line-through; font-size: 13px; margin-left: 8px;">₹${p.price.toLocaleString('en-IN')}</span>
             ` : ''}
-            <h4 style="color: #ffffff; font-size: 16px; font-weight: 700; margin: 6px 0; font-family: sans-serif;">${p.name}</h4>
-            ${p.shortDesc ? `<p style="color: #aaaaaa; font-size: 12px; margin: 4px 0 10px 0; line-height: 1.4;">${p.shortDesc}</p>` : ''}
-            <div style="margin: 8px 0;">
-              <span style="color: ${goldAccent}; font-weight: 800; font-size: 18px;">₹${(p.discountPrice || p.price || 0).toLocaleString('en-IN')}</span>
-              ${(p.price && p.discountPrice && p.price > p.discountPrice) ? `
-                <span style="color: #777777; text-decoration: line-through; font-size: 13px; margin-left: 8px;">₹${p.price.toLocaleString('en-IN')}</span>
-              ` : ''}
-            </div>
           </div>
-        `).join('')}
-      </div>
-    ` : '';
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
 
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${headline}</title>
-      </head>
-      <body style="margin: 0; padding: 0; background-color: #050505; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #050505; padding: 24px 0;">
-          <tr>
-            <td align="center">
-              <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: ${darkBg}; border: 1px solid rgba(212,175,55,0.35); border-radius: 16px; overflow: hidden; max-width: 95%;">
-                
-                <!-- HEADER BRAND LOGO -->
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${headline}</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #050505; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #050505; padding: 24px 0;">
+        <tr>
+          <td align="center">
+            <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: ${darkBg}; border: 1px solid rgba(212,175,55,0.35); border-radius: 16px; overflow: hidden; max-width: 95%;">
+              
+              <!-- HEADER BRAND LOGO -->
+              <tr>
+                <td align="center" style="padding: 28px 20px; background-color: #000000; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                  <span style="font-size: 24px; font-weight: 900; letter-spacing: 3px; color: ${goldAccent}; text-transform: uppercase;">KVLR STYLES</span>
+                  <p style="font-size: 10px; color: #999999; margin: 4px 0 0 0; letter-spacing: 3px; text-transform: uppercase;">LUXURY ETHNIC FASHION & JEWELLERY</p>
+                </td>
+              </tr>
+
+              <!-- HERO BANNER IMAGE -->
+              ${bannerImage ? `
                 <tr>
-                  <td align="center" style="padding: 28px 20px; background-color: #000000; border-bottom: 1px solid rgba(255,255,255,0.08);">
-                    <span style="font-size: 24px; font-weight: 900; letter-spacing: 3px; color: ${goldAccent}; text-transform: uppercase;">KVLR STYLES</span>
-                    <p style="font-size: 10px; color: #999999; margin: 4px 0 0 0; letter-spacing: 3px; text-transform: uppercase;">LUXURY ETHNIC FASHION & JEWELLERY</p>
+                  <td>
+                    <img src="${bannerImage}" alt="Banner" style="width: 100%; max-height: 280px; object-fit: cover; display: block;" />
                   </td>
                 </tr>
+              ` : ''}
 
-                <!-- HERO BANNER IMAGE -->
-                ${bannerImage ? `
-                  <tr>
-                    <td>
-                      <img src="${bannerImage}" alt="Banner" style="width: 100%; max-height: 280px; object-fit: cover; display: block;" />
-                    </td>
-                  </tr>
-                ` : ''}
+              <!-- CONTENT BODY -->
+              <tr>
+                <td style="padding: 32px 28px; text-align: left; color: #E5E5E5;">
+                  <h1 style="color: #FFFFFF; font-size: 22px; font-weight: 800; margin: 0 0 12px 0; line-height: 1.3;">${headline}</h1>
+                  <div style="font-size: 14px; line-height: 1.6; color: #CCCCCC; margin-bottom: 24px;">
+                    ${description}
+                  </div>
 
-                <!-- CONTENT BODY -->
-                <tr>
-                  <td style="padding: 32px 28px; text-align: left; color: #E5E5E5;">
-                    <h1 style="color: #FFFFFF; font-size: 22px; font-weight: 800; margin: 0 0 12px 0; line-height: 1.3;">${headline}</h1>
-                    <div style="font-size: 14px; line-height: 1.6; color: #CCCCCC; margin-bottom: 24px;">
-                      ${description}
+                  ${productGridHtml}
+
+                  <!-- CALL TO ACTION BUTTON -->
+                  ${buttonText && buttonUrl ? `
+                    <div style="text-align: center; margin-top: 32px;">
+                      <a href="${buttonUrl}" target="_blank" style="background: linear-gradient(135deg, #D4AF37 0%, #B89327 100%); color: #000000; font-weight: 800; font-size: 14px; padding: 14px 32px; border-radius: 10px; text-decoration: none; display: inline-block; box-shadow: 0 4px 20px rgba(212,175,55,0.4);">
+                        ${buttonText}
+                      </a>
                     </div>
+                  ` : ''}
+                </td>
+              </tr>
 
-                    ${productGridHtml}
+              <!-- FOOTER -->
+              <tr>
+                <td align="center" style="padding: 24px 20px; background-color: #000000; border-top: 1px solid rgba(255,255,255,0.08); font-size: 11px; color: #666666;">
+                  <p style="margin: 0 0 8px 0; color: #888888;">© 2026 KVLR Styles Platform. All rights reserved.</p>
+                  <p style="margin: 0;">
+                    You received this email from KVLR Styles. 
+                    ${unsubscribeUrl ? `<a href="${unsubscribeUrl}" style="color: ${goldAccent}; text-decoration: underline;">Unsubscribe</a>` : `<a href="${siteUrl}" style="color: ${goldAccent}; text-decoration: underline;">Visit Store</a>`}
+                  </p>
+                </td>
+              </tr>
 
-                    <!-- CALL TO ACTION BUTTON -->
-                    ${buttonText && buttonUrl ? `
-                      <div style="text-align: center; margin-top: 32px;">
-                        <a href="${buttonUrl}" target="_blank" style="background: linear-gradient(135deg, #D4AF37 0%, #B89327 100%); color: #000000; font-weight: 800; font-size: 14px; padding: 14px 32px; border-radius: 10px; text-decoration: none; display: inline-block; box-shadow: 0 4px 20px rgba(212,175,55,0.4);">
-                          ${buttonText}
-                        </a>
-                      </div>
-                    ` : ''}
-                  </td>
-                </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
 
-                <!-- FOOTER -->
-                <tr>
-                  <td align="center" style="padding: 24px 20px; background-color: #000000; border-top: 1px solid rgba(255,255,255,0.08); font-size: 11px; color: #666666;">
-                    <p style="margin: 0 0 8px 0; color: #888888;">© 2026 KVLR Styles Platform. All rights reserved.</p>
-                    <p style="margin: 0;">
-                      You received this email from KVLR Styles. 
-                      ${unsubscribeUrl ? `<a href="${unsubscribeUrl}" style="color: ${goldAccent}; text-decoration: underline;">Unsubscribe</a>` : `<a href="${siteUrl}" style="color: ${goldAccent}; text-decoration: underline;">Visit Store</a>`}
-                    </p>
-                  </td>
-                </tr>
-
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
-  }
+class EmailService {
 
   // ==================== 1. OTP EMAIL (Brevo API) ====================
   async sendOTPEmail(email, fullName, otp) {
@@ -122,7 +123,7 @@ class EmailService {
       <p style="font-size: 12px; color: #888888; text-align: center; margin-top: 16px;">If you did not request this OTP, please ignore this email or contact customer support.</p>
     `;
 
-    const htmlContent = this.wrapTemplate({
+    const htmlContent = wrapTemplate({
       headline: '🔐 Your One-Time Verification Code',
       description,
     });
@@ -142,7 +143,7 @@ class EmailService {
       <p style="margin-bottom: 20px;">We are thrilled to have you as part of our exclusive community. Explore our latest royal silk sarees, temple jewellery, and festive men's collections handcrafted by master artisans.</p>
     `;
 
-    const htmlContent = this.wrapTemplate({
+    const htmlContent = wrapTemplate({
       headline: '✨ Welcome to Royal Elegance',
       description,
       buttonText: 'Explore Exclusive Collections',
@@ -170,7 +171,7 @@ class EmailService {
       <p style="font-size: 12px; color: #888888; text-align: center;">If you did not request a password reset, your account is secure and you can ignore this email.</p>
     `;
 
-    const htmlContent = this.wrapTemplate({
+    const htmlContent = wrapTemplate({
       headline: '🔑 Password Reset Request',
       description,
     });
@@ -190,7 +191,7 @@ class EmailService {
       <p style="color: #ff6b6b; font-size: 12px;">If you did NOT change your password, please contact support immediately.</p>
     `;
 
-    const htmlContent = this.wrapTemplate({
+    const htmlContent = wrapTemplate({
       headline: '🛡️ Account Password Updated',
       description,
     });
@@ -215,7 +216,7 @@ class EmailService {
       </div>
     `;
 
-    const htmlContent = this.wrapTemplate({
+    const htmlContent = wrapTemplate({
       headline: `🛍️ Order Confirmed! (#${orderData.orderNumber})`,
       description,
       products: orderData.items || [],
@@ -242,7 +243,7 @@ class EmailService {
       </div>
     `;
 
-    const htmlContent = this.wrapTemplate({
+    const htmlContent = wrapTemplate({
       headline: `🚚 Your Order Has Shipped! (#${orderData.orderNumber})`,
       description,
       products: orderData.items || [],
@@ -265,7 +266,7 @@ class EmailService {
       <p style="margin-bottom: 20px;">Your order <strong>#${orderData.orderNumber}</strong> has been successfully delivered! We hope you love your new purchase.</p>
     `;
 
-    const htmlContent = this.wrapTemplate({
+    const htmlContent = wrapTemplate({
       headline: `🎁 Order Delivered! (#${orderData.orderNumber})`,
       description,
       products: orderData.items || [],
@@ -288,7 +289,7 @@ class EmailService {
       ${orderData.reason ? `<p style="color: #aaa; font-size: 13px;">Reason: ${orderData.reason}</p>` : ''}
     `;
 
-    const htmlContent = this.wrapTemplate({
+    const htmlContent = wrapTemplate({
       headline: `❌ Order Cancelled (#${orderData.orderNumber})`,
       description,
     });
@@ -342,7 +343,7 @@ class EmailService {
         <p style="margin-bottom: 20px; font-size: 15px; color: #ffffff;">Be among the first to explore <strong>${product.name}</strong>${product.category?.name ? ' in ' + product.category.name : ''}.</p>
       `;
 
-      const htmlContent = this.wrapTemplate({
+      const htmlContent = wrapTemplate({
         headline,
         description,
         products: [product],
@@ -388,7 +389,7 @@ class EmailService {
 
   // ==================== 10. CAMPAIGN BROADCAST ====================
   async sendCampaign({ campaignId, subject, recipients, headline, description, bannerImage, products, buttonText, buttonUrl }) {
-    const htmlContent = this.wrapTemplate({ headline, description, bannerImage, products, buttonText, buttonUrl });
+    const htmlContent = wrapTemplate({ headline, description, bannerImage, products, buttonText, buttonUrl });
 
     let count = 0;
     for (const email of recipients) {
