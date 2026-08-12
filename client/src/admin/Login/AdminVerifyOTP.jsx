@@ -12,7 +12,20 @@ const AdminVerifyOTP = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const stateData = location.state || {};
+  // Retrieve stateData from location.state OR fallback to sessionStorage if browser tab was refreshed
+  const getInitialStateData = () => {
+    if (location.state && location.state.adminId) {
+      sessionStorage.setItem('pendingAdminOTPAuth', JSON.stringify(location.state));
+      return location.state;
+    }
+    const saved = sessionStorage.getItem('pendingAdminOTPAuth');
+    if (saved) {
+      try { return JSON.parse(saved); } catch { return {}; }
+    }
+    return {};
+  };
+
+  const stateData = getInitialStateData();
   const { adminId, email, trustDevice, deviceFingerprint, deviceName } = stateData;
 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -22,7 +35,7 @@ const AdminVerifyOTP = () => {
 
   const inputsRef = useRef([]);
 
-  // If no adminId (page refreshed or direct access), redirect back to admin login
+  // Redirect only if NO adminId exists in both location.state AND sessionStorage
   useEffect(() => {
     if (!adminId) {
       toast.error('Session expired. Please log in again.');
@@ -98,6 +111,7 @@ const AdminVerifyOTP = () => {
       const { user, token } = res.data.data;
       dispatch(setCredentials({ user, token }));
       localStorage.setItem('adminToken', token);
+      sessionStorage.removeItem('pendingAdminOTPAuth');
       toast.success('OTP verified! Authenticated as Administrator 🎉');
       navigate('/admin/dashboard');
     } catch (err) {

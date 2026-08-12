@@ -12,8 +12,22 @@ const VerifyOTP = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const email = location.state?.email;
-  const userId = location.state?.userId;
+  // Retrieve stateData from location.state OR fallback to sessionStorage on page refresh
+  const getInitialStateData = () => {
+    if (location.state && location.state.userId) {
+      sessionStorage.setItem('pendingCustomerOTPAuth', JSON.stringify(location.state));
+      return location.state;
+    }
+    const saved = sessionStorage.getItem('pendingCustomerOTPAuth');
+    if (saved) {
+      try { return JSON.parse(saved); } catch { return {}; }
+    }
+    return {};
+  };
+
+  const stateData = getInitialStateData();
+  const email = stateData.email;
+  const userId = stateData.userId;
 
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(60);
@@ -22,7 +36,7 @@ const VerifyOTP = () => {
 
   const inputRefs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef()];
 
-  // If no userId (page refreshed or direct access), redirect back to login
+  // Redirect only if NO userId exists in both location.state AND sessionStorage
   useEffect(() => {
     if (!userId || !email) {
       toast.error('Session expired. Please log in again.');
@@ -90,6 +104,7 @@ const VerifyOTP = () => {
 
       if (data?.success) {
         dispatch(setCredentials(data.data));
+        sessionStorage.removeItem('pendingCustomerOTPAuth');
         toast.success('Email verified successfully! Welcome to StyleVerse.');
         navigate('/');
       }
