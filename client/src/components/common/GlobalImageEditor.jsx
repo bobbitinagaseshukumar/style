@@ -19,36 +19,34 @@ const createImage = (url) =>
     image.src = url;
   });
 
-function getRotatedBBox(width, height, rotation) {
-  const rotRad = (rotation * Math.PI) / 180;
-  return {
-    width: Math.abs(Math.cos(rotRad) * width) + Math.abs(Math.sin(rotRad) * height),
-    height: Math.abs(Math.sin(rotRad) * width) + Math.abs(Math.cos(rotRad) * height),
-  };
-}
-
 async function getCroppedImg(imageSrc, pixelCrop, rotation = 0, flip = { horizontal: false, vertical: false }, quality = 0.92) {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
 
-  const rotRad = (rotation * Math.PI) / 180;
-  const { width: bBoxWidth, height: bBoxHeight } = getRotatedBBox(image.width, image.height, rotation);
+  const maxSize = Math.max(image.width, image.height);
+  const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2));
 
-  canvas.width = bBoxWidth;
-  canvas.height = bBoxHeight;
+  canvas.width = safeArea;
+  canvas.height = safeArea;
 
-  ctx.translate(bBoxWidth / 2, bBoxHeight / 2);
-  ctx.rotate(rotRad);
+  ctx.translate(safeArea / 2, safeArea / 2);
+  ctx.rotate((rotation * Math.PI) / 180);
   ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1);
-  ctx.translate(-image.width / 2, -image.height / 2);
-  ctx.drawImage(image, 0, 0);
+  ctx.translate(-safeArea / 2, -safeArea / 2);
+  ctx.drawImage(image, safeArea / 2 - image.width / 2, safeArea / 2 - image.height / 2);
 
-  const data = ctx.getImageData(pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height);
+  const data = ctx.getImageData(0, 0, safeArea, safeArea);
+
   canvas.width = pixelCrop.width;
   canvas.height = pixelCrop.height;
-  ctx.putImageData(data, 0, 0);
+
+  ctx.putImageData(
+    data,
+    Math.round(0 - safeArea / 2 + image.width * 0.5 - pixelCrop.x),
+    Math.round(0 - safeArea / 2 + image.height * 0.5 - pixelCrop.y)
+  );
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), 'image/webp', quality);
@@ -130,10 +128,10 @@ const GlobalImageEditor = ({
 
   // Sync imageSrc from parent
   useEffect(() => {
-    if (initialImageSrc) setImageSrc(initialImageSrc);
+    setImageSrc(initialImageSrc || null);
   }, [initialImageSrc]);
 
-  // Reset state when opening
+  // Reset editor controls when modal opens (but NOT croppedAreaPixels — let react-easy-crop set it)
   useEffect(() => {
     if (isOpen) {
       setCrop({ x: 0, y: 0 });
@@ -141,12 +139,10 @@ const GlobalImageEditor = ({
       setRotation(0);
       setFlip({ horizontal: false, vertical: false });
       setAspect(defaultAspect);
-      setCroppedAreaPixels(null);
       setUploading(false);
       setUploadProgress(0);
-      if (!initialImageSrc) setImageSrc(null);
     }
-  }, [isOpen, defaultAspect, initialImageSrc]);
+  }, [isOpen, defaultAspect]);
 
   // Build presets
   const presets = aspectPresets || DEFAULT_PRESETS.filter(p => {
@@ -222,7 +218,7 @@ const GlobalImageEditor = ({
         // Return blob directly without uploading
         const objectUrl = URL.createObjectURL(croppedBlob);
         onComplete(objectUrl, croppedBlob);
-        onClose();
+        // Don't call onClose here — onComplete handler (e.g. handleCropDone) already closes via state
       }
     } catch (err) {
       console.error('[CROP ERROR]', err);
