@@ -148,7 +148,7 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
         sizes: true,
         colors: true,
         createdAt: true,
-        images: { select: { id: true, url: true, alt: true } },
+        images: { select: { id: true, url: true, isPrimary: true } },
         category: { select: { id: true, name: true, slug: true } },
         subCategory: { select: { id: true, name: true, slug: true } },
         brand: { select: { id: true, name: true } }
@@ -156,45 +156,6 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
     }),
     prisma.product.count({ where: whereClause })
   ]);
-
-  // Fallback: If querying a specific badge section (e.g. featured=true) returns zero products, fall back to returning recent published products
-  const isBadgeFilter = featured === 'true' || trending === 'true' || newArrival === 'true' || bestSeller === 'true';
-  if (products.length === 0 && isBadgeFilter && includeAll !== 'true') {
-    const fallbackWhere = { status: { notIn: ['DELETED', 'ARCHIVED', 'deleted', 'archived'] } };
-    [products, total] = await Promise.all([
-      prisma.product.findMany({
-        where: fallbackWhere,
-        orderBy: { createdAt: 'desc' },
-        take: parseInt(limit),
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          sku: true,
-          price: true,
-          discountPercent: true,
-          discountPrice: true,
-          stock: true,
-          featured: true,
-          trending: true,
-          newArrival: true,
-          bestSeller: true,
-          isRecommended: true,
-          isPremium: true,
-          shortDesc: true,
-          status: true,
-          sizes: true,
-          colors: true,
-          createdAt: true,
-          images: { select: { id: true, url: true, alt: true } },
-          category: { select: { id: true, name: true, slug: true } },
-          subCategory: { select: { id: true, name: true, slug: true } },
-          brand: { select: { id: true, name: true } }
-        }
-      }),
-      prisma.product.count({ where: fallbackWhere })
-    ]);
-  }
 
   res.status(200).json({
     success: true,
