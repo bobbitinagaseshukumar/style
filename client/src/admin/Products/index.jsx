@@ -14,6 +14,7 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import ProductWizard from './ProductWizard';
+import { formatImageUrl } from '../../utils/formatImageUrl';
 
 const fadeInUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -12 } };
 
@@ -227,7 +228,23 @@ const AdminProducts = () => {
   }), [products, totalProducts]);
 
   /* ─── GET IMAGE ─────────────────────────────────────────── */
-  const getImage = (product) => product.images?.find(i => i.isPrimary)?.url || product.images?.[0]?.url || null;
+  const getImage = (product) => {
+    let raw = product.images?.find(i => i.isPrimary)?.url || product.images?.[0]?.url;
+    if (!raw) {
+      try {
+        const colors = typeof product.colors === 'string' ? JSON.parse(product.colors) : product.colors;
+        if (Array.isArray(colors)) {
+          for (const c of colors) {
+            if (c?.images?.[0]) {
+              raw = typeof c.images[0] === 'string' ? c.images[0] : c.images[0]?.url;
+              if (raw) break;
+            }
+          }
+        }
+      } catch {}
+    }
+    return formatImageUrl(raw, product.name);
+  };
 
   /* ═══════════════════════════════════════════════════════════ */
   return (

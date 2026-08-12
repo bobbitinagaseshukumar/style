@@ -12,6 +12,7 @@ import { formatCurrency } from '../../utils/formatCurrency';
 import { toast } from 'react-toastify';
 import QuickViewModal from './QuickViewModal';
 import StarRating from '../reviews/StarRating';
+import { formatImageUrl } from '../../utils/formatImageUrl';
 
 /* ─── Color Map ─────────────────────────────────────────────── */
 const colorHexMap = {
@@ -120,8 +121,8 @@ const ProductCard = ({ product, index = 0 }) => {
         });
       }
     } catch {}
-    const unique = [...new Set(list)];
-    if (unique.length > 0) return unique;
+    const formatted = [...new Set(list)].map(url => formatImageUrl(url, name));
+    if (formatted.length > 0) return formatted;
     return [`https://images.unsplash.com/photo-1542272604-780c36856d67?w=800`];
   };
 
