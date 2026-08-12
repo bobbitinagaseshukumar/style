@@ -322,43 +322,43 @@ const AdminLayout = () => {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* TOP HEADER BAR (Sticky Top Guarantee) */}
-        <header className="h-16 bg-white/95 backdrop-blur-md border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0 sticky top-0 z-40">
+        {/* TOP HEADER BAR (Dark Luxury Theme — Zero White Gap) */}
+        <header className="h-16 bg-[#0A0A0E] border-b border-white/10 flex items-center justify-between px-4 lg:px-6 shadow-md shrink-0 sticky top-0 z-40 text-white">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setMobileSidebar(true)}
-              className="lg:hidden text-gray-600 hover:text-gray-900 p-2 -ml-2 rounded-lg hover:bg-gray-100"
+              className="lg:hidden text-gray-300 hover:text-white p-2 -ml-2 rounded-lg hover:bg-white/10 transition"
               aria-label="Open Admin Navigation"
             >
               <FiMenu className="w-6 h-6" />
             </button>
             <div>
-              <h1 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">{currentPage}</h1>
-              <p className="text-[10px] text-gray-400 font-medium hidden sm:block">StyleVerse Admin Control Center</p>
+              <h1 className="text-base sm:text-lg font-bold text-white leading-tight">{currentPage}</h1>
+              <p className="text-[10px] text-amber-400/80 font-medium hidden sm:block">KVLR Styles Admin Control Center</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
             
             {/* Search Input */}
-            <div className="flex flex-1 sm:flex-none items-center bg-gray-100 rounded-xl px-3 py-1.5 border border-transparent focus-within:border-gold-300 focus-within:bg-white focus-within:shadow-sm transition-all max-w-[180px] sm:w-64">
+            <div className="flex flex-1 sm:flex-none items-center bg-white/5 rounded-xl px-3 py-1.5 border border-white/10 focus-within:border-amber-500/50 focus-within:bg-black/40 transition-all max-w-[180px] sm:w-64">
               <FiSearch className="text-gray-400 w-4 h-4 mr-2 shrink-0" />
               <input 
                 type="text" 
                 placeholder="Search..." 
-                className="bg-transparent border-none outline-none text-xs w-full text-gray-700 placeholder-gray-400" 
+                className="bg-transparent border-none outline-none text-xs w-full text-white placeholder-gray-500" 
               />
             </div>
 
             {/* Date Display */}
-            <div className="hidden lg:block text-xs font-semibold text-gray-500 mr-2">
+            <div className="hidden lg:block text-xs font-semibold text-gray-400 mr-2">
               {formattedDate}
             </div>
 
             {/* Notification Bell */}
-            <button className="relative p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition">
+            <button className="relative p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition">
               <FiBell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 border-2 border-white rounded-full"></span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 border-2 border-[#0A0A0E] rounded-full"></span>
             </button>
 
             {/* Storefront Link */}
@@ -366,7 +366,7 @@ const AdminLayout = () => {
               href="/"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold transition"
               title="Open Customer Storefront in New Tab"
             >
               <FiExternalLink className="w-3.5 h-3.5" /> <span className="hidden xs:inline">Storefront</span>
@@ -376,7 +376,7 @@ const AdminLayout = () => {
             <div className="relative ml-2" ref={profileMenuRef}>
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="flex items-center gap-2 p-1 rounded-xl hover:bg-gray-100 transition cursor-pointer border border-transparent hover:border-gray-200"
+                className="flex items-center gap-2 p-1 rounded-xl hover:bg-white/10 transition cursor-pointer border border-transparent hover:border-white/10"
               >
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 text-black font-black text-sm flex items-center justify-center shadow-md">
                   {adminAvatarInitial}

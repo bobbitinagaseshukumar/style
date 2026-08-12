@@ -18,5 +18,7 @@ router.put('/:id/cancel', orderController.cancelOrder);
 router.put('/admin/:id/approve', authorize('ADMIN', 'SUPER_ADMIN'), orderController.adminApproveOrder);
 router.put('/admin/:id/reject', authorize('ADMIN', 'SUPER_ADMIN'), orderController.adminRejectOrder);
 router.put('/admin/:id/status', authorize('ADMIN', 'SUPER_ADMIN'), orderController.adminUpdateOrderStatus);
+router.delete('/admin/:id', authorize('ADMIN', 'SUPER_ADMIN'), orderController.deleteOrder);
+router.delete('/:id', authorize('ADMIN', 'SUPER_ADMIN'), orderController.deleteOrder);
 
 module.exports = router;
