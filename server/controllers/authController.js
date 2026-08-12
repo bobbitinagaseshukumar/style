@@ -52,9 +52,15 @@ exports.register = asyncHandler(async (req, res, next) => {
     },
   });
 
-  // Generate & send OTP
+  // Generate & send OTP via Brevo
   const otp = await createOTP(user.id);
-  await sendOTPEmail(user.email, user.fullName, otp);
+  try {
+    await sendOTPEmail(user.email, user.fullName, otp);
+    console.log(`[CUSTOMER REGISTER OTP] 6-digit OTP (${otp}) successfully emailed to ${user.email}`);
+  } catch (mailErr) {
+    console.error('[CUSTOMER REGISTER OTP EMAIL FAILED]', mailErr);
+    return next(new ApiError(500, `Failed to send verification email to ${user.email}: ${mailErr.message}`));
+  }
 
   res.status(201).json({
     success: true,
@@ -136,7 +142,13 @@ exports.login = asyncHandler(async (req, res, next) => {
   // Option A: Email OTP Login
   if (loginType === 'OTP') {
     const otp = await createOTP(user.id);
-    await sendOTPEmail(user.email, user.fullName, otp);
+    try {
+      await sendOTPEmail(user.email, user.fullName, otp);
+      console.log(`[CUSTOMER LOGIN OTP] 6-digit OTP (${otp}) successfully emailed to ${user.email}`);
+    } catch (mailErr) {
+      console.error('[CUSTOMER LOGIN OTP EMAIL FAILED]', mailErr);
+      return next(new ApiError(500, `Failed to send OTP email to ${user.email}: ${mailErr.message}`));
+    }
     return res.status(200).json({
       success: true,
       message: `Login OTP sent to ${user.email}`,

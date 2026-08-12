@@ -17,7 +17,7 @@ const env = {
   SMTP_USER: process.env.SMTP_USER,
   SMTP_PASS: process.env.SMTP_PASS,
   BREVO_API_KEY: process.env.BREVO_API_KEY,
-  FROM_EMAIL: process.env.FROM_EMAIL || 'noreply@styleverse.com',
+  FROM_EMAIL: process.env.FROM_EMAIL || 'nagaseshukumarbobbiti@gmail.com',
   FROM_NAME: process.env.FROM_NAME || 'KVLR Styles',
 };
 

@@ -150,11 +150,13 @@ exports.adminLoginStep1 = asyncHandler(async (req, res, next) => {
     data: { otpCode, otpExpiresAt }
   });
 
-  // Send 6-digit OTP to Admin's email via Brevo
+  // Send 6-digit OTP to Admin's email via Brevo — fail loudly if email sending fails
   try {
     await sendOTPEmail(admin.email, admin.fullName, otpCode);
+    console.log(`[ADMIN LOGIN OTP] 6-digit OTP (${otpCode}) successfully emailed via Brevo to ${admin.email}`);
   } catch (mailErr) {
-    console.error('[ADMIN OTP EMAIL FAILED]', mailErr.message);
+    console.error('[ADMIN OTP EMAIL FAILED]', mailErr.message || mailErr);
+    return next(new ApiError(500, `Failed to send verification email to ${admin.email}. Error: ${mailErr.message || 'Brevo API Error'}`));
   }
 
   await logLoginAttempt(admin.id, cleanEmail, req, 'OTP_REQUIRED', '6-Digit Email OTP generated & sent to admin email');
