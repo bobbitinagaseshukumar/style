@@ -243,9 +243,14 @@ exports.verifyAdminOTP = asyncHandler(async (req, res, next) => {
 exports.resendAdminOTP = asyncHandler(async (req, res, next) => {
   const { adminId } = req.body;
 
+  if (!adminId) {
+    return next(new ApiError(400, 'Admin ID is required'));
+  }
+
   const admin = await prisma.user.findUnique({ where: { id: adminId } });
   if (!admin) return next(new ApiError(404, 'Admin account not found'));
 
+  // Generate a fresh 6-digit OTP and clear any previous code
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
   const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
@@ -254,12 +259,16 @@ exports.resendAdminOTP = asyncHandler(async (req, res, next) => {
     data: { otpCode, otpExpiresAt }
   });
 
-  // Send fresh 6-digit OTP to Admin's email via Brevo
+  // Send fresh 6-digit OTP to Admin's email via Brevo — fail loudly if delivery fails
   try {
     await sendOTPEmail(admin.email, admin.fullName, otpCode);
+    console.log(`[ADMIN RESEND OTP] New OTP sent to ${admin.email}`);
   } catch (mailErr) {
     console.error('[ADMIN RESEND OTP EMAIL FAILED]', mailErr.message);
+    return next(new ApiError(500, 'Failed to send OTP email. Please try again in a moment.'));
   }
+
+  await logLoginAttempt(admin.id, admin.email, req, 'OTP_REQUIRED', 'Admin resent OTP code');
 
   res.status(200).json({
     success: true,

@@ -11,8 +11,7 @@ import {
 import api from '../../config/api';
 
 /**
- * Exclusive Cyber-Security Admin Authentication Portal
- * Dark luxury dashboard style, animated security shield, digital matrix grid, trusted device tracking.
+ * KVLR STYLES - Luxury Admin Authentication Portal
  */
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -79,146 +78,157 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050811] text-white flex items-center justify-center p-4 relative overflow-hidden font-sans select-none">
-      {/* Cyber Grid Background Matrix */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none" />
+    <div className="min-h-screen bg-[#0a0a0c] text-stone-200 flex items-center justify-center p-4 relative overflow-hidden font-sans selection:bg-amber-500/30">
+      {/* Luxury Gradient Background & Shimmer */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#1f1c18,transparent_50%),radial-gradient(ellipse_at_bottom,#0f1115,transparent_50%)] pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent opacity-60" />
+      <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/10 to-transparent opacity-60" />
 
-      {/* Cyber Glow Orbs */}
-      <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-cyan-500/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-amber-500/10 rounded-full blur-[140px] pointer-events-none" />
+      {/* Decorative Gold Accents */}
+      <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] bg-amber-600/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute -bottom-[20%] -left-[10%] w-[50%] h-[50%] bg-indigo-900/10 rounded-full blur-[120px] pointer-events-none" />
 
-      {/* MAIN ADMIN CARD */}
       <motion.div
-        initial={{ opacity: 0, y: 30, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        className="w-full max-w-md bg-[#0A0E1A]/90 border border-cyan-500/30 rounded-3xl p-8 shadow-[0_20px_60px_rgba(0,0,0,0.9)] backdrop-blur-2xl relative z-10 space-y-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 bg-[#111113]/80 border border-white/5 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-xl relative z-10"
       >
-        {/* Holographic Top Border Highlight */}
-        <div className="absolute top-0 left-10 right-10 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
-
-        {/* Header Branding & Security Icon */}
-        <div className="text-center space-y-2">
-          <div className="relative w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/40 text-cyan-400 flex items-center justify-center mx-auto mb-3 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
-            <motion.div animate={verified ? { rotateY: 360 } : {}}>
-              <FiShield className="w-8 h-8 text-cyan-400" />
-            </motion.div>
-            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-black animate-pulse" />
-          </div>
-
-          <h1 className="text-2xl font-black tracking-tight text-white flex items-center justify-center gap-2">
-            Administrator Portal <FiCpu className="text-cyan-400 w-4 h-4" />
-          </h1>
-          <p className="text-xs text-cyan-400/80 font-mono tracking-widest uppercase">
-            [ Authorized Personnel Only ]
-          </p>
+        {/* Left Side: Brand Panel */}
+        <div className="relative hidden md:flex flex-col items-center justify-center p-12 bg-gradient-to-br from-[#16161a] to-[#0a0a0c] border-r border-white/5">
+          <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#d97706_1px,transparent_1px)] [background-size:20px_20px]" />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.8 }}
+            className="relative z-10 text-center space-y-6"
+          >
+            <div className="w-24 h-24 mx-auto border border-amber-500/30 rounded-full flex items-center justify-center p-1 relative">
+               <div className="absolute inset-0 border border-amber-500/20 rounded-full animate-[spin_10s_linear_infinite]" />
+               <div className="w-full h-full bg-[#1a1a1c] rounded-full flex items-center justify-center border border-amber-500/10">
+                 <span className="text-3xl font-serif text-amber-500 tracking-wider">KV</span>
+               </div>
+            </div>
+            <div>
+              <h1 className="text-3xl font-serif tracking-[0.2em] text-white font-light uppercase">KVLR Styles</h1>
+              <p className="mt-2 text-[10px] tracking-[0.3em] text-amber-500/70 uppercase">Luxury Ethnic Fashion</p>
+            </div>
+            <div className="pt-8 w-16 h-[1px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent mx-auto" />
+            <p className="text-xs text-stone-400 font-light max-w-[200px] mx-auto leading-relaxed">
+              Exclusive management portal. Access restricted to authorized personnel only.
+            </p>
+          </motion.div>
         </div>
 
-        {/* Verified Notice Animation */}
-        <AnimatePresence>
-          {verified ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-2xl flex items-center gap-2.5 text-xs text-emerald-300 font-bold"
-            >
-              <FiCheckCircle className="shrink-0 text-emerald-400 w-5 h-5" />
-              <span>Security Clearance Granted. Launching Dashboard...</span>
-            </motion.div>
-          ) : (
-            <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl flex items-center gap-2.5 text-[11px] text-cyan-300 font-medium">
-              <FiShield className="shrink-0 text-cyan-400" size={16} />
-              <span>256-Bit Encrypted Admin Handshake Active</span>
+        {/* Right Side: Login Form */}
+        <div className="p-8 md:p-14 flex flex-col justify-center relative bg-[#0d0d0f]/50">
+          <div className="md:hidden text-center mb-10">
+            <div className="w-16 h-16 mx-auto border border-amber-500/30 rounded-full flex items-center justify-center mb-4">
+              <span className="text-xl font-serif text-amber-500 tracking-wider">KV</span>
             </div>
-          )}
-        </AnimatePresence>
-
-        <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4 text-xs">
-          {/* Fake inputs to prevent browser forced autofill */}
-          <input type="text" name="prevent_autofill_email" style={{ display: 'none' }} tabIndex={-1} readOnly />
-          <input type="password" name="prevent_autofill_password" style={{ display: 'none' }} tabIndex={-1} readOnly />
-
-          {/* Email */}
-          <div>
-            <label className="block font-bold text-gray-300 mb-1.5 font-mono">ADMIN_EMAIL</label>
-            <div className="relative">
-              <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cyan-500" size={16} />
-              <input
-                type="email"
-                name="admin_auth_user_email"
-                autoComplete="off"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="admin@styleverse.com"
-                className="w-full pl-10 pr-4 py-3 bg-black/60 border border-cyan-500/30 rounded-xl text-white font-medium focus:outline-none focus:border-cyan-400 transition"
-              />
-            </div>
+            <h1 className="text-2xl font-serif tracking-[0.2em] text-white font-light uppercase">KVLR Styles</h1>
+            <p className="mt-1 text-[10px] tracking-[0.3em] text-amber-500/70 uppercase">Admin Portal</p>
           </div>
 
-          {/* Password */}
-          <div>
-            <label className="block font-bold text-gray-300 mb-1.5 font-mono">SECURITY_PASSPHRASE</label>
-            <div className="relative">
-              <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cyan-500" size={16} />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="admin_auth_user_password"
-                autoComplete="new-password"
-                required
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••••••"
-                className="w-full pl-10 pr-10 py-3 bg-black/60 border border-cyan-500/30 rounded-xl text-white font-medium focus:outline-none focus:border-cyan-400 transition"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-cyan-500 hover:text-white"
+          <div className="mb-10 text-center md:text-left">
+            <h2 className="text-2xl font-light text-white tracking-wide">Sign In</h2>
+            <p className="text-xs text-stone-500 mt-2 font-light">Enter your credentials to access the dashboard</p>
+          </div>
+
+          <AnimatePresence>
+            {verified && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center gap-3 text-sm text-amber-200/90 font-medium"
               >
-                {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          {/* Trust Device Checkbox */}
-          <label className="flex items-center gap-2.5 p-3 rounded-xl border border-white/10 bg-black/40 cursor-pointer hover:bg-black/60 transition">
-            <input
-              type="checkbox"
-              checked={trustDevice}
-              onChange={e => setTrustDevice(e.target.checked)}
-              className="rounded text-cyan-500 focus:ring-cyan-400"
-            />
-            <div>
-              <p className="font-bold text-gray-200 text-xs">Trust this device for 30 days</p>
-              <p className="text-[10px] text-gray-400">Skip email OTP verification on this browser</p>
-            </div>
-          </label>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading || verified}
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-cyan-500/20 transition cursor-pointer flex items-center justify-center gap-2 active:scale-95"
-          >
-            {verified ? (
-              <>
-                <FiCheckCircle className="w-4 h-4 text-black" /> Clearance Approved
-              </>
-            ) : loading ? (
-              'Verifying Security Tokens...'
-            ) : (
-              <>
-                Authenticate Admin Access <FiArrowRight size={16} />
-              </>
+                <FiCheckCircle className="shrink-0 text-amber-400 w-5 h-5" />
+                <span>Authentication successful. Redirecting...</span>
+              </motion.div>
             )}
-          </button>
-        </form>
+          </AnimatePresence>
 
-        <div className="pt-2 text-center border-t border-white/10">
-          <Link to="/" className="text-[11px] text-gray-400 hover:text-cyan-400 transition">
-            ← Return to Storefront
-          </Link>
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-6">
+            <input type="text" name="prevent_autofill_email" style={{ display: 'none' }} tabIndex={-1} readOnly />
+            <input type="password" name="prevent_autofill_password" style={{ display: 'none' }} tabIndex={-1} readOnly />
+
+            <div className="space-y-1 group">
+              <label className="text-[10px] uppercase tracking-widest text-stone-500 font-medium group-focus-within:text-amber-500 transition-colors">Email Address</label>
+              <div className="relative">
+                <FiMail className="absolute left-0 top-1/2 -translate-y-1/2 text-stone-500 group-focus-within:text-amber-500 transition-colors" size={16} />
+                <input
+                  type="email"
+                  name="admin_auth_user_email"
+                  required
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="admin@kvlrstyles.com"
+                  className="w-full pl-8 pr-4 py-2.5 bg-transparent border-b border-white/10 text-white focus:outline-none focus:border-amber-500/50 transition-colors placeholder:text-stone-700 font-light text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1 group">
+              <label className="text-[10px] uppercase tracking-widest text-stone-500 font-medium group-focus-within:text-amber-500 transition-colors">Password</label>
+              <div className="relative">
+                <FiLock className="absolute left-0 top-1/2 -translate-y-1/2 text-stone-500 group-focus-within:text-amber-500 transition-colors" size={16} />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="admin_auth_user_password"
+                  required
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full pl-8 pr-10 py-2.5 bg-transparent border-b border-white/10 text-white focus:outline-none focus:border-amber-500/50 transition-colors placeholder:text-stone-700 font-light text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-stone-500 hover:text-amber-500 transition-colors"
+                >
+                  {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="relative flex items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={trustDevice}
+                    onChange={e => setTrustDevice(e.target.checked)}
+                    className="peer appearance-none w-3.5 h-3.5 border border-stone-600 rounded-sm bg-transparent checked:bg-amber-500/20 checked:border-amber-500 transition-all cursor-pointer"
+                  />
+                  <FiCheckCircle className="absolute w-2.5 h-2.5 text-amber-500 opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" />
+                </div>
+                <span className="text-[11px] text-stone-400 group-hover:text-stone-300 transition-colors tracking-wide">Keep me signed in</span>
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || verified}
+              className="w-full mt-6 py-3.5 rounded bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 text-white font-medium text-xs tracking-wider uppercase transition-all shadow-[0_0_20px_rgba(217,119,6,0.15)] hover:shadow-[0_0_25px_rgba(217,119,6,0.3)] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {verified ? (
+                'Access Granted'
+              ) : loading ? (
+                'Authenticating...'
+              ) : (
+                <>
+                  Sign In <FiArrowRight size={14} />
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-12 text-center md:text-left">
+            <Link to="/" className="inline-flex items-center gap-2 text-[10px] text-stone-500 hover:text-amber-500 transition-colors uppercase tracking-widest font-medium">
+              <FiArrowRight className="rotate-180" size={10} />
+              Return to Storefront
+            </Link>
+          </div>
         </div>
       </motion.div>
     </div>
