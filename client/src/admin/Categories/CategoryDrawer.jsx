@@ -111,6 +111,11 @@ const CategoryDrawer = ({ isOpen, onClose, editCategory = null, onSaved }) => {
         await api.post('/categories', form);
         toast.success(`Category "${form.name}" published successfully!`);
       }
+      try {
+        sessionStorage.removeItem('__KVLR_HOME_CACHE__');
+        sessionStorage.removeItem('__KVLR_MEGA_CACHE__');
+        window.dispatchEvent(new Event('kvlr:content-updated'));
+      } catch (e) {}
       onSaved();
       onClose();
     } catch (err) {

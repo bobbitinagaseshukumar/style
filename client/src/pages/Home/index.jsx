@@ -57,11 +57,38 @@ const DEFAULT_HERO_SLIDERS = [
 ];
 
 const DEFAULT_CATEGORIES = [
-  { id: 'cat-1', name: 'Silk Sarees', slug: 'womens-sarees', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600' },
-  { id: 'cat-2', name: 'Royal Jewellery', slug: 'jewellery', image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=600' },
-  { id: 'cat-3', name: 'Men’s Wear', slug: 'mens-wear', image: 'https://images.unsplash.com/photo-1597983073493-88cd35cf03b0?w=600' },
-  { id: 'cat-4', name: 'Kids & Baby Collection', slug: 'kids-wear', image: 'https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=600' },
+  { id: 'cat-1', name: "Women's Sarees", slug: 'womens-sarees', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80' },
+  { id: 'cat-2', name: 'Jewellery', slug: 'jewellery', image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800&auto=format&fit=crop&q=80' },
+  { id: 'cat-3', name: "Men's Wear", slug: 'mens-wear', image: 'https://images.unsplash.com/photo-1597983073493-88cd35cf03b0?w=800&auto=format&fit=crop&q=80' },
+  { id: 'cat-4', name: 'Kids Wear', slug: 'kids-wear', image: 'https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=800&auto=format&fit=crop&q=80' },
 ];
+
+// Smart Category Thumbnail Resolver: uses admin-uploaded photo or high-clarity category image
+const getCategoryThumbnail = (cat) => {
+  if (!cat) return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80';
+  
+  const rawImage = cat.image || cat.imageUrl || cat.coverImage || cat.banner || cat.thumbnail;
+  if (rawImage && typeof rawImage === 'string' && rawImage.trim().length > 5 && !rawImage.includes('ui-avatars.com')) {
+    return rawImage.trim();
+  }
+
+  const slug = String(cat.slug || '').toLowerCase();
+  const name = String(cat.name || '').toLowerCase();
+
+  if (slug.includes('jewel') || name.includes('jewel') || slug.includes('kundan') || name.includes('kundan')) {
+    return 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800&auto=format&fit=crop&q=80';
+  }
+  if (slug.includes('saree') || name.includes('saree') || slug.includes('women') || name.includes('women') || slug.includes('lehenga') || name.includes('lehenga')) {
+    return 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80';
+  }
+  if (slug.includes('men') || name.includes('men') || slug.includes('kurta') || name.includes('kurta') || slug.includes('shirt') || name.includes('shirt')) {
+    return 'https://images.unsplash.com/photo-1597983073493-88cd35cf03b0?w=800&auto=format&fit=crop&q=80';
+  }
+  if (slug.includes('kid') || name.includes('kid') || slug.includes('child') || name.includes('child') || slug.includes('baby') || name.includes('baby')) {
+    return 'https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=800&auto=format&fit=crop&q=80';
+  }
+  return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80';
+};
 
 // Helper: Load initial cache from sessionStorage for 0ms instantaneous loading
 const getCachedHomeData = () => {
@@ -195,14 +222,19 @@ const Home = () => {
     };
 
     fetchHomeData();
-    const interval = setInterval(fetchHomeData, 10000);
+    const interval = setInterval(fetchHomeData, 8000);
     const handleFocus = () => fetchHomeData();
+    const handleContentUpdate = () => fetchHomeData();
     window.addEventListener('focus', handleFocus);
+    window.addEventListener('kvlr:content-updated', handleContentUpdate);
+    window.addEventListener('storage', handleContentUpdate);
 
     return () => {
       isMounted = false;
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('kvlr:content-updated', handleContentUpdate);
+      window.removeEventListener('storage', handleContentUpdate);
     };
   }, []);
 
@@ -279,10 +311,18 @@ const Home = () => {
               {categories.map((cat) => (
                 <motion.div key={cat.id} variants={fadeInUp}>
                   <Link to={`/categories/${cat.slug}`}
-                    className="group relative block aspect-[4/5] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
-                    <img src={cat.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(cat.name)}&size=400&background=D4AF37&color=fff`}
-                      alt={cat.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                    className="group relative block aspect-[4/5] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 bg-charcoal-900">
+                    <img
+                      src={getCategoryThumbnail(cat)}
+                      alt={cat.name}
+                      loading="lazy"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = getCategoryThumbnail({ slug: cat.slug, name: cat.name });
+                      }}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-4">
                       <h3 className="text-lg font-serif font-bold text-white mb-1">{cat.name}</h3>
                       <span className="inline-flex items-center gap-1 text-gold-400 text-xs font-semibold group-hover:gap-2 transition-all">
