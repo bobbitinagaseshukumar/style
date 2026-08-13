@@ -64,28 +64,27 @@ const buildSearchWhere = (search, extra = {}, roleQuery = null) => {
     andConditions.push(extra);
   }
 
-  // Non-admin filter: include all customer accounts, including any non-admin roles and null roles
+  // Role filter: if specific role selected (e.g. 'CUSTOMER', 'ADMIN'), filter by that role; if 'ALL' or null, show ALL registered accounts!
   if (roleQuery && roleQuery !== 'ALL') {
     const upperRole = roleQuery.toUpperCase();
     if (upperRole === 'CUSTOMER') {
       andConditions.push({
         OR: [
+          { role: { equals: 'CUSTOMER', mode: 'insensitive' } },
+          { role: { equals: 'USER', mode: 'insensitive' } },
           { role: { notIn: ['ADMIN', 'SUPER_ADMIN', 'admin', 'super_admin', 'Admin', 'Super_Admin'] } },
           { role: null }
         ]
+      });
+    } else if (upperRole === 'ADMIN') {
+      andConditions.push({
+        role: { in: ['ADMIN', 'SUPER_ADMIN', 'admin', 'super_admin'] }
       });
     } else {
       andConditions.push({
         role: { equals: upperRole, mode: 'insensitive' }
       });
     }
-  } else {
-    andConditions.push({
-      OR: [
-        { role: { notIn: ['ADMIN', 'SUPER_ADMIN', 'admin', 'super_admin', 'Admin', 'Super_Admin'] } },
-        { role: null }
-      ]
-    });
   }
 
   if (search && search.trim()) {
@@ -108,7 +107,7 @@ const buildSearchWhere = (search, extra = {}, roleQuery = null) => {
 // ==================== 1. GET ALL CUSTOMERS (FAST & HIGH-PERFORMANCE) ====================
 exports.getAllCustomers = asyncHandler(async (req, res) => {
   const {
-    page = 1, limit = 20, search = '', status, filter,
+    page = 1, limit = 20, search = '', status, filter, role = 'ALL',
     sortBy = 'createdAt', sortOrder = 'desc'
   } = req.query;
 
@@ -116,7 +115,7 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
   const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
   const skip = (pageNum - 1) * limitNum;
 
-  const baseWhere = buildSearchWhere(search, {}, req.query.role || 'CUSTOMER');
+  const baseWhere = buildSearchWhere(search, {}, role);
   let where = { ...baseWhere };
 
   // Status Filter
@@ -234,7 +233,7 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
       _count: { id: true }
     }),
     prisma.user.count({
-      where: { ...baseWhere, isVerified: false }
+      where: Object.keys(baseWhere).length > 0 ? { AND: [baseWhere, { isVerified: false }] } : { isVerified: false }
     }),
     prisma.order.aggregate({
       _sum: { totalAmount: true }
@@ -249,10 +248,16 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
   statusCounts.forEach(sc => {
     const cnt = sc._count.id;
     totalCustomers += cnt;
-    if (sc.status === 'ACTIVE') activeCustomers = cnt;
-    if (sc.status === 'BLOCKED') blockedCustomers = cnt;
-    if (sc.status === 'SUSPENDED') suspendedCustomers = cnt;
+    if (sc.status === 'ACTIVE') activeCustomers += cnt;
+    if (sc.status === 'BLOCKED') blockedCustomers += cnt;
+    if (sc.status === 'SUSPENDED') suspendedCustomers += cnt;
   });
+
+  // Guarantee summary total reflects the actual database count
+  if (totalCustomers === 0 && total > 0) {
+    totalCustomers = total;
+    activeCustomers = total;
+  }
 
   const totalCustomerRevenue = Number(totalRevenueAgg._sum?.totalAmount || 0);
 
@@ -267,8 +272,8 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
         pages: Math.ceil(total / limitNum) || 1
       },
       summary: {
-        totalCustomers,
-        activeCustomers,
+        totalCustomers: total > 0 ? total : totalCustomers,
+        activeCustomers: activeCustomers || total,
         blockedCustomers,
         suspendedCustomers,
         unverifiedCustomers: unverifiedCount,

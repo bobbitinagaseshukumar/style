@@ -86,6 +86,7 @@ export default function AdminCustomers() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [roleFilter, setRoleFilter] = useState('ALL');
   const [presetFilter, setPresetFilter] = useState('');
 
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
@@ -116,7 +117,7 @@ export default function AdminCustomers() {
   const fetchCustomers = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const params = { page, limit: 20 };
+      const params = { page, limit: 20, role: roleFilter || 'ALL' };
       if (search.trim()) params.search = search.trim();
       if (statusFilter !== 'ALL') params.status = statusFilter;
       if (presetFilter) params.filter = presetFilter;
@@ -132,7 +133,7 @@ export default function AdminCustomers() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [page, search, statusFilter, presetFilter]);
+  }, [page, search, statusFilter, roleFilter, presetFilter]);
 
   useEffect(() => {
     fetchCustomers();
@@ -142,7 +143,7 @@ export default function AdminCustomers() {
     }, 5000);
     return () => clearInterval(interval);
   }, [fetchCustomers]);
-  useEffect(() => { setPage(1); }, [search, statusFilter, presetFilter]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, roleFilter, presetFilter]);
 
   /* ── Actions ── */
   const doEdit = async e => {
@@ -289,6 +290,11 @@ export default function AdminCustomers() {
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, email, phone, Customer ID…" style={S.searchInput} />
             {search && <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', display: 'flex' }}><FiX style={{ width: 14, height: 14 }} /></button>}
           </div>
+          <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={S.select}>
+            <option value="ALL">All Roles (Customers & Admins)</option>
+            <option value="CUSTOMER">Customers Only</option>
+            <option value="ADMIN">Admins & Staff</option>
+          </select>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={S.select}>
             <option value="ALL">All Statuses</option>
             <option value="ACTIVE">Active</option>
@@ -563,6 +569,9 @@ function Row({ c, onView, onEdit, onPwd, onResetPwd, onBlock, onUnblock, onSuspe
           <div>
             <p style={{ fontWeight: 700, color: '#111', fontSize: 13 }}>{c.fullName}</p>
             <p style={{ fontSize: 11, color: '#999' }}>{c.email}</p>
+            <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, textTransform: 'uppercase', background: (c.role === 'SUPER_ADMIN' || c.role === 'ADMIN') ? '#EFF6FF' : '#ECFDF5', color: (c.role === 'SUPER_ADMIN' || c.role === 'ADMIN') ? '#1D4ED8' : '#047857' }}>
+              {c.role || 'CUSTOMER'}
+            </span>
           </div>
         </div>
       </td>
@@ -645,7 +654,12 @@ function Card({ c, onView, onEdit, onBlock, onUnblock }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontWeight: 700, fontSize: 14, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.fullName}</p>
           <p style={{ fontSize: 11, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}</p>
-          <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#4F46E5', background: '#EEF2FF', padding: '2px 6px', borderRadius: 4, marginTop: 4, display: 'inline-block' }}>{c.customerId || '—'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#4F46E5', background: '#EEF2FF', padding: '2px 6px', borderRadius: 4 }}>{c.customerId || '—'}</span>
+            <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, textTransform: 'uppercase', background: (c.role === 'SUPER_ADMIN' || c.role === 'ADMIN') ? '#EFF6FF' : '#ECFDF5', color: (c.role === 'SUPER_ADMIN' || c.role === 'ADMIN') ? '#1D4ED8' : '#047857' }}>
+              {c.role || 'CUSTOMER'}
+            </span>
+          </div>
         </div>
         <StatusBadge status={c.status} />
       </div>
