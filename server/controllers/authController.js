@@ -504,7 +504,10 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
 
 // ==================== GOOGLE REGISTER (Complete Account) ====================
 exports.googleRegister = asyncHandler(async (req, res, next) => {
-  const { idToken, uid, email, name, photo, phone, whatsappNumber, gender } = req.body;
+  const { idToken, uid, email, name, fullName, photo, phone, mobile, whatsappNumber, gender } = req.body;
+
+  const targetName = (fullName || name || '').trim();
+  const targetPhone = (phone || mobile || '').trim();
 
   // Extract verified identity
   let verifiedEmail = email;
@@ -527,12 +530,8 @@ exports.googleRegister = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, 'Google UID and email are required.'));
   }
 
-  if (!name || !name.trim()) {
+  if (!targetName) {
     return next(new ApiError(400, 'Full name is required.'));
-  }
-
-  if (!phone || !phone.trim()) {
-    return next(new ApiError(400, 'Phone number is required.'));
   }
 
   // Check AGAIN if account already exists (prevents race conditions/duplicates)
@@ -580,9 +579,9 @@ exports.googleRegister = asyncHandler(async (req, res, next) => {
   const newUser = await prisma.user.create({
     data: {
       email: verifiedEmail.toLowerCase(),
-      fullName: name.trim(),
+      fullName: targetName,
       password: await bcrypt.hash(`GOOGLE_${verifiedUid}_${Date.now()}`, 12),
-      phone: phone || null,
+      phone: targetPhone || null,
       whatsappNumber: whatsappNumber || null,
       gender: gender || null,
       avatar: photo || null,

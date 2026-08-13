@@ -23,6 +23,14 @@ export const formatImageUrl = (url, fallbackName = 'Product') => {
   }
 
   // 3. Handle relative server paths (/uploads/...)
-  const backendBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api(\/v\d+)?\/?$/, '');
+  let backendBase = import.meta.env.VITE_API_URL || '';
+  if (!backendBase && typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    backendBase = 'https://style-q21b.onrender.com';
+  }
+  if (!backendBase) {
+    backendBase = 'http://localhost:5000';
+  }
+  backendBase = backendBase.replace(/\/api(\/v\d+)?\/?$/, '').replace(/\/$/, '');
+
   return `${backendBase}${trimmed.startsWith('/') ? '' : '/'}${trimmed}`;
 };
