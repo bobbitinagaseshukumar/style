@@ -516,27 +516,24 @@ exports.blockCustomer = asyncHandler(async (req, res, next) => {
       status: 'BLOCKED',
       blockReason: reason,
       blockNotes: notes,
-      canLogin: false,
+      canLogin: true, // Allow browsing/login so customer can only see/browse products
       canCheckout: false,
       canPlaceOrders: false,
+      canUseCoupons: false,
+      canUseWallet: false,
+      canAddReviews: false,
+      emailNotifications: false, // Stop all notifications
+      smsNotifications: false,   // Stop SMS notifications
+      promoNotifications: false, // Stop promotional notifications
       tokenVersion: { increment: 1 }
     }
   });
-
-  await prisma.notification.create({
-    data: {
-      userId: id,
-      title: 'Account Blocked',
-      message: `Your account has been blocked. Reason: ${reason}. Please contact support.`,
-      type: 'ACCOUNT'
-    }
-  }).catch(() => {});
 
   await logAdminAction(req, user, 'ACCOUNT_BLOCKED', reason, notes);
 
   res.status(200).json({
     success: true,
-    message: `Customer "${user.fullName}" has been blocked & logged out.`,
+    message: `Customer "${user.fullName}" has been blocked. They can browse products, but cannot place orders or receive notifications.`,
     data: blockedUser
   });
 });
@@ -560,24 +557,20 @@ exports.unblockCustomer = asyncHandler(async (req, res, next) => {
       canAddWishlist: true,
       canAddReviews: true,
       canUseCoupons: true,
+      canUseWallet: true,
+      canUseReferral: true,
+      emailNotifications: true,
+      smsNotifications: true,
+      promoNotifications: true,
       suspendedUntil: null
     }
   });
-
-  await prisma.notification.create({
-    data: {
-      userId: id,
-      title: 'Account Restored',
-      message: 'Your account has been unblocked. You can now log in and shop as usual.',
-      type: 'ACCOUNT'
-    }
-  }).catch(() => {});
 
   await logAdminAction(req, user, 'ACCOUNT_UNBLOCKED', 'Admin unblocked customer account');
 
   res.status(200).json({
     success: true,
-    message: `Customer "${user.fullName}" has been unblocked. Full access restored.`,
+    message: `Customer "${user.fullName}" has been unblocked. Full shopping and notification access restored.`,
     data: unblockedUser
   });
 });

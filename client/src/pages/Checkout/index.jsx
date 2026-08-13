@@ -16,6 +16,7 @@ const Checkout = () => {
   const dispatch = useDispatch();
 
   const { items, appliedCoupon, discountAmount, shippingFee, freeShippingThreshold } = useSelector((state) => state.cart);
+  const { user } = useSelector((state) => state.auth || {});
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
@@ -266,14 +267,25 @@ const Checkout = () => {
               <span className="font-bold text-xl text-charcoal-900">{formatCurrency(grandTotal)}</span>
             </div>
 
-            <button
-              onClick={handlePlaceOrder}
-              disabled={loading}
-              className="w-full py-4 rounded-full bg-gold-500 hover:bg-gold-600 text-white font-semibold text-sm transition-all shadow-xl flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {loading ? 'Processing Order...' : 'Confirm & Place Order'}
-              <FiLock />
-            </button>
+            {user?.status === 'BLOCKED' || user?.canPlaceOrders === false || user?.canCheckout === false ? (
+              <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium text-center space-y-1">
+                <p className="font-bold text-sm text-red-800 flex items-center justify-center gap-1.5">
+                  <FiLock className="w-4 h-4" /> Account Order Restricted
+                </p>
+                <p className="text-gray-600">
+                  Your account has been restricted from placing orders by store administration. You may browse and view products, but checkout is disabled.
+                </p>
+              </div>
+            ) : (
+              <button
+                onClick={handlePlaceOrder}
+                disabled={loading}
+                className="w-full py-4 rounded-full bg-gold-500 hover:bg-gold-600 text-white font-semibold text-sm transition-all shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? 'Processing Order...' : 'Confirm & Place Order'}
+                <FiLock />
+              </button>
+            )}
           </div>
         </div>
       </div>

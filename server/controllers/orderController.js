@@ -42,6 +42,16 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
     discountAmount, shippingFee, notes, whatsappNumber
   } = req.body;
 
+  // 1. Restriction Check: Blocked customers can view products but cannot place orders
+  const customer = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    select: { status: true, canPlaceOrders: true, canCheckout: true }
+  });
+
+  if (customer?.status === 'BLOCKED' || customer?.canPlaceOrders === false || customer?.canCheckout === false) {
+    return next(new ApiError(403, 'Your account is currently restricted from placing orders by store administration. You may browse and view products, but checkout is disabled. Please contact customer support.'));
+  }
+
   if (!items || !Array.isArray(items) || items.length === 0) {
     return next(new ApiError(400, 'Order must contain at least one item'));
   }

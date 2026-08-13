@@ -113,9 +113,9 @@ export default function AdminCustomers() {
   const [confirmDlg, setConfirmDlg] = useState(null);
 
   /* ── Fetch ── */
-  const fetchCustomers = useCallback(async () => {
+  const fetchCustomers = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const params = { page, limit: 20 };
       if (search.trim()) params.search = search.trim();
       if (statusFilter !== 'ALL') params.status = statusFilter;
@@ -128,13 +128,20 @@ export default function AdminCustomers() {
       setPagination(dataObj?.pagination || { total: customerList.length, page: 1, limit: 20, pages: 1 });
     } catch (err) {
       console.error('Failed to load customers:', err.message);
-      setCustomers([]);
+      if (!silent) setCustomers([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [page, search, statusFilter, presetFilter]);
 
-  useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
+  useEffect(() => {
+    fetchCustomers();
+    // Auto-polling every 5 seconds in background so newly registered or logged in customers show up immediately
+    const interval = setInterval(() => {
+      fetchCustomers(true);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [fetchCustomers]);
   useEffect(() => { setPage(1); }, [search, statusFilter, presetFilter]);
 
   /* ── Actions ── */
