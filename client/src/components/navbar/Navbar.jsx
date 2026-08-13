@@ -108,7 +108,7 @@ const Navbar = () => {
     fetchHeaderData();
   }, []);
 
-  /* ── Close user menu on outside click ─────────────────────── */
+  /* ── Close user menu on outside click & escape key ─────────── */
   const userMenuRef = useRef(null);
   useEffect(() => {
     const handler = (e) => {
@@ -116,9 +116,19 @@ const Navbar = () => {
         setIsUserMenuOpen(false);
       }
     };
+    const keyHandler = (e) => {
+      if (e.key === 'Escape') {
+        setIsUserMenuOpen(false);
+        setActiveMegaMenu(null);
+      }
+    };
     document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler, { passive: true });
+    document.addEventListener('keydown', keyHandler);
     return () => {
       document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+      document.removeEventListener('keydown', keyHandler);
     };
   }, []);
 
@@ -389,68 +399,76 @@ const Navbar = () => {
                     {/* USER PROFILE DROPDOWN MENU */}
                     <AnimatePresence>
                       {isAuthenticated && isUserMenuOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                          transition={{ duration: 0.15 }}
-                          className="absolute right-0 mt-2 w-60 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-50 text-xs"
-                        >
-                          <div className="px-4 py-3 border-b border-white/10 bg-white/5">
-                            <p className="text-sm font-bold text-white truncate">{userName}</p>
-                            <p className="text-xs text-white/50 truncate">{user?.email}</p>
-                            <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-400/10 text-amber-400 border border-amber-400/30">
-                              {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '⚡ ADMIN' : '⭐ CUSTOMER'}
+                        <>
+                          {/* Fullscreen transparent backdrop so clicking/tapping anywhere dismisses menu */}
+                          <div
+                            className="fixed inset-0 z-40 bg-transparent"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          />
+
+                          <motion.div
+                            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute right-0 mt-2 w-60 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-50 text-xs"
+                          >
+                            <div className="px-4 py-3 border-b border-white/10 bg-white/5">
+                              <p className="text-sm font-bold text-white truncate">{userName}</p>
+                              <p className="text-xs text-white/50 truncate">{user?.email}</p>
+                              <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-400/10 text-amber-400 border border-amber-400/30">
+                                {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '⚡ ADMIN' : '⭐ CUSTOMER'}
+                              </div>
                             </div>
-                          </div>
 
-                          <div className="py-1">
-                            {[
-                              { label: 'Dashboard', icon: FiGrid, path: '/dashboard' },
-                              { label: 'My Orders', icon: FiPackage, path: '/orders' },
-                              { label: 'Address Book', icon: FiMapPin, path: '/address-book' },
-                              { label: 'Wishlist', icon: FiHeart, path: '/wishlist' },
-                              { label: 'Profile Settings', icon: FiUser, path: '/profile' },
-                              { label: 'Notifications', icon: FiBell, path: '/notifications' },
-                            ].map((item) => (
-                              <Link
-                                key={item.label}
-                                to={item.path}
-                                onClick={() => setIsUserMenuOpen(false)}
-                                className="flex items-center gap-3 px-4 py-2.5 text-white/80 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-                              >
-                                <item.icon size={14} className="text-amber-400/80 shrink-0" />
-                                <span className="font-semibold">{item.label}</span>
-                              </Link>
-                            ))}
-                          </div>
-
-                          {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.isAdmin) && (
-                            <div className="border-t border-white/10 py-1">
-                              <Link
-                                to="/admin/dashboard"
-                                onClick={() => setIsUserMenuOpen(false)}
-                                className="flex items-center gap-3 px-4 py-2.5 text-amber-400 hover:bg-amber-400/10 font-bold transition-colors cursor-pointer"
-                              >
-                                <FiSettings size={14} className="shrink-0" />
-                                Super Admin Panel
-                              </Link>
+                            <div className="py-1">
+                              {[
+                                { label: 'Dashboard', icon: FiGrid, path: '/dashboard' },
+                                { label: 'My Orders', icon: FiPackage, path: '/orders' },
+                                { label: 'Address Book', icon: FiMapPin, path: '/address-book' },
+                                { label: 'Wishlist', icon: FiHeart, path: '/wishlist' },
+                                { label: 'Profile Settings', icon: FiUser, path: '/profile' },
+                                { label: 'Notifications', icon: FiBell, path: '/notifications' },
+                              ].map((item) => (
+                                <Link
+                                  key={item.label}
+                                  to={item.path}
+                                  onClick={() => setIsUserMenuOpen(false)}
+                                  className="flex items-center gap-3 px-4 py-2.5 text-white/80 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                                >
+                                  <item.icon size={14} className="text-amber-400/80 shrink-0" />
+                                  <span className="font-semibold">{item.label}</span>
+                                </Link>
+                              ))}
                             </div>
-                          )}
 
-                          <div className="border-t border-white/10 p-1">
-                            <button
-                              onClick={() => {
-                                setIsUserMenuOpen(false);
-                                logout();
-                              }}
-                              className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 font-bold transition-colors cursor-pointer"
-                            >
-                              <FiLogOut size={14} className="shrink-0" />
-                              Sign Out
-                            </button>
-                          </div>
-                        </motion.div>
+                            {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.isAdmin) && (
+                              <div className="border-t border-white/10 py-1">
+                                <Link
+                                  to="/admin/dashboard"
+                                  onClick={() => setIsUserMenuOpen(false)}
+                                  className="flex items-center gap-3 px-4 py-2.5 text-amber-400 hover:bg-amber-400/10 font-bold transition-colors cursor-pointer"
+                                >
+                                  <FiSettings size={14} className="shrink-0" />
+                                  Super Admin Panel
+                                </Link>
+                              </div>
+                            )}
+
+                            <div className="border-t border-white/10 p-1">
+                              <button
+                                onClick={() => {
+                                  setIsUserMenuOpen(false);
+                                  logout();
+                                }}
+                                className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 font-bold transition-colors cursor-pointer"
+                              >
+                                <FiLogOut size={14} className="shrink-0" />
+                                Sign Out
+                              </button>
+                            </div>
+                          </motion.div>
+                        </>
                       )}
                     </AnimatePresence>
                   </div>
