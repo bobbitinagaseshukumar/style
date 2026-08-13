@@ -2,13 +2,27 @@ import React, { useState, useEffect } from 'react';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import api from '../../config/api';
-import { FiSave, FiGlobe, FiTruck, FiCreditCard, FiSearch, FiLock } from 'react-icons/fi';
+import { FiSave, FiGlobe, FiTruck, FiCreditCard, FiSearch, FiLock, FiClipboard, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import AuthenticationManager from './AuthenticationManager';
 
 const AdminSettings = () => {
   const [activeTab, setActiveTab] = useState('general');
   const [loading, setLoading] = useState(false);
+
+  const DEFAULT_CHECKOUT_FIELDS = {
+    fullName: { enabled: true, required: true, label: 'Full Name' },
+    phone: { enabled: true, required: true, label: 'Phone Number' },
+    street: { enabled: true, required: true, label: 'Street Address' },
+    city: { enabled: true, required: true, label: 'City' },
+    state: { enabled: true, required: true, label: 'State' },
+    postalCode: { enabled: true, required: true, label: 'Pincode' },
+    village: { enabled: false, required: false, label: 'Village' },
+    landmark: { enabled: false, required: false, label: 'Landmark' },
+    alternatePhone: { enabled: false, required: false, label: 'Alternate Phone' },
+  };
+
+  const [checkoutFields, setCheckoutFields] = useState(DEFAULT_CHECKOUT_FIELDS);
 
   const [settings, setSettings] = useState({
     storeName: 'StyleVerse',
@@ -35,6 +49,12 @@ const AdminSettings = () => {
         const { data } = await api.get('/cms/settings');
         if (data?.success && data.data) {
           setSettings(prev => ({ ...prev, ...data.data }));
+          if (data.data.checkoutFields) {
+            try {
+              const parsed = typeof data.data.checkoutFields === 'string' ? JSON.parse(data.data.checkoutFields) : data.data.checkoutFields;
+              setCheckoutFields(prev => ({ ...prev, ...parsed }));
+            } catch (e) {}
+          }
         }
       } catch (err) {
         console.error(err);
@@ -55,7 +75,7 @@ const AdminSettings = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      await api.put('/cms/settings', settings);
+      await api.put('/cms/settings', { ...settings, checkoutFields: JSON.stringify(checkoutFields) });
       toast.success('Store Settings updated & live!');
     } catch (err) {
       console.error(err);
@@ -80,6 +100,7 @@ const AdminSettings = () => {
           { id: 'shipping', label: 'Shipping Rules', icon: FiTruck },
           { id: 'payment', label: 'Payment Methods', icon: FiCreditCard },
           { id: 'seo', label: 'SEO Settings', icon: FiSearch },
+          { id: 'checkout', label: 'Checkout Fields', icon: FiClipboard },
         ].map(tab => {
           const Icon = tab.icon;
           return (
@@ -179,6 +200,53 @@ const AdminSettings = () => {
             <Input label="Global Meta Title" name="metaTitle" value={settings.metaTitle} onChange={handleChange} />
             <Input label="Meta Description" name="metaDescription" value={settings.metaDescription} onChange={handleChange} />
             <Input label="Meta Keywords (Comma separated)" name="metaKeywords" value={settings.metaKeywords} onChange={handleChange} />
+          </div>
+        )}
+
+        {/* Tab 5: Checkout Form Fields */}
+        {activeTab === 'checkout' && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-serif font-bold text-charcoal-900 border-b pb-2">Checkout Address Form Fields</h3>
+            <p className="text-sm text-gray-500">Configure which fields appear when customers add their shipping address at checkout. Toggle fields on/off and mark them as required.</p>
+            <div className="space-y-3">
+              {Object.entries(checkoutFields).map(([key, field]) => (
+                <div key={key} className="flex items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition">
+                  <div className="flex-1">
+                    <span className="font-bold text-sm text-charcoal-900 block">{field.label}</span>
+                    <span className="text-xs text-gray-400">Field key: {key}</span>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <span className="text-xs font-semibold text-gray-500">Show</span>
+                      <button
+                        type="button"
+                        onClick={() => setCheckoutFields(prev => ({
+                          ...prev,
+                          [key]: { ...prev[key], enabled: !prev[key].enabled, required: !prev[key].enabled ? prev[key].required : false }
+                        }))}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${field.enabled ? 'bg-emerald-500' : 'bg-gray-300'}`}
+                      >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow ${field.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <span className="text-xs font-semibold text-gray-500">Required</span>
+                      <button
+                        type="button"
+                        disabled={!field.enabled}
+                        onClick={() => setCheckoutFields(prev => ({
+                          ...prev,
+                          [key]: { ...prev[key], required: !prev[key].required }
+                        }))}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${!field.enabled ? 'bg-gray-200 opacity-50 cursor-not-allowed' : field.required ? 'bg-amber-500' : 'bg-gray-300'}`}
+                      >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow ${field.required ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

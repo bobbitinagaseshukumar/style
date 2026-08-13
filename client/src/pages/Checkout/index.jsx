@@ -24,6 +24,7 @@ const Checkout = () => {
 
   // Add Address Modal
   const [addressModal, setAddressModal] = useState(false);
+  const [checkoutFields, setCheckoutFields] = useState(null);
   const [addressForm, setAddressForm] = useState({
     fullName: '',
     phone: '',
@@ -31,6 +32,9 @@ const Checkout = () => {
     city: '',
     state: '',
     postalCode: '',
+    village: '',
+    landmark: '',
+    alternatePhone: '',
     addressType: 'HOME',
     isDefault: true,
   });
@@ -48,11 +52,29 @@ const Checkout = () => {
           const defaultAddr = data.data.find(a => a.isDefault) || data.data[0];
           setSelectedAddressId(defaultAddr.id);
         }
+        if (!data?.data?.length || data.data.length === 0) {
+          setAddressModal(true);
+        }
       } catch (err) {
         console.error(err);
       }
     };
     fetchAddresses();
+
+    const fetchCheckoutConfig = async () => {
+      try {
+        const { data } = await api.get('/cms/settings');
+        if (data?.data?.checkoutFields) {
+          try {
+            const fields = typeof data.data.checkoutFields === 'string' 
+              ? JSON.parse(data.data.checkoutFields) 
+              : data.data.checkoutFields;
+            setCheckoutFields(fields);
+          } catch (e) {}
+        }
+      } catch (err) {}
+    };
+    fetchCheckoutConfig();
   }, []);
 
   const handleAddAddress = async (e) => {
@@ -61,7 +83,7 @@ const Checkout = () => {
       const { data } = await api.post('/users/addresses', addressForm);
       toast.success('Address added!');
       setAddressModal(false);
-      setAddressForm({ fullName: '', phone: '', street: '', city: '', state: '', postalCode: '', addressType: 'HOME', isDefault: true });
+      setAddressForm({ fullName: '', phone: '', street: '', city: '', state: '', postalCode: '', village: '', landmark: '', alternatePhone: '', addressType: 'HOME', isDefault: true });
       const addrRes = await api.get('/users/addresses');
       setAddresses(addrRes.data?.data || []);
       if (data?.data?.id) setSelectedAddressId(data.data.id);
@@ -150,6 +172,8 @@ const Checkout = () => {
                         <div>
                           <strong className="block text-sm text-charcoal-900">{addr.fullName}</strong>
                           <p className="text-xs text-gray-600 mt-1">{addr.street}</p>
+                          {addr.village && <p className="text-xs text-gray-500">{addr.village}</p>}
+                          {addr.landmark && <p className="text-xs text-gray-500">Landmark: {addr.landmark}</p>}
                           <p className="text-xs text-gray-600">{addr.city}, {addr.state} - {addr.postalCode}</p>
                           <p className="text-xs text-gray-400 mt-2">Phone: {addr.phone}</p>
                         </div>
@@ -255,18 +279,46 @@ const Checkout = () => {
       </div>
 
       {/* Modal: Add Address */}
-      <Modal isOpen={addressModal} onClose={() => setAddressModal(false)} title="Add Shipping Address">
+      <Modal isOpen={addressModal} onClose={() => addresses.length > 0 ? setAddressModal(false) : null} title="Add Shipping Address">
         <form onSubmit={handleAddAddress} className="space-y-4">
-          <Input label="Full Name" value={addressForm.fullName} onChange={e => setAddressForm({ ...addressForm, fullName: e.target.value })} required />
-          <Input label="Phone Number" value={addressForm.phone} onChange={e => setAddressForm({ ...addressForm, phone: e.target.value })} required />
-          <Input label="Flat, House no., Building, Street" value={addressForm.street} onChange={e => setAddressForm({ ...addressForm, street: e.target.value })} required />
+          {(!checkoutFields || checkoutFields?.fullName?.enabled !== false) && (
+            <Input label={checkoutFields?.fullName?.label || 'Full Name'} value={addressForm.fullName} onChange={e => setAddressForm({ ...addressForm, fullName: e.target.value })} required={checkoutFields?.fullName?.required !== false} />
+          )}
+          {(!checkoutFields || checkoutFields?.phone?.enabled !== false) && (
+            <Input label={checkoutFields?.phone?.label || 'Phone Number'} value={addressForm.phone} onChange={e => setAddressForm({ ...addressForm, phone: e.target.value })} required={checkoutFields?.phone?.required !== false} />
+          )}
+          {(!checkoutFields || checkoutFields?.street?.enabled !== false) && (
+            <Input label={checkoutFields?.street?.label || 'Street Address'} value={addressForm.street} onChange={e => setAddressForm({ ...addressForm, street: e.target.value })} required={checkoutFields?.street?.required !== false} />
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="City" value={addressForm.city} onChange={e => setAddressForm({ ...addressForm, city: e.target.value })} required />
-            <Input label="State" value={addressForm.state} onChange={e => setAddressForm({ ...addressForm, state: e.target.value })} required />
+            {(!checkoutFields || checkoutFields?.city?.enabled !== false) && (
+              <Input label={checkoutFields?.city?.label || 'City'} value={addressForm.city} onChange={e => setAddressForm({ ...addressForm, city: e.target.value })} required={checkoutFields?.city?.required !== false} />
+            )}
+            {(!checkoutFields || checkoutFields?.state?.enabled !== false) && (
+              <Input label={checkoutFields?.state?.label || 'State'} value={addressForm.state} onChange={e => setAddressForm({ ...addressForm, state: e.target.value })} required={checkoutFields?.state?.required !== false} />
+            )}
           </div>
-          <Input label="Pincode / Postal Code" value={addressForm.postalCode} onChange={e => setAddressForm({ ...addressForm, postalCode: e.target.value })} required />
+          {(!checkoutFields || checkoutFields?.postalCode?.enabled !== false) && (
+            <Input label={checkoutFields?.postalCode?.label || 'Pincode'} value={addressForm.postalCode} onChange={e => setAddressForm({ ...addressForm, postalCode: e.target.value })} required={checkoutFields?.postalCode?.required !== false} />
+          )}
+          {checkoutFields?.village?.enabled && (
+            <Input label={checkoutFields?.village?.label || 'Village'} value={addressForm.village} onChange={e => setAddressForm({ ...addressForm, village: e.target.value })} required={checkoutFields?.village?.required} />
+          )}
+          {checkoutFields?.landmark?.enabled && (
+            <Input label={checkoutFields?.landmark?.label || 'Landmark'} value={addressForm.landmark} onChange={e => setAddressForm({ ...addressForm, landmark: e.target.value })} required={checkoutFields?.landmark?.required} />
+          )}
+          {checkoutFields?.alternatePhone?.enabled && (
+            <Input label={checkoutFields?.alternatePhone?.label || 'Alternate Phone'} value={addressForm.alternatePhone} onChange={e => setAddressForm({ ...addressForm, alternatePhone: e.target.value })} required={checkoutFields?.alternatePhone?.required} />
+          )}
+          {addresses.length === 0 && (
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium">
+              ⚠️ Please add your delivery address to proceed with the order.
+            </div>
+          )}
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => setAddressModal(false)}>Cancel</Button>
+            {addresses.length > 0 && (
+              <Button type="button" variant="outline" onClick={() => setAddressModal(false)}>Cancel</Button>
+            )}
             <Button type="submit">Save Address</Button>
           </div>
         </form>

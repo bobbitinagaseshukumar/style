@@ -61,7 +61,12 @@ const logAdminAction = async (req, targetUser, action, reason = null, details = 
 const buildSearchWhere = (search, extra = {}, roleQuery = null) => {
   const where = { ...extra };
   if (roleQuery) {
-    where.role = roleQuery.toUpperCase();
+    const upperRole = roleQuery.toUpperCase();
+    if (upperRole === 'CUSTOMER') {
+      where.role = { in: ['CUSTOMER', 'USER'] };
+    } else {
+      where.role = upperRole;
+    }
   }
   if (search && search.trim()) {
     const q = search.trim();
@@ -88,7 +93,7 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
   const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
   const skip = (pageNum - 1) * limitNum;
 
-  let where = buildSearchWhere(search, {}, req.query.role);
+  let where = buildSearchWhere(search, {}, req.query.role || 'CUSTOMER');
 
   // Status Filter
   if (status && status !== 'ALL') {

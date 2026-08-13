@@ -133,6 +133,10 @@ const Login = ({ initialMode }) => {
     confirmPassword: '',
     rememberMe: true,
     acceptTerms: true,
+    street: '',
+    city: '',
+    state: '',
+    postalCode: '',
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -264,10 +268,15 @@ const Login = ({ initialMode }) => {
             email: form.email,
             password: form.password,
             mobile: form.mobile,
+            phone: form.mobile,
             uid: googleProfile?.uid,
             name: googleProfile?.name,
             photo: googleProfile?.photo,
-            idToken: googleProfile?.idToken
+            idToken: googleProfile?.idToken,
+            street: form.street,
+            city: form.city,
+            state: form.state,
+            postalCode: form.postalCode,
           }
         : isRegister
           ? { fullName: form.fullName, email: form.email, password: form.password, mobile: form.mobile }
@@ -546,6 +555,11 @@ const Login = ({ initialMode }) => {
                     transition={{ duration: 0.3, ease: 'easeInOut' }}
                     className="w-full p-5 sm:p-8 relative z-10"
                   >
+                {isGoogleMode && (
+                  <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <p className="text-emerald-400 text-xs font-semibold">✨ Welcome! Your Google account is verified. Complete your profile to get started.</p>
+                  </div>
+                )}
                 <div className="text-center space-y-2 mb-4 relative z-10">
                   <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-md">
                     <FiUser className="w-6 h-6" />
@@ -618,6 +632,63 @@ const Login = ({ initialMode }) => {
                       />
                     </div>
                   </div>
+
+                  {isGoogleMode && (
+                    <>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Street Address *</label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            name="street"
+                            value={form.street}
+                            onChange={handleChange}
+                            placeholder="Flat, House no., Building, Street"
+                            required
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 outline-none input-glow transition focus:border-amber-500/50"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">City *</label>
+                          <input
+                            type="text"
+                            name="city"
+                            value={form.city}
+                            onChange={handleChange}
+                            placeholder="City"
+                            required
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 outline-none input-glow transition focus:border-amber-500/50"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">State *</label>
+                          <input
+                            type="text"
+                            name="state"
+                            value={form.state}
+                            onChange={handleChange}
+                            placeholder="State"
+                            required
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 outline-none input-glow transition focus:border-amber-500/50"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Pincode *</label>
+                        <input
+                          type="text"
+                          name="postalCode"
+                          value={form.postalCode}
+                          onChange={handleChange}
+                          placeholder="Postal Code / Pincode"
+                          required
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 outline-none input-glow transition focus:border-amber-500/50"
+                        />
+                      </div>
+                    </>
+                  )}
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>

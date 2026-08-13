@@ -504,7 +504,7 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
 
 // ==================== GOOGLE REGISTER (Complete Account) ====================
 exports.googleRegister = asyncHandler(async (req, res, next) => {
-  const { idToken, uid, email, name, fullName, photo, phone, mobile, whatsappNumber, gender } = req.body;
+  const { idToken, uid, email, name, fullName, photo, phone, mobile, whatsappNumber, gender, street, city, state, postalCode, village, landmark, alternatePhone } = req.body;
 
   const targetName = (fullName || name || '').trim();
   const targetPhone = (phone || mobile || '').trim();
@@ -597,6 +597,32 @@ exports.googleRegister = asyncHandler(async (req, res, next) => {
   });
 
   console.log(`[GOOGLE REGISTER] New account created: ${newUser.email}, ID: ${newUser.id}, CustomerId: ${customerId}`);
+
+  // Auto-create address if address data was provided during registration
+  if (street && city && state && postalCode) {
+    try {
+      await prisma.address.create({
+        data: {
+          userId: newUser.id,
+          fullName: targetName,
+          phone: targetPhone || '',
+          street,
+          city,
+          state,
+          postalCode,
+          village: village || null,
+          landmark: landmark || null,
+          alternatePhone: alternatePhone || null,
+          country: 'India',
+          addressType: 'HOME',
+          isDefault: true,
+        },
+      });
+      console.log(`[GOOGLE REGISTER] Default address saved for: ${newUser.email}`);
+    } catch (addrErr) {
+      console.error('[GOOGLE REGISTER] Failed to save address:', addrErr.message);
+    }
+  }
 
   // Send welcome email asynchronously
   try {
