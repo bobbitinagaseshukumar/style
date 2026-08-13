@@ -1296,6 +1296,15 @@ exports.getHeaderSettings = asyncHandler(async (req, res) => {
                 headerTextColor: '#FFFFFF'
             }
         });
+    } else if (settings.announcementText && (settings.announcementText.includes('FREE EXPRESS SHIPPING') || settings.announcementText.includes('KVLR10'))) {
+        // Automatically sanitize legacy seeded demo announcement from database
+        settings = await prisma.headerSetting.update({
+            where: { id: settings.id },
+            data: {
+                announcementText: null,
+                announcementEnabled: false
+            }
+        });
     }
     res.status(200).json({ success: true, data: settings });
 });
