@@ -62,20 +62,41 @@ const DEFAULT_CATEGORIES = [
   { id: 'cat-4', name: 'Kids & Baby Collection', slug: 'kids-wear', image: 'https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=600' },
 ];
 
-// Premium ProductCard imported from components/common/ProductCard
+// Helper: Load initial cache from sessionStorage for 0ms instantaneous loading
+const getCachedHomeData = () => {
+  try {
+    const raw = sessionStorage.getItem('__KVLR_HOME_CACHE__');
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return null;
+};
+
+const initialCache = getCachedHomeData();
+
+// Skeleton card for instant layout stability on clean browser cache
+const SkeletonCard = () => (
+  <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm animate-pulse flex flex-col">
+    <div className="w-full aspect-[3/4] bg-gray-200 rounded-xl mb-3" />
+    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+    <div className="h-3 bg-gray-100 rounded w-1/2 mb-3" />
+    <div className="h-5 bg-gray-200 rounded w-1/3 mt-auto" />
+  </div>
+);
 
 const Home = () => {
-  const [banners, setBanners] = useState(DEFAULT_HERO_SLIDERS);
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
-  const [products, setProducts] = useState({
+  const [banners, setBanners] = useState(initialCache?.banners || DEFAULT_HERO_SLIDERS);
+  const [categories, setCategories] = useState(initialCache?.categories || DEFAULT_CATEGORIES);
+  const [products, setProducts] = useState(initialCache?.products || {
     featured: [],
     trending: [],
     newArrivals: [],
-    todaysDeals: []
+    todaysDeals: [],
+    allPublished: []
   });
-  const [trendingData, setTrendingData] = useState(null);
+  const [trendingData, setTrendingData] = useState(initialCache?.trendingData || null);
   const [enableTrending, setEnableTrending] = useState(true);
-  const [dynamicSections, setDynamicSections] = useState([]);
+  const [dynamicSections, setDynamicSections] = useState(initialCache?.dynamicSections || []);
+  const [isLoading, setIsLoading] = useState(!initialCache);
 
   useEffect(() => {
     let isMounted = true;
@@ -86,10 +107,10 @@ const Home = () => {
           api.get('/cms/banners?activeOnly=true'),
           api.get('/categories?showOnHomepage=true&limit=8'),
           api.get('/products?limit=50&sort=newest'),
-          api.get('/products?featured=true&limit=8'),
-          api.get('/products?trending=true&limit=8'),
-          api.get('/products?newArrival=true&limit=8'),
-          api.get('/products?bestSeller=true&limit=8'),
+          api.get('/products?featured=true&limit=12'),
+          api.get('/products?trending=true&limit=12'),
+          api.get('/products?newArrival=true&limit=12'),
+          api.get('/products?bestSeller=true&limit=12'),
           api.get('/cms/trending-selection/public'),
           api.get('/cms/settings'),
           api.get('/cms/homepage/sections/public'),
@@ -97,8 +118,10 @@ const Home = () => {
 
         if (!isMounted) return;
 
+        let nextDynamicSections = [];
         if (dynSecRes.status === 'fulfilled' && dynSecRes.value.data?.data) {
-          setDynamicSections(dynSecRes.value.data.data);
+          nextDynamicSections = dynSecRes.value.data.data;
+          setDynamicSections(nextDynamicSections);
         }
 
         if (settingsRes.status === 'fulfilled') {
@@ -106,15 +129,22 @@ const Home = () => {
           if (cfg.enableTrendingProducts === false) setEnableTrending(false);
         }
 
+        let nextTrendingData = null;
         if (trendSelRes.status === 'fulfilled' && trendSelRes.value.data?.data) {
-          setTrendingData(trendSelRes.value.data.data);
+          nextTrendingData = trendSelRes.value.data.data;
+          setTrendingData(nextTrendingData);
         }
 
+        let nextBanners = DEFAULT_HERO_SLIDERS;
         if (bannersRes.status === 'fulfilled' && bannersRes.value.data?.data?.length > 0) {
-          setBanners(bannersRes.value.data.data);
+          nextBanners = bannersRes.value.data.data;
+          setBanners(nextBanners);
         }
+
+        let nextCategories = DEFAULT_CATEGORIES;
         if (categoriesRes.status === 'fulfilled' && categoriesRes.value.data?.data?.length > 0) {
-          setCategories(categoriesRes.value.data.data);
+          nextCategories = categoriesRes.value.data.data;
+          setCategories(nextCategories);
         }
 
         // Extract products helper
@@ -134,22 +164,37 @@ const Home = () => {
         let newArrivalsList = extractProducts(newArrivalsRes);
         let bestSellerList = extractProducts(bestSellerRes);
 
-        // No fallbacks — each section ONLY shows products the admin explicitly tagged.
-        // If admin hasn't tagged any products as "Featured", the Featured section won't appear.
+        // Smart published product fallback: If admin published products without tagging "featured" or "newArrival",
+        // automatically display published products so the homepage always shows products immediately!
+        const resolvedProducts = {
+          featured: featuredList.length > 0 ? featuredList.slice(0, 12) : allProductsList.slice(0, 12),
+          trending: trendingList.length > 0 ? trendingList.slice(0, 12) : allProductsList.slice(0, 12),
+          newArrivals: newArrivalsList.length > 0 ? newArrivalsList.slice(0, 12) : allProductsList.slice(0, 12),
+          todaysDeals: bestSellerList.length > 0 ? bestSellerList.slice(0, 12) : allProductsList.slice(0, 12),
+          allPublished: allProductsList
+        };
 
-        setProducts({
-          featured: featuredList.slice(0, 12),
-          trending: trendingList.slice(0, 12),
-          newArrivals: newArrivalsList.slice(0, 12),
-          todaysDeals: bestSellerList.slice(0, 12),
-        });
+        setProducts(resolvedProducts);
+        setIsLoading(false);
+
+        // Save to cache for instant 0ms subsequent loads
+        try {
+          sessionStorage.setItem('__KVLR_HOME_CACHE__', JSON.stringify({
+            banners: nextBanners,
+            categories: nextCategories,
+            products: resolvedProducts,
+            trendingData: nextTrendingData,
+            dynamicSections: nextDynamicSections
+          }));
+        } catch (e) {}
       } catch (err) {
         console.error('Home page data fetch error:', err);
+        setIsLoading(false);
       }
     };
 
     fetchHomeData();
-    const interval = setInterval(fetchHomeData, 15000);
+    const interval = setInterval(fetchHomeData, 10000);
     const handleFocus = () => fetchHomeData();
     window.addEventListener('focus', handleFocus);
 
@@ -260,16 +305,32 @@ const Home = () => {
       {/* 6. FLASH SALE */}
       <FlashSaleSection />
 
-      {/* 7. FEATURED PRODUCTS */}
-      {products.featured.length > 0 && (
+      {/* 7. FEATURED PRODUCTS & PUBLISHED CATALOG */}
+      {isLoading ? (
+        <section className="py-12 lg:py-16">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <div className="h-8 bg-gray-200 rounded-lg w-56 animate-pulse mb-2" />
+                <div className="h-4 bg-gray-100 rounded w-40 animate-pulse" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                <SkeletonCard key={n} />
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : products.featured.length > 0 ? (
         <section className="py-12 lg:py-16">
           <div className="max-w-7xl mx-auto px-3 sm:px-4">
             <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">Featured Products</h2>
-                <p className="text-gray-500 mt-1">Handpicked for timeless elegance</p>
+                <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">Featured Collection</h2>
+                <p className="text-gray-500 mt-1">Handpicked luxury creations curated for you</p>
               </div>
-              <Link to="/categories" className="hidden sm:inline-flex items-center gap-1 text-gold-600 hover:text-gold-700 font-medium text-sm">
+              <Link to="/categories" className="hidden sm:inline-flex items-center gap-1 text-amber-600 hover:text-amber-700 font-bold text-sm">
                 View All <FiArrowRight className="w-4 h-4" />
               </Link>
             </motion.div>
@@ -280,15 +341,7 @@ const Home = () => {
             </motion.div>
           </div>
         </section>
-      )}
-
-      {/* ── JEWELLERY, SAREES, MEN'S, KIDS COLLECTION SHOWCASES ──
-           These sections are now 100% managed from the Admin Dashboard
-           (Admin → CMS → Homepage Sections). Create or edit sections there
-           and they will automatically appear below under "DYNAMIC SECTIONS".
-           The hardcoded CollectionShowcase blocks have been removed to give
-           the admin full control over what appears here.
-      ── */}
+      ) : null}
 
       {/* 15. TODAY'S DEAL */}
       {products.todaysDeals.length > 0 && (
@@ -307,15 +360,13 @@ const Home = () => {
         </section>
       )}
 
-
-
-      {/* 8. TRENDING PRODUCTS (ADMIN MANUAL SELECTION ONLY) */}
+      {/* 8. TRENDING PRODUCTS */}
       {enableTrending && trendingData && trendingData.products?.length > 0 && (
         <section className="py-12 lg:py-16 bg-gray-50 border-t border-gray-100">
           <div className="max-w-7xl mx-auto px-3 sm:px-4">
             <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">{trendingData.title || 'Trending Products'} 🔥</h2>
+                <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">{trendingData.title || 'Trending Styles'} 🔥</h2>
                 <p className="text-gray-500 mt-1">Handpicked trending styles curated by our fashion editors</p>
               </div>
             </motion.div>
@@ -328,15 +379,18 @@ const Home = () => {
         </section>
       )}
 
-      {/* 9. NEW ARRIVALS */}
+      {/* 9. NEW ARRIVALS & LATEST PUBLISHED CREATIONS */}
       {products.newArrivals.length > 0 && (
         <section className="py-12 lg:py-16">
           <div className="max-w-7xl mx-auto px-3 sm:px-4">
             <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">New Arrivals ✨</h2>
-                <p className="text-gray-500 mt-1">Just arrived in our catalogue</p>
+                <p className="text-gray-500 mt-1">Freshly published additions to our catalog</p>
               </div>
+              <Link to="/categories" className="hidden sm:inline-flex items-center gap-1 text-amber-600 hover:text-amber-700 font-bold text-sm">
+                Explore All <FiArrowRight className="w-4 h-4" />
+              </Link>
             </motion.div>
             <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
               {products.newArrivals.map((product) => (
