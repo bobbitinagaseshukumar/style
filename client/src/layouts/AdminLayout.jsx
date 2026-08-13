@@ -138,7 +138,7 @@ const AdminLayout = () => {
     }
   }, [location.pathname]);
 
-  // 3. Mousedown listener for outside click handling
+  // 3. Mousedown & touchstart listeners for reliable outside click handling on desktop & mobile
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
@@ -161,9 +161,11 @@ const AdminLayout = () => {
     };
 
     document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick, { passive: true });
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
@@ -300,88 +302,103 @@ const AdminLayout = () => {
       </motion.aside>
 
       {/* MOBILE SIDEBAR DRAWER & OVERLAY */}
-      {mobileSidebar && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
-            onClick={closeMobileDrawer}
-          />
-          <aside className="fixed left-0 top-0 bottom-0 w-[280px] bg-[#0D0D12] text-white z-50 lg:hidden shadow-2xl flex flex-col border-r border-white/10">
-            <div className="h-16 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
-              <Link to="/" onClick={closeMobileDrawer} title="Go to Storefront Homepage" className="flex items-center gap-3 hover:opacity-90 transition cursor-pointer">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-gold-400 to-amber-600 flex items-center justify-center text-black font-black text-lg">
-                  S
-                </div>
-                <span className="text-xl font-serif font-bold text-gold-400">StyleVerse Admin</span>
-              </Link>
-              <button onClick={closeMobileDrawer} className="text-gray-400 hover:text-white p-1 cursor-pointer">
-                <FiX className="w-6 h-6" />
-              </button>
-            </div>
-
-            <nav
-              ref={mobileNavRef}
-              onScroll={(e) => { mobileDrawerScrollPos.current = e.target.scrollTop; }}
-              className="flex-1 overflow-y-auto py-4 px-2 space-y-6 pb-20 sm:pb-safe"
+      <AnimatePresence>
+        {mobileSidebar && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-md z-[90] lg:hidden"
+              onClick={closeMobileDrawer}
+            />
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 280 }}
+              className="fixed left-0 top-0 bottom-0 w-[290px] bg-[#0D0D12] text-white z-[100] lg:hidden shadow-2xl flex flex-col border-r border-white/10"
             >
-              {sidebarGroups.map((group, groupIndex) => (
-                <div key={groupIndex} className="space-y-1">
-                  <div className="px-4 mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                    {group.title}
+              <div className="h-16 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
+                <Link to="/" onClick={closeMobileDrawer} title="Go to Storefront Homepage" className="flex items-center gap-3 hover:opacity-90 transition cursor-pointer">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-black font-black text-lg shadow-md">
+                    K
                   </div>
-                  {group.links.map((link) => {
-                    const Icon = link.icon;
-                    const isActive = location.pathname === link.path || (link.path === '/admin/dashboard' && location.pathname === '/admin');
-                    return (
-                      <NavLink
-                        key={link.label}
-                        to={link.path}
-                        onClick={closeMobileDrawer}
-                        className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 min-h-[48px] cursor-pointer ${
-                          isActive
-                            ? 'bg-gradient-to-r from-gold-500/20 to-gold-500/5 text-gold-400 border border-gold-500/30'
-                            : 'text-gray-400 hover:text-white hover:bg-white/5'
-                        }`}
-                      >
-                        <Icon className="w-5 h-5 shrink-0" />
-                        <span className="text-[13px] font-semibold">{link.label}</span>
-                      </NavLink>
-                    );
-                  })}
-                </div>
-              ))}
-              
-              <div className="mt-8 text-center text-[10px] text-gray-500 uppercase tracking-widest font-bold">
-                Powered by StyleVerse
+                  <span className="text-xl font-serif font-bold text-amber-400">KVLR Admin</span>
+                </Link>
+                <button
+                  onClick={closeMobileDrawer}
+                  className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/10 transition cursor-pointer"
+                  aria-label="Close Sidebar"
+                >
+                  <FiX className="w-6 h-6" />
+                </button>
               </div>
-            </nav>
-          </aside>
-        </>
-      )}
+
+              <nav
+                ref={mobileNavRef}
+                onScroll={(e) => { mobileDrawerScrollPos.current = e.target.scrollTop; }}
+                className="flex-1 overflow-y-auto py-4 px-3 space-y-6 pb-20 sm:pb-safe"
+              >
+                {sidebarGroups.map((group, groupIndex) => (
+                  <div key={groupIndex} className="space-y-1">
+                    <div className="px-3 mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                      {group.title}
+                    </div>
+                    {group.links.map((link) => {
+                      const Icon = link.icon;
+                      const isActive = location.pathname === link.path || (link.path === '/admin/dashboard' && location.pathname === '/admin');
+                      return (
+                        <NavLink
+                          key={link.label}
+                          to={link.path}
+                          onClick={closeMobileDrawer}
+                          className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 min-h-[44px] cursor-pointer ${
+                            isActive
+                              ? 'bg-gradient-to-r from-amber-500/20 to-amber-500/5 text-amber-400 border border-amber-500/30 font-bold'
+                              : 'text-gray-400 hover:text-white hover:bg-white/5 font-medium'
+                          }`}
+                        >
+                          <Icon className="w-5 h-5 shrink-0" />
+                          <span className="text-xs">{link.label}</span>
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                ))}
+                
+                <div className="mt-8 text-center text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+                  KVLR Styles Admin Portal
+                </div>
+              </nav>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* TOP HEADER BAR */}
-        <header className="h-16 bg-[#0A0A0E] border-b border-white/10 flex items-center justify-between px-4 lg:px-6 shadow-md shrink-0 sticky top-0 z-40 text-white">
-          <div className="flex items-center gap-4">
+        <header className="h-16 bg-[#0A0A0E] border-b border-white/10 flex items-center justify-between px-3 sm:px-6 shadow-md shrink-0 sticky top-0 z-30 text-white">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button
               onClick={() => setMobileSidebar(true)}
-              className="lg:hidden text-gray-300 hover:text-white p-2 -ml-2 rounded-lg hover:bg-white/10 transition cursor-pointer"
+              className="lg:hidden text-gray-300 hover:text-white p-2 rounded-xl bg-white/5 hover:bg-white/10 transition cursor-pointer shrink-0"
               aria-label="Open Admin Navigation"
             >
-              <FiMenu className="w-6 h-6" />
+              <FiMenu className="w-5 h-5" />
             </button>
-            <div>
-              <h1 className="text-base sm:text-lg font-bold text-white leading-tight">{currentPage}</h1>
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-lg font-bold text-white leading-tight truncate">{currentPage}</h1>
               <p className="text-[10px] text-amber-400/80 font-medium hidden sm:block">KVLR Styles Admin Control Center</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             
             {/* Search Input with Live Quick-Jump Suggestions */}
-            <div className="relative" ref={searchRef}>
-              <div className="flex flex-1 sm:flex-none items-center bg-white/5 rounded-xl px-3 py-1.5 border border-white/10 focus-within:border-amber-500/50 focus-within:bg-black/40 transition-all max-w-[180px] sm:w-64">
+            <div className="relative hidden sm:block" ref={searchRef}>
+              <div className="flex items-center bg-white/5 rounded-xl px-3 py-1.5 border border-white/10 focus-within:border-amber-500/50 focus-within:bg-black/40 transition-all w-48 lg:w-64">
                 <FiSearch className="text-gray-400 w-4 h-4 mr-2 shrink-0" />
                 <input 
                   type="text" 

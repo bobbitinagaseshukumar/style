@@ -59,29 +59,50 @@ const logAdminAction = async (req, targetUser, action, reason = null, details = 
 
 // Helper: Build safe where clause for search
 const buildSearchWhere = (search, extra = {}, roleQuery = null) => {
-  const where = { ...extra };
+  const andConditions = [];
+  if (extra && Object.keys(extra).length > 0) {
+    andConditions.push(extra);
+  }
+
+  // Non-admin filter: include all customer accounts, including any non-admin roles and null roles
   if (roleQuery && roleQuery !== 'ALL') {
     const upperRole = roleQuery.toUpperCase();
     if (upperRole === 'CUSTOMER') {
-      where.role = { notIn: ['ADMIN', 'SUPER_ADMIN'] };
+      andConditions.push({
+        OR: [
+          { role: { notIn: ['ADMIN', 'SUPER_ADMIN', 'admin', 'super_admin', 'Admin', 'Super_Admin'] } },
+          { role: null }
+        ]
+      });
     } else {
-      where.role = upperRole;
+      andConditions.push({
+        role: { equals: upperRole, mode: 'insensitive' }
+      });
     }
   } else {
-    where.role = { notIn: ['ADMIN', 'SUPER_ADMIN'] };
+    andConditions.push({
+      OR: [
+        { role: { notIn: ['ADMIN', 'SUPER_ADMIN', 'admin', 'super_admin', 'Admin', 'Super_Admin'] } },
+        { role: null }
+      ]
+    });
   }
+
   if (search && search.trim()) {
     const q = search.trim();
-    where.OR = [
-      { fullName: { contains: q, mode: 'insensitive' } },
-      { username: { contains: q, mode: 'insensitive' } },
-      { email: { contains: q, mode: 'insensitive' } },
-      { phone: { contains: q, mode: 'insensitive' } },
-      { alternatePhone: { contains: q, mode: 'insensitive' } },
-      { customerId: { contains: q, mode: 'insensitive' } },
-    ];
+    andConditions.push({
+      OR: [
+        { fullName: { contains: q, mode: 'insensitive' } },
+        { username: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+        { phone: { contains: q, mode: 'insensitive' } },
+        { alternatePhone: { contains: q, mode: 'insensitive' } },
+        { customerId: { contains: q, mode: 'insensitive' } },
+      ]
+    });
   }
-  return where;
+
+  return andConditions.length > 0 ? { AND: andConditions } : {};
 };
 
 // ==================== 1. GET ALL CUSTOMERS (FAST & HIGH-PERFORMANCE) ====================
@@ -100,7 +121,12 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
 
   // Status Filter
   if (status && status !== 'ALL') {
-    where.status = status.toUpperCase();
+    where = {
+      AND: [
+        baseWhere,
+        { status: status.toUpperCase() }
+      ]
+    };
   }
 
   // Preset Filters
@@ -109,13 +135,21 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - 7);
 
-    if (filter === 'ACTIVE') where.status = 'ACTIVE';
-    else if (filter === 'BLOCKED') where.status = 'BLOCKED';
-    else if (filter === 'SUSPENDED') where.status = 'SUSPENDED';
-    else if (filter === 'PENDING_VERIFICATION') where.isVerified = false;
-    else if (filter === 'NEW_CUSTOMERS') where.createdAt = { gte: startOfWeek };
-    else if (filter === 'WITH_ORDERS') where.orders = { some: {} };
-    else if (filter === 'WITHOUT_ORDERS') where.orders = { none: {} };
+    const filterCondition = {};
+    if (filter === 'ACTIVE') filterCondition.status = 'ACTIVE';
+    else if (filter === 'BLOCKED') filterCondition.status = 'BLOCKED';
+    else if (filter === 'SUSPENDED') filterCondition.status = 'SUSPENDED';
+    else if (filter === 'PENDING_VERIFICATION') filterCondition.isVerified = false;
+    else if (filter === 'NEW_CUSTOMERS') filterCondition.createdAt = { gte: startOfWeek };
+    else if (filter === 'WITH_ORDERS') filterCondition.orders = { some: {} };
+    else if (filter === 'WITHOUT_ORDERS') filterCondition.orders = { none: {} };
+
+    where = {
+      AND: [
+        where,
+        filterCondition
+      ]
+    };
   }
 
   const allowedSort = ['createdAt', 'lastLoginAt', 'fullName', 'email', 'status', 'updatedAt'];
@@ -159,7 +193,7 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
   if (customerIds.length > 0) {
     const pageOrders = await prisma.order.findMany({
       where: { userId: { in: customerIds } },
-      select: { userId: true, totalAmount: true, status: true }
+      select: { userId: true, totalAmount: true, orderStatus: true }
     });
 
     pageOrders.forEach(o => {
@@ -169,10 +203,11 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
       if (!orderStatsMap[o.userId]) {
         orderStatsMap[o.userId] = { pending: 0, delivered: 0, cancelled: 0, returned: 0 };
       }
-      if (['PENDING', 'PROCESSING', 'SHIPPED'].includes(o.status)) orderStatsMap[o.userId].pending++;
-      if (o.status === 'DELIVERED') orderStatsMap[o.userId].delivered++;
-      if (o.status === 'CANCELLED') orderStatsMap[o.userId].cancelled++;
-      if (o.status === 'RETURNED') orderStatsMap[o.userId].returned++;
+      const st = o.orderStatus || 'PENDING';
+      if (['PENDING', 'PENDING_APPROVAL', 'PROCESSING', 'PACKED', 'SHIPPED'].includes(st)) orderStatsMap[o.userId].pending++;
+      if (st === 'DELIVERED') orderStatsMap[o.userId].delivered++;
+      if (st === 'CANCELLED') orderStatsMap[o.userId].cancelled++;
+      if (st === 'RETURNED') orderStatsMap[o.userId].returned++;
     });
   }
 
