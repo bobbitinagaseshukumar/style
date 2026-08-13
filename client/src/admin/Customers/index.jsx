@@ -428,7 +428,7 @@ export default function AdminCustomers() {
 
       {/* Block */}
       <Modal open={!!blockTarget} onClose={() => setBlockTarget(null)} title={`Block: ${blockTarget?.fullName}`}>
-        <div style={S.alert('#FEF2F2','#FECACA','#991B1B')}><FiAlertTriangle style={{ display: 'inline', width: 14, height: 14, marginRight: 6 }} />Customer will be immediately logged out. They cannot login, checkout, or access any features until unblocked.</div>
+        <div style={S.alert('#FEF2F2','#FECACA','#991B1B')}><FiAlertTriangle style={{ display: 'inline', width: 14, height: 14, marginRight: 6 }} />Customer will be blocked from placing orders, checkout, and all notifications will stop. They can still browse and view products but cannot purchase anything.</div>
         <div style={{ marginBottom: 14 }}>
           <label style={S.label}>Reason *</label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

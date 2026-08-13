@@ -874,7 +874,7 @@ exports.getDuplicates = asyncHandler(async (req, res) => {
 // ==================== 17. ASSIGN MISSING CUSTOMER IDS ====================
 exports.assignMissingCustomerIds = asyncHandler(async (req, res) => {
   const customers = await prisma.user.findMany({
-    where: { role: { in: ['CUSTOMER', 'USER'] }, customerId: null },
+    where: { role: { notIn: ['ADMIN', 'SUPER_ADMIN'] }, customerId: null },
     orderBy: { createdAt: 'asc' },
     select: { id: true }
   });

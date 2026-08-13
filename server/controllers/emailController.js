@@ -73,9 +73,9 @@ exports.sendCampaignNow = asyncHandler(async (req, res) => {
     const subs = await prisma.newsletterSubscriber.findMany({ where: { isActive: true }, select: { email: true } });
     recipients = subs.map(s => s.email);
   } else {
-    // Default to customers who have email notifications enabled
+    // Default to customers who have email notifications enabled (skip blocked/suspended accounts)
     const users = await prisma.user.findMany({
-      where: { role: 'CUSTOMER', emailNotifications: true, status: 'ACTIVE' },
+      where: { role: { notIn: ['ADMIN', 'SUPER_ADMIN'] }, emailNotifications: true, status: 'ACTIVE' },
       select: { email: true }
     });
     recipients = users.map(u => u.email);

@@ -142,8 +142,8 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
   const outOfStockCount = allProducts.filter(p => p.stock === 0).length;
   const featuredProductsCount = allProducts.filter(p => p.featured).length;
 
-  // Customer Breakdown
-  const customers = allUsers.filter(u => u.role === 'CUSTOMER');
+  // Customer Breakdown — use same filter as customer management page (notIn ADMIN/SUPER_ADMIN)
+  const customers = allUsers.filter(u => u.role !== 'ADMIN' && u.role !== 'SUPER_ADMIN');
   const totalCustomersCount = customers.length;
   const newCustomersToday = customers.filter(u => u.createdAt >= startOfToday).length;
   const verifiedCustomers = customers.filter(u => u.isVerified).length;

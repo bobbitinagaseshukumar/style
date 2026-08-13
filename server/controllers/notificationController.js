@@ -45,7 +45,14 @@ exports.broadcastNotification = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, 'Title and Message are required for broadcast'));
   }
 
-  const users = await prisma.user.findMany({ where: { status: 'ACTIVE' }, select: { id: true } });
+  const users = await prisma.user.findMany({
+    where: {
+      status: 'ACTIVE',
+      role: { notIn: ['ADMIN', 'SUPER_ADMIN'] },
+      promoNotifications: true
+    },
+    select: { id: true }
+  });
 
   const notificationsData = users.map(u => ({
     userId: u.id,
