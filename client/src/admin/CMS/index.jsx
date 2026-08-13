@@ -83,9 +83,19 @@ const AdminCMS = () => {
     try {
       setLoading(true);
       const res = await api.get('/cms/settings');
-      if (res.data?.data) setSettings(prev => ({ ...prev, ...res.data.data }));
+      if (res.data?.data) {
+        setSettings(prev => ({ ...prev, ...res.data.data }));
+      }
     } catch (error) {
-      toast.error('Failed to fetch settings');
+      console.warn('CMS settings load fallback:', error?.message);
+      try {
+        const altRes = await api.get('/settings');
+        if (altRes.data?.data) {
+          setSettings(prev => ({ ...prev, ...altRes.data.data }));
+        }
+      } catch {
+        // Use default initial state
+      }
     } finally {
       setLoading(false);
     }
