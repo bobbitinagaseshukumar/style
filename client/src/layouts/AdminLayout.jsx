@@ -7,7 +7,7 @@ import {
   FiBarChart2, FiMenu, FiX, FiLogOut, FiChevronRight, FiMail,
   FiZap, FiLayers, FiShield, FiUser, FiSliders, FiCheckCircle,
   FiCpu, FiLock, FiExternalLink, FiChevronDown, FiBell, FiSearch,
-  FiArchive, FiStar, FiEdit3
+  FiArchive, FiStar, FiEdit3, FiCheck, FiInfo, FiAlertCircle
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
@@ -72,20 +72,32 @@ const sidebarGroups = [
   }
 ];
 
+const INITIAL_NOTIFICATIONS = [
+  { id: 1, title: 'New Customer Order', time: '10m ago', text: 'Order #KVLR-1082 received for ₹2,499', unread: true },
+  { id: 2, title: 'Inventory Alert', time: '1h ago', text: 'Silk Saree Blue Stock below 5 units', unread: true },
+  { id: 3, title: 'Customer Registration', time: '2h ago', text: 'New customer account created via Google', unread: true },
+];
+
 /**
  * Enterprise Admin Dashboard Layout
- * Guarantees zero page merging / overlapping by using key={location.pathname} unmounting,
- * single-dropdown z-index management, body scroll locking on mobile drawers, and scroll reset on route change.
+ * Guarantees zero page merging / overlapping, working interactive header search quick-jump,
+ * notification bell modal, smooth profile dropdown, body scroll locking, and scroll reset on route change.
  */
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const profileMenuRef = useRef(null);
+  const notificationMenuRef = useRef(null);
+  const searchRef = useRef(null);
   const mainContentRef = useRef(null);
   const mobileNavRef = useRef(null);
   const mobileDrawerScrollPos = useRef(0);
@@ -117,32 +129,41 @@ const AdminLayout = () => {
   useEffect(() => {
     setMobileSidebar(false);
     setProfileDropdownOpen(false);
+    setNotificationOpen(false);
+    setSearchOpen(false);
+    setSearchQuery('');
     document.body.style.overflow = '';
     if (mainContentRef.current) {
       mainContentRef.current.scrollTop = 0;
     }
   }, [location.pathname]);
 
-  // 3. Click-outside and Escape key listener for Profile Dropdown
+  // 3. Mousedown listener for outside click handling
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
         setProfileDropdownOpen(false);
       }
+      if (notificationMenuRef.current && !notificationMenuRef.current.contains(e.target)) {
+        setNotificationOpen(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setSearchOpen(false);
+      }
     };
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setProfileDropdownOpen(false);
+        setNotificationOpen(false);
+        setSearchOpen(false);
         setMobileSidebar(false);
       }
     };
 
     document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('touchstart', handleOutsideClick);
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('touchstart', handleOutsideClick);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
@@ -167,6 +188,24 @@ const AdminLayout = () => {
     setMobileSidebar(false);
     document.body.style.overflow = '';
   };
+
+  // Filter search results
+  const filteredSearchResults = searchQuery.trim()
+    ? flattenLinks.filter(l => l.label.toLowerCase().includes(searchQuery.toLowerCase()))
+    : [];
+
+  const handleSelectSearch = (path) => {
+    navigate(path);
+    setSearchQuery('');
+    setSearchOpen(false);
+  };
+
+  const markAllNotificationsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+    toast.success('All notifications marked as read');
+  };
+
+  const unreadNotificationCount = notifications.filter(n => n.unread).length;
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
@@ -252,7 +291,7 @@ const AdminLayout = () => {
         <div className="p-3 border-t border-white/10 shrink-0">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
           >
             {sidebarOpen ? <FiX className="w-5 h-5" /> : <FiMenu className="w-5 h-5" />}
             {sidebarOpen && <span className="text-xs font-bold">Collapse</span>}
@@ -260,7 +299,7 @@ const AdminLayout = () => {
         </div>
       </motion.aside>
 
-      {/* MOBILE SIDEBAR DRAWER & OVERLAY (Instant Unmount Guarantee) */}
+      {/* MOBILE SIDEBAR DRAWER & OVERLAY */}
       {mobileSidebar && (
         <>
           <div
@@ -322,12 +361,12 @@ const AdminLayout = () => {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* TOP HEADER BAR (Dark Luxury Theme — Zero White Gap) */}
+        {/* TOP HEADER BAR */}
         <header className="h-16 bg-[#0A0A0E] border-b border-white/10 flex items-center justify-between px-4 lg:px-6 shadow-md shrink-0 sticky top-0 z-40 text-white">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setMobileSidebar(true)}
-              className="lg:hidden text-gray-300 hover:text-white p-2 -ml-2 rounded-lg hover:bg-white/10 transition"
+              className="lg:hidden text-gray-300 hover:text-white p-2 -ml-2 rounded-lg hover:bg-white/10 transition cursor-pointer"
               aria-label="Open Admin Navigation"
             >
               <FiMenu className="w-6 h-6" />
@@ -340,14 +379,60 @@ const AdminLayout = () => {
 
           <div className="flex items-center gap-2 sm:gap-4">
             
-            {/* Search Input */}
-            <div className="flex flex-1 sm:flex-none items-center bg-white/5 rounded-xl px-3 py-1.5 border border-white/10 focus-within:border-amber-500/50 focus-within:bg-black/40 transition-all max-w-[180px] sm:w-64">
-              <FiSearch className="text-gray-400 w-4 h-4 mr-2 shrink-0" />
-              <input 
-                type="text" 
-                placeholder="Search..." 
-                className="bg-transparent border-none outline-none text-xs w-full text-white placeholder-gray-500" 
-              />
+            {/* Search Input with Live Quick-Jump Suggestions */}
+            <div className="relative" ref={searchRef}>
+              <div className="flex flex-1 sm:flex-none items-center bg-white/5 rounded-xl px-3 py-1.5 border border-white/10 focus-within:border-amber-500/50 focus-within:bg-black/40 transition-all max-w-[180px] sm:w-64">
+                <FiSearch className="text-gray-400 w-4 h-4 mr-2 shrink-0" />
+                <input 
+                  type="text" 
+                  placeholder="Search admin pages..." 
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setSearchOpen(true);
+                  }}
+                  onFocus={() => setSearchOpen(true)}
+                  className="bg-transparent border-none outline-none text-xs w-full text-white placeholder-gray-500" 
+                />
+                {searchQuery && (
+                  <button onClick={() => { setSearchQuery(''); setSearchOpen(false); }} className="text-gray-400 hover:text-white p-0.5">
+                    <FiX className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Quick Jump Search Results Dropdown */}
+              <AnimatePresence>
+                {searchOpen && searchQuery.trim() && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 6 }}
+                    className="absolute left-0 right-0 mt-2 bg-[#16161c] border border-white/10 rounded-xl shadow-2xl p-2 z-50 text-xs max-h-60 overflow-y-auto space-y-1"
+                  >
+                    {filteredSearchResults.length > 0 ? (
+                      filteredSearchResults.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <button
+                            key={item.path}
+                            onClick={() => handleSelectSearch(item.path)}
+                            className="flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                          >
+                            <Icon className="w-4 h-4 text-amber-400 shrink-0" />
+                            <span className="font-semibold">{item.label}</span>
+                            <FiChevronRight className="ml-auto w-3.5 h-3.5 opacity-50" />
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="px-3 py-2.5 text-center text-gray-500">
+                        No admin section found matching "{searchQuery}"
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Date Display */}
@@ -355,18 +440,81 @@ const AdminLayout = () => {
               {formattedDate}
             </div>
 
-            {/* Notification Bell */}
-            <button className="relative p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition">
-              <FiBell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 border-2 border-[#0A0A0E] rounded-full"></span>
-            </button>
+            {/* Notification Bell with Modal Panel */}
+            <div className="relative" ref={notificationMenuRef}>
+              <button
+                onClick={() => setNotificationOpen(!notificationOpen)}
+                className="relative p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition cursor-pointer"
+                aria-label="Admin Notifications"
+              >
+                <FiBell className="w-5 h-5" />
+                {unreadNotificationCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 border-2 border-[#0A0A0E] rounded-full"></span>
+                )}
+              </button>
+
+              {/* Notification Modal Panel */}
+              <AnimatePresence>
+                {notificationOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-72 sm:w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl p-3 z-50 text-xs space-y-2 text-gray-900"
+                  >
+                    <div className="flex items-center justify-between px-2 pb-2 border-b border-gray-100">
+                      <div className="flex items-center gap-1.5 font-bold text-gray-900">
+                        <FiBell className="w-4 h-4 text-amber-600" />
+                        <span>System Notifications</span>
+                      </div>
+                      {unreadNotificationCount > 0 && (
+                        <button
+                          onClick={markAllNotificationsRead}
+                          className="text-[10px] font-bold text-amber-700 hover:text-amber-800 transition cursor-pointer"
+                        >
+                          Mark all as read
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                      {notifications.map((item) => (
+                        <div
+                          key={item.id}
+                          className={`p-2.5 rounded-xl border transition ${
+                            item.unread ? 'bg-amber-50/60 border-amber-200/80' : 'bg-gray-50 border-gray-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-0.5">
+                            <p className="font-bold text-gray-900 text-xs">{item.title}</p>
+                            <span className="text-[10px] text-gray-400">{item.time}</span>
+                          </div>
+                          <p className="text-[11px] text-gray-600 leading-tight">{item.text}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pt-1 border-t border-gray-100 text-center">
+                      <Link
+                        to="/admin/orders"
+                        onClick={() => setNotificationOpen(false)}
+                        className="text-[11px] font-bold text-amber-700 hover:underline"
+                      >
+                        View Recent Customer Orders →
+                      </Link>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Storefront Link */}
             <a
               href="/"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold transition cursor-pointer"
               title="Open Customer Storefront in New Tab"
             >
               <FiExternalLink className="w-3.5 h-3.5" /> <span className="hidden xs:inline">Storefront</span>
@@ -408,7 +556,7 @@ const AdminLayout = () => {
 
                     <NavLink
                       to="/admin/account-settings"
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-700 hover:bg-gray-100 font-semibold transition"
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-700 hover:bg-gray-100 font-semibold transition cursor-pointer"
                       onClick={() => setProfileDropdownOpen(false)}
                     >
                       <FiUser className="w-4 h-4 text-gray-400" /> My Account
@@ -416,7 +564,7 @@ const AdminLayout = () => {
                     
                     <NavLink
                       to="/admin/profile"
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-700 hover:bg-gray-100 font-semibold transition"
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-700 hover:bg-gray-100 font-semibold transition cursor-pointer"
                       onClick={() => setProfileDropdownOpen(false)}
                     >
                       <FiShield className="w-4 h-4 text-gray-400" /> Security Profile
@@ -424,7 +572,7 @@ const AdminLayout = () => {
 
                     <NavLink
                       to="/admin/security"
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-700 hover:bg-gray-100 font-semibold transition"
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-700 hover:bg-gray-100 font-semibold transition cursor-pointer"
                       onClick={() => setProfileDropdownOpen(false)}
                     >
                       <FiLock className="w-4 h-4 text-gray-400" /> Change Password
@@ -434,7 +582,7 @@ const AdminLayout = () => {
 
                     <NavLink
                       to="/admin/team"
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-700 hover:bg-gray-100 font-semibold transition"
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-700 hover:bg-gray-100 font-semibold transition cursor-pointer"
                       onClick={() => setProfileDropdownOpen(false)}
                     >
                       <FiUsers className="w-4 h-4 text-gray-400" /> Team & Roles
@@ -442,7 +590,7 @@ const AdminLayout = () => {
 
                     <NavLink
                       to="/admin/settings"
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-700 hover:bg-gray-100 font-semibold transition"
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-700 hover:bg-gray-100 font-semibold transition cursor-pointer"
                       onClick={() => setProfileDropdownOpen(false)}
                     >
                       <FiSettings className="w-4 h-4 text-gray-400" /> Store Settings
@@ -463,7 +611,7 @@ const AdminLayout = () => {
           </div>
         </header>
 
-        {/* SINGLE-PAGE ISOLATED CONTENT CONTAINER (Unmounts previous page completely) */}
+        {/* SINGLE-PAGE ISOLATED CONTENT CONTAINER */}
         <main ref={mainContentRef} className="flex-1 overflow-auto p-3 sm:p-5 lg:p-6 bg-gray-50 flex flex-col">
           <AnimatePresence mode="wait">
             <motion.div
