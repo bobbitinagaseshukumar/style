@@ -142,11 +142,11 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
   const outOfStockCount = allProducts.filter(p => p.stock === 0).length;
   const featuredProductsCount = allProducts.filter(p => p.featured).length;
 
-  // Customer Breakdown — use same filter as customer management page (notIn ADMIN/SUPER_ADMIN)
-  const customers = allUsers.filter(u => u.role !== 'ADMIN' && u.role !== 'SUPER_ADMIN');
-  const totalCustomersCount = customers.length;
-  const newCustomersToday = customers.filter(u => u.createdAt >= startOfToday).length;
-  const verifiedCustomers = customers.filter(u => u.isVerified).length;
+  // Customer Breakdown — tallies exactly with Customer Management total registered accounts
+  const totalCustomersCount = allUsers.length;
+  const customers = allUsers.filter(u => !['ADMIN', 'SUPER_ADMIN'].includes((u.role || '').toUpperCase()));
+  const newCustomersToday = allUsers.filter(u => u.createdAt >= startOfToday).length;
+  const verifiedCustomers = allUsers.filter(u => u.isVerified).length;
 
   // Dynamic Monthly Chart Data (Jan - Dec 2026)
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
