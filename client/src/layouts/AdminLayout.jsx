@@ -382,8 +382,8 @@ const AdminLayout = () => {
                   {adminAvatarInitial}
                 </div>
                 <div className="hidden sm:block text-left mr-1">
-                  <p className="text-xs font-bold text-gray-900 leading-tight">{adminName}</p>
-                  <p className="text-[10px] text-amber-600 font-extrabold uppercase">Super Admin</p>
+                  <p className="text-xs font-bold text-white leading-tight">{adminName}</p>
+                  <p className="text-[10px] text-amber-400 font-extrabold uppercase">Super Admin</p>
                 </div>
                 <FiChevronDown className={`hidden sm:block w-4 h-4 text-gray-500 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
               </button>

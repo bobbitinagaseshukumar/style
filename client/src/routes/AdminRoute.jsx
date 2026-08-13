@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 
 const AdminRoute = ({ children }) => {
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const adminToken = localStorage.getItem('adminToken');
 
   // Never intercept login or verify-otp pages
@@ -15,12 +15,15 @@ const AdminRoute = ({ children }) => {
     return children;
   }
 
-  const hasToken = Boolean(
-    adminToken || localStorage.getItem('token') || isAuthenticated
+  const isAdmin = Boolean(
+    adminToken || 
+    user?.role === 'ADMIN' || 
+    user?.role === 'SUPER_ADMIN' ||
+    (isAuthenticated && user?.isAdmin)
   );
 
-  // If unauthenticated or token missing, redirect to dedicated Admin Login page
-  if (!hasToken) {
+  // If unauthenticated or non-admin, redirect to dedicated Admin Login page
+  if (!isAdmin) {
     return <Navigate to="/admin/login" replace />;
   }
 
