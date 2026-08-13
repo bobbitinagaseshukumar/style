@@ -38,6 +38,25 @@ exports.markAllAsRead = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'All notifications marked as read' });
 });
 
+// Delete single notification
+exports.deleteNotification = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  await prisma.notification.deleteMany({
+    where: { id, userId: req.user.id },
+  });
+
+  res.status(200).json({ success: true, message: 'Notification deleted' });
+});
+
+// Clear all notifications for user
+exports.clearAllNotifications = asyncHandler(async (req, res) => {
+  await prisma.notification.deleteMany({
+    where: { userId: req.user.id },
+  });
+
+  res.status(200).json({ success: true, message: 'All notifications cleared successfully' });
+});
+
 // Admin Broadcast notification to all active customers
 exports.broadcastNotification = asyncHandler(async (req, res, next) => {
   const { title, message, link, type } = req.body;

@@ -457,15 +457,36 @@ exports.adminUpdateOrderStatus = asyncHandler(async (req, res, next) => {
     },
   });
 
-  // In-app notification to customer
-  const statusFormatted = (orderStatus || order.orderStatus).replace(/_/g, ' ');
+  // In-app rich notification to customer
+  const targetStatus = orderStatus || order.orderStatus;
+  let notifTitle = `Order Update: ${targetStatus.replace(/_/g, ' ')} (#${order.orderNumber})`;
+  let notifMessage = `Your order #${order.orderNumber} status has been updated to ${targetStatus.replace(/_/g, ' ')}.`;
+
+  if (targetStatus === 'PROCESSING' || targetStatus === 'APPROVED' || targetStatus === 'CONFIRMED') {
+    notifTitle = `✅ Order Confirmed! (#${order.orderNumber})`;
+    notifMessage = `Great news! Your order #${order.orderNumber} has been verified and confirmed.${expectedDeliveryDate ? ' Expected Delivery: ' + expectedDeliveryDate : ' Preparing for dispatch!'}`;
+  } else if (targetStatus === 'PACKED') {
+    notifTitle = `📦 Order Packed (#${order.orderNumber})`;
+    notifMessage = `Your items for order #${order.orderNumber} have been quality checked and safely packed.`;
+  } else if (targetStatus === 'SHIPPED') {
+    notifTitle = `🚚 Order Shipped & Dispatched (#${order.orderNumber})`;
+    notifMessage = `Your order #${order.orderNumber} is on the way via ${courierName || 'our delivery partner'}.${trackingNumber ? ' Tracking ID: ' + trackingNumber : ''}`;
+  } else if (targetStatus === 'OUT_FOR_DELIVERY') {
+    notifTitle = `🛵 Out for Delivery (#${order.orderNumber})`;
+    notifMessage = `Your package for order #${order.orderNumber} is out for delivery today. Please ensure someone is available to receive it.`;
+  } else if (targetStatus === 'DELIVERED') {
+    notifTitle = `🎉 Order Delivered (#${order.orderNumber})`;
+    notifMessage = `Your order #${order.orderNumber} has been successfully delivered! We hope you love your purchase.`;
+  } else if (targetStatus === 'CANCELLED') {
+    notifTitle = `❌ Order Cancelled (#${order.orderNumber})`;
+    notifMessage = `Your order #${order.orderNumber} has been cancelled.${cancelReason ? ' Reason: ' + cancelReason : ''}`;
+  }
+
   await prisma.notification.create({
     data: {
       userId: order.userId,
-      title: `Order Update: ${statusFormatted} (#${order.orderNumber})`,
-      message: `Your order #${order.orderNumber} is now: ${statusFormatted}.${
-        expectedDeliveryDate ? ' Expected Delivery: ' + expectedDeliveryDate : ''
-      }`,
+      title: notifTitle,
+      message: notifMessage,
       type: 'ORDER',
       link: '/orders',
     },
