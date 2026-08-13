@@ -1281,11 +1281,11 @@ exports.getHeaderSettings = asyncHandler(async (req, res) => {
         settings = await prisma.headerSetting.create({
             data: {
                 logoUrl: null,
-                announcementText: '✨ FREE EXPRESS SHIPPING ON ALL LUXURY ORDERS ABOVE ₹2,999 | USE CODE: KVLR10 FOR 10% OFF',
+                announcementText: null,
                 announcementBgColor: '#121212',
                 announcementTextColor: '#D4AF37',
-                announcementLink: '/offers',
-                announcementEnabled: true,
+                announcementLink: null,
+                announcementEnabled: false,
                 stickyHeader: true,
                 searchVisible: true,
                 notificationVisible: true,

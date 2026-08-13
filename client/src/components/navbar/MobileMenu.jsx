@@ -7,9 +7,11 @@ import { useAuth } from '../../hooks/useAuth';
 
 const MobileMenu = ({ isOpen, onClose }) => {
   const { categories } = useSelector((state) => state.category);
+  const { storeSettings } = useSelector((state) => state.settings);
   const { isAuthenticated, user, logout } = useAuth();
   const navRef = useRef(null);
   const menuScrollPos = useRef(0);
+  const storeName = storeSettings?.storeName || 'StyleVerse';
 
   // Lock body scroll when open & restore drawer scroll position
   useEffect(() => {
@@ -56,12 +58,11 @@ const MobileMenu = ({ isOpen, onClose }) => {
             {/* Header */}
             <div className="px-5 py-4 flex items-center justify-between border-b border-white/10">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-black font-bold text-sm">
-                  S
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-black font-bold text-sm">
+                  {storeName.charAt(0).toUpperCase()}
                 </div>
-                <span className="text-lg font-bold text-white">
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600">Style</span>
-                  <span>Verse</span>
+                <span className="text-lg font-bold text-white font-serif">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 font-bold">{storeName}</span>
                 </span>
               </div>
               <button onClick={onClose} className="p-2 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition cursor-pointer">
@@ -130,7 +131,7 @@ const MobileMenu = ({ isOpen, onClose }) => {
               {isAuthenticated ? (
                 <>
                   <div className="flex items-center gap-3 px-3 py-2 mb-2">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-black text-sm font-bold">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-black text-sm font-bold shrink-0">
                       {user?.fullName?.[0] || 'U'}
                     </div>
                     <div className="min-w-0">
@@ -138,13 +139,13 @@ const MobileMenu = ({ isOpen, onClose }) => {
                       <p className="text-[11px] text-white/40 truncate">{user?.email}</p>
                     </div>
                   </div>
-                  {user?.role === 'ADMIN' && (
+                  {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.isAdmin) && (
                     <Link
                       to="/admin/dashboard"
                       onClick={onClose}
-                      className="block w-full py-2.5 text-center rounded-xl bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-sm font-bold hover:bg-yellow-400/20 transition"
+                      className="block w-full py-2.5 text-center rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-400 text-sm font-bold hover:bg-amber-400/20 transition"
                     >
-                      🔒 Admin Panel
+                      🔒 Super Admin Panel
                     </Link>
                   )}
                   <button

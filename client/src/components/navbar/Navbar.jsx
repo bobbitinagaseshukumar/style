@@ -132,8 +132,9 @@ const Navbar = () => {
   };
   const keepMega = () => clearTimeout(megaMenuTimeout.current);
 
-  const announcementText = headerSettings?.announcementText || '✨ Special Offer: Free Express Delivery Across India on Orders Above ₹999 | Code: STYLEVERSE';
-  const announcementEnabled = headerSettings?.announcementEnabled !== false && showAnnouncement;
+  const storeName = storeSettings?.storeName || headerSettings?.storeName || 'StyleVerse';
+  const announcementText = headerSettings?.announcementText;
+  const announcementEnabled = Boolean(headerSettings?.announcementEnabled && announcementText && announcementText.trim() && showAnnouncement);
 
   const userName = user?.fullName || user?.name || user?.email?.split('@')[0] || 'Valued Customer';
   const userAvatar = user?.avatar || user?.photo;
@@ -143,7 +144,7 @@ const Navbar = () => {
     <>
       {/* ── STICKY HEADER WRAPPER (Guarantees zero overlap on mobile/desktop) ── */}
       <header className="sticky top-0 z-50 w-full transition-all duration-300">
-        {/* Top Announcement Banner */}
+        {/* Top Announcement Banner (Only rendered if admin published an active announcement) */}
         <AnimatePresence>
           {announcementEnabled && (
             <motion.div
@@ -186,31 +187,30 @@ const Navbar = () => {
 
               {/* Mobile Hamburger Menu Button */}
               <button
-                className="lg:hidden text-white/80 hover:text-amber-400 transition-colors p-2 -ml-1.5 rounded-xl hover:bg-white/5 cursor-pointer"
+                className="lg:hidden text-white/80 hover:text-amber-400 transition-colors p-2 -ml-1.5 rounded-xl hover:bg-white/5 cursor-pointer shrink-0"
                 onClick={() => openDrawer('mobile')}
                 aria-label="Open menu"
               >
                 <FiMenu className="w-6 h-6" />
               </button>
 
-              {/* Logo */}
-              <Link to="/" className="flex items-center gap-2.5 group relative py-1">
+              {/* Logo (Dynamic Store Name) */}
+              <Link to="/" className="flex items-center gap-2 sm:gap-2.5 group relative py-1 shrink-0">
                 <motion.div
                   whileHover={{ rotate: 12, scale: 1.1 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 flex items-center justify-center text-black font-black text-base shadow-lg shadow-amber-500/20"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 flex items-center justify-center text-black font-black text-base shadow-lg shadow-amber-500/20 shrink-0"
                 >
-                  K
+                  {storeName.charAt(0).toUpperCase()}
                 </motion.div>
                 <motion.span
                   whileHover={{ scale: 1.03 }}
                   transition={{ duration: 0.2 }}
-                  className="font-serif text-lg sm:text-2xl font-bold tracking-tight text-white flex items-center"
+                  className="font-serif text-lg sm:text-2xl font-bold tracking-tight text-white flex items-center shrink-0"
                 >
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500">
-                    KVLR
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 font-bold">
+                    {storeName}
                   </span>
-                  <span className="text-white/90 ml-1">Styles</span>
                 </motion.span>
               </Link>
 
@@ -260,7 +260,7 @@ const Navbar = () => {
               </div>
 
               {/* Right Action Icons & Auth */}
-              <div className="flex items-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
 
                 {/* Search Button */}
                 {headerSettings?.searchVisible !== false && (
@@ -268,22 +268,22 @@ const Navbar = () => {
                     whileHover={{ scale: 1.08 }}
                     whileTap={{ scale: 0.92 }}
                     onClick={() => openDrawer('search')}
-                    className="p-2 sm:p-2.5 rounded-xl text-white/70 hover:text-amber-400 hover:bg-white/5 transition-all cursor-pointer"
+                    className="p-2 sm:p-2.5 rounded-xl text-white/70 hover:text-amber-400 hover:bg-white/5 transition-all cursor-pointer shrink-0"
                     aria-label="Search"
                   >
-                    <FiSearch className="w-[18px] h-[18px]" />
+                    <FiSearch className="w-5 h-5 sm:w-[18px] sm:h-[18px]" />
                   </motion.button>
                 )}
 
-                {/* Wishlist Button */}
+                {/* Wishlist Button (Hidden on tiny screens to protect layout) */}
                 {headerSettings?.wishlistVisible !== false && (
-                  <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}>
+                  <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="hidden sm:block shrink-0">
                     <Link
                       to="/wishlist"
                       className="relative p-2 sm:p-2.5 rounded-xl text-white/70 hover:text-red-400 hover:bg-white/5 transition-all flex"
                       aria-label="Wishlist"
                     >
-                      <FiHeart className="w-[18px] h-[18px]" />
+                      <FiHeart className="w-5 h-5 sm:w-[18px] sm:h-[18px]" />
                       <AnimatePresence>
                         {wishlistItems.length > 0 && (
                           <motion.span
@@ -306,10 +306,10 @@ const Navbar = () => {
                     whileHover={{ scale: 1.08 }}
                     whileTap={{ scale: 0.92 }}
                     onClick={() => openDrawer('cart')}
-                    className="relative p-2 sm:p-2.5 rounded-xl text-white/70 hover:text-amber-400 hover:bg-white/5 transition-all cursor-pointer"
+                    className="relative p-2 sm:p-2.5 rounded-xl text-white/70 hover:text-amber-400 hover:bg-white/5 transition-all cursor-pointer shrink-0"
                     aria-label="Cart"
                   >
-                    <FiShoppingBag className="w-[18px] h-[18px]" />
+                    <FiShoppingBag className="w-5 h-5 sm:w-[18px] sm:h-[18px]" />
                     <AnimatePresence>
                       {cartCount > 0 && (
                         <motion.span
@@ -325,15 +325,15 @@ const Navbar = () => {
                   </motion.button>
                 )}
 
-                {/* Notifications Button */}
+                {/* Notifications Button (Desktop only) */}
                 {isAuthenticated && headerSettings?.notificationVisible !== false && (
-                  <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}>
+                  <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="hidden md:block shrink-0">
                     <Link
                       to="/notifications"
                       className="relative p-2 sm:p-2.5 rounded-xl text-white/70 hover:text-amber-400 hover:bg-white/5 transition-all flex"
                       aria-label="Notifications"
                     >
-                      <FiBell className="w-[18px] h-[18px]" />
+                      <FiBell className="w-5 h-5 sm:w-[18px] sm:h-[18px]" />
                       {notificationsCount > 0 && (
                         <span className="absolute -top-0.5 -right-0.5 bg-amber-400 text-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
                           {notificationsCount}
@@ -345,7 +345,7 @@ const Navbar = () => {
 
                 {/* User Account Button & Dropdown */}
                 {headerSettings?.profileVisible !== false && (
-                  <div className="relative ml-1" ref={userMenuRef}>
+                  <div className="relative shrink-0 ml-1" ref={userMenuRef}>
                     {isAuthenticated ? (
                       <motion.button
                         whileHover={{ scale: 1.04 }}
@@ -354,21 +354,21 @@ const Navbar = () => {
                           setIsUserMenuOpen(!isUserMenuOpen);
                           setActiveMegaMenu(null);
                         }}
-                        className="flex items-center gap-2 p-1 sm:p-1.5 rounded-xl hover:bg-white/10 transition-all cursor-pointer border border-white/10 hover:border-amber-400/40"
+                        className="flex items-center gap-1.5 p-1 sm:px-2 sm:py-1.5 rounded-xl bg-white/5 hover:bg-white/10 transition-all cursor-pointer border border-amber-400/40 hover:border-amber-400 shadow-sm shrink-0 min-w-[36px] min-h-[36px] justify-center"
                         aria-label="Account menu"
                       >
                         {userAvatar ? (
                           <img
                             src={userAvatar}
                             alt={userName}
-                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover border border-amber-400/50 shadow"
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover border border-amber-400/50 shadow shrink-0"
                           />
                         ) : (
-                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-black text-xs font-black shadow">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-black text-xs font-black shadow shrink-0">
                             {userInitial}
                           </div>
                         )}
-                        <span className="hidden sm:inline text-xs font-bold text-white/90 max-w-[90px] truncate">
+                        <span className="hidden md:inline text-xs font-bold text-white/90 max-w-[80px] truncate">
                           {userName.split(' ')[0]}
                         </span>
                         <FiChevronDown size={13} className={`hidden sm:block text-white/60 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
@@ -378,7 +378,7 @@ const Navbar = () => {
                         whileHover={{ scale: 1.04 }}
                         whileTap={{ scale: 0.96 }}
                         onClick={() => openDrawer('auth')}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-black text-xs font-extrabold shadow-md transition-all cursor-pointer border border-amber-300/50"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-black text-xs font-extrabold shadow-md transition-all cursor-pointer border border-amber-300/50 shrink-0 min-h-[36px]"
                         aria-label="Sign In"
                       >
                         <FiUser size={14} className="shrink-0" />
