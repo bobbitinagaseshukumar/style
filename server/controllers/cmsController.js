@@ -1,6 +1,17 @@
 const prisma = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
+const emailService = require('../services/emailService');
+
+// In-memory OTP storage with TTL for newsletter email verification
+const newsletterOtpMap = new Map();
+
+// Helper: Strict Email Validation Regex
+const isValidEmail = (email) => {
+    if (!email || typeof email !== 'string') return false;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return emailRegex.test(email.trim());
+};
 
 // ==================== Store Settings ====================
 exports.getStoreSettings = asyncHandler(async (req, res) => {
@@ -72,25 +83,106 @@ exports.adminGetContactMessages = asyncHandler(async (req, res) => {
     res.status(200).json({ success: true, data: messages });
 });
 
-// ==================== Newsletter Subscribers ====================
-exports.subscribeNewsletter = asyncHandler(async (req, res, next) => {
+// ==================== Newsletter Subscribers & OTP Verification ====================
+exports.sendNewsletterOTP = asyncHandler(async (req, res, next) => {
     const { email } = req.body;
-    if (!email) return next(new ApiError(400, 'Email address is required'));
-
-    const existing = await prisma.newsletterSubscriber.findUnique({ where: { email: email.toLowerCase() } });
-    if (existing) {
-        return res.status(200).json({ success: true, message: 'You are already subscribed to StyleVerse newsletter!' });
+    if (!email || !isValidEmail(email)) {
+        return next(new ApiError(400, 'Please enter a valid email address (e.g. name@example.com)'));
     }
 
-    const sub = await prisma.newsletterSubscriber.create({
-        data: { email: email.toLowerCase() }
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check if already subscribed
+    const existing = await prisma.newsletterSubscriber.findUnique({
+        where: { email: cleanEmail }
+    });
+    if (existing && existing.isActive) {
+        return res.status(200).json({
+            success: true,
+            alreadySubscribed: true,
+            message: 'You are already a verified subscriber to our newsletter!'
+        });
+    }
+
+    // Generate secure 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    newsletterOtpMap.set(cleanEmail, { otp, expiresAt, attempts: 0 });
+
+    try {
+        await emailService.sendOTPEmail(cleanEmail, 'Subscriber', otp);
+        console.log(`[NEWSLETTER OTP] Dispatched OTP ${otp} to ${cleanEmail}`);
+    } catch (mailErr) {
+        console.error('[NEWSLETTER OTP SEND ERROR]:', mailErr.message);
+    }
+
+    res.status(200).json({
+        success: true,
+        message: `A 6-digit verification code has been sent to ${cleanEmail}. Please enter it to complete your subscription.`
+    });
+});
+
+exports.verifyNewsletterOTP = asyncHandler(async (req, res, next) => {
+    const { email, otp } = req.body;
+    if (!email || !isValidEmail(email)) {
+        return next(new ApiError(400, 'Please enter a valid email address'));
+    }
+    if (!otp || String(otp).trim().length !== 6) {
+        return next(new ApiError(400, 'Please enter the 6-digit verification code sent to your email'));
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanOtp = String(otp).trim();
+
+    const record = newsletterOtpMap.get(cleanEmail);
+    if (!record || Date.now() > record.expiresAt) {
+        return next(new ApiError(400, 'Verification code has expired or is invalid. Please request a new code.'));
+    }
+
+    if (record.attempts >= 5) {
+        newsletterOtpMap.delete(cleanEmail);
+        return next(new ApiError(400, 'Too many incorrect attempts. Please request a new verification code.'));
+    }
+
+    if (record.otp !== cleanOtp) {
+        record.attempts += 1;
+        return next(new ApiError(400, 'Incorrect verification code. Please check your email and try again.'));
+    }
+
+    // OTP Verified! Clear temporary store
+    newsletterOtpMap.delete(cleanEmail);
+
+    // Save as active verified subscriber in database
+    const subscriber = await prisma.newsletterSubscriber.upsert({
+        where: { email: cleanEmail },
+        update: { isActive: true },
+        create: { email: cleanEmail, isActive: true }
     });
 
-    res.status(201).json({
+    // Send Welcome Confirmation Email
+    try {
+        await emailService.sendWelcomeEmail(cleanEmail, 'Valued Subscriber');
+        console.log(`[NEWSLETTER VERIFIED] Welcome confirmation email sent to ${cleanEmail}`);
+    } catch (welcomeErr) {
+        console.error('[NEWSLETTER WELCOME EMAIL ERROR]:', welcomeErr.message);
+    }
+
+    res.status(200).json({
         success: true,
-        message: 'Subscription successful! Thank you for subscribing.',
-        data: sub
+        message: '🎉 Email verified successfully! You are now subscribed to receive our latest collections, festival deals, and exclusive offers.',
+        data: subscriber
     });
+});
+
+exports.subscribeNewsletter = asyncHandler(async (req, res, next) => {
+    const { email } = req.body;
+    if (!email || !isValidEmail(email)) {
+        return next(new ApiError(400, 'Please enter a valid email address (e.g. name@example.com)'));
+    }
+
+    // Direct subscription redirects through sendNewsletterOTP flow
+    return exports.sendNewsletterOTP(req, res, next);
 });
 
 exports.adminGetNewsletterSubscribers = asyncHandler(async (req, res) => {

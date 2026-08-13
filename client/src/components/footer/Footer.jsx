@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { FOOTER_LINKS, SOCIAL_ICONS } from '../../constants';
+import NewsletterSubscribe from '../common/NewsletterSubscribe';
 
 const Footer = () => {
   const { storeSettings } = useSelector((state) => state.settings);
@@ -63,16 +64,7 @@ const Footer = () => {
           <div>
             <h3 className="text-white text-sm font-semibold uppercase tracking-wider mb-4">Stay Updated</h3>
             <p className="text-sm text-gray-400 mb-4">Subscribe to receive updates, access to exclusive deals, and more.</p>
-            <form className="flex flex-col sm:flex-row gap-2" onSubmit={(e) => e.preventDefault()}>
-              <input 
-                type="email" 
-                placeholder="Enter your email address" 
-                className="w-full bg-charcoal-900 border border-charcoal-800 text-white px-4 py-2 rounded focus:outline-none focus:border-gold-500 text-sm"
-              />
-              <button className="w-full sm:w-auto whitespace-nowrap bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors">
-                Subscribe
-              </button>
-            </form>
+            <NewsletterSubscribe variant="footer" />
           </div>
 
         </div>

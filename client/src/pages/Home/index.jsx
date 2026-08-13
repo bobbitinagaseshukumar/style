@@ -20,6 +20,7 @@ import BrandShowcase from '../../components/home/BrandShowcase';
 import TestimonialsSection from '../../components/home/TestimonialsSection';
 import InstagramGallery from '../../components/home/InstagramGallery';
 import FAQPreview from '../../components/home/FAQPreview';
+import NewsletterSubscribe from '../../components/common/NewsletterSubscribe';
 
 const fadeInUp = { initial: { opacity: 0, y: 30 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true } };
 const stagger = { initial: {}, whileInView: { transition: { staggerChildren: 0.08 } }, viewport: { once: true } };
@@ -480,18 +481,16 @@ const Home = () => {
       <FAQPreview />
 
       {/* 19. NEWSLETTER SECTION */}
-      <section className="py-12 lg:py-16 bg-charcoal-900">
-        <div className="max-w-2xl mx-auto px-3 sm:px-4 text-center">
+      <section className="py-14 lg:py-20 bg-[#0c0c10] border-t border-white/5 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.06)_0%,transparent_70%)] pointer-events-none" />
+        <div className="max-w-2xl mx-auto px-4 text-center relative z-10">
           <motion.div {...fadeInUp}>
-            <h2 className="text-2xl lg:text-3xl font-serif font-bold text-white mb-3">Stay in Style</h2>
-            <p className="text-gray-400 mb-6">Subscribe for exclusive festive offers, new arrival alerts, and style updates.</p>
-            <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <input type="email" placeholder="Enter your email"
-                className="flex-1 px-4 py-3 rounded-full bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-gold-500 transition-colors w-full" />
-              <button className="px-6 py-3 rounded-full bg-gold-500 hover:bg-gold-600 text-white font-semibold transition-colors shrink-0 w-full sm:w-auto">
-                Subscribe
-              </button>
-            </div>
+            <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-amber-400 font-serif mb-2 inline-block">Exclusive Access</span>
+            <h2 className="text-2xl lg:text-4xl font-serif font-bold text-white mb-3 tracking-tight">Stay in Style</h2>
+            <p className="text-gray-400 text-xs sm:text-sm mb-7 max-w-md mx-auto leading-relaxed">
+              Subscribe to receive instant alerts when new collections drop, private festive sale access, and curated style recommendations.
+            </p>
+            <NewsletterSubscribe variant="section" />
           </motion.div>
         </div>
       </section>

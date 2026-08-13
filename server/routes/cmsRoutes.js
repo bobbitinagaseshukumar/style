@@ -26,9 +26,11 @@ router.get('/header-settings', cmsController.getHeaderSettings);
 router.get('/pages/:slug', cmsController.getCMSPage);
 router.get('/faqs', cmsController.getFAQs);
 
-// Public contact & newsletter
+// Public contact & newsletter with OTP verification
 router.post('/contact', cmsController.submitContactMessage);
 router.post('/newsletter/subscribe', cmsController.subscribeNewsletter);
+router.post('/newsletter/send-otp', cmsController.sendNewsletterOTP);
+router.post('/newsletter/verify-otp', cmsController.verifyNewsletterOTP);
 
 // ── Admin-only endpoints ──────────────────────────────────────
 const adminOnly = [protect, authorize('ADMIN', 'SUPER_ADMIN')];
