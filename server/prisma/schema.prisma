@@ -285,9 +285,6 @@ model Address {
   city         String
   state        String
   postalCode   String
-  village        String?
-  landmark       String?
-  alternatePhone String?
   country      String   @default("India")
   addressType  String   @default("HOME")
   isDefault    Boolean  @default(false)

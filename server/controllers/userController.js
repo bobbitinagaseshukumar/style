@@ -80,7 +80,7 @@ exports.getAddresses = asyncHandler(async (req, res) => {
 });
 
 exports.addAddress = asyncHandler(async (req, res, next) => {
-  const { fullName, phone, street, city, state, postalCode, country, addressType, isDefault, village, landmark, alternatePhone } = req.body;
+  const { fullName, phone, street, city, state, postalCode, country, addressType, isDefault } = req.body;
 
   if (!fullName || !phone || !street || !city || !state || !postalCode) {
     return next(new ApiError(400, 'Please fill in all required address fields'));
@@ -107,9 +107,6 @@ exports.addAddress = asyncHandler(async (req, res, next) => {
       city,
       state,
       postalCode,
-      village: village || null,
-      landmark: landmark || null,
-      alternatePhone: alternatePhone || null,
       country: country || 'India',
       addressType: addressType || 'HOME',
       isDefault: shouldBeDefault,

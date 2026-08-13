@@ -342,15 +342,15 @@ exports.getCustomerProfile = asyncHandler(async (req, res, next) => {
 
   const { password, otpCode, ...safeCustomer } = customer;
 
-  const totalOrders = customer.orders.length;
-  const pendingOrders = customer.orders.filter(o => ['PENDING', 'PROCESSING', 'SHIPPED'].includes(o.status)).length;
-  const deliveredOrders = customer.orders.filter(o => o.status === 'DELIVERED').length;
-  const cancelledOrders = customer.orders.filter(o => o.status === 'CANCELLED').length;
-  const returnedOrders = customer.orders.filter(o => o.status === 'RETURNED').length;
-  const totalAmountSpent = customer.orders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
+  const totalOrders = customer.orders?.length || 0;
+  const pendingOrders = (customer.orders || []).filter(o => ['PENDING', 'PENDING_APPROVAL', 'PROCESSING', 'PACKED', 'SHIPPED'].includes(o.orderStatus || o.status)).length;
+  const deliveredOrders = (customer.orders || []).filter(o => (o.orderStatus || o.status) === 'DELIVERED').length;
+  const cancelledOrders = (customer.orders || []).filter(o => (o.orderStatus || o.status) === 'CANCELLED').length;
+  const returnedOrders = (customer.orders || []).filter(o => (o.orderStatus || o.status) === 'RETURNED').length;
+  const totalAmountSpent = (customer.orders || []).reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
   const avgOrderValue = totalOrders > 0 ? totalAmountSpent / totalOrders : 0;
   const wishlistCount = customer.wishlist?.items?.length || 0;
-  const addressCount = customer.addresses.length;
+  const addressCount = customer.addresses?.length || 0;
 
   res.status(200).json({
     success: true,
