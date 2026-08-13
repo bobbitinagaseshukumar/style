@@ -108,29 +108,48 @@ const Navbar = () => {
     fetchHeaderData();
   }, []);
 
+
+
   /* ── Close user menu on outside click & escape key ─────────── */
-  const userMenuRef = useRef(null);
+  const userBtnRef = useRef(null);
+  const userDropdownRef = useRef(null);
+
   useEffect(() => {
-    const handler = (e) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
-        setIsUserMenuOpen(false);
+    if (!isUserMenuOpen) return;
+
+    const handleOutsideClick = (e) => {
+      // If clicking the toggle button itself, let the button's onClick handle toggle
+      if (userBtnRef.current && userBtnRef.current.contains(e.target)) {
+        return;
       }
+      // If clicking inside the dropdown menu, let the link/button handle it
+      if (userDropdownRef.current && userDropdownRef.current.contains(e.target)) {
+        return;
+      }
+      // Clicked ANYWHERE else on the website -> close immediately!
+      setIsUserMenuOpen(false);
     };
-    const keyHandler = (e) => {
+
+    const handleEscape = (e) => {
       if (e.key === 'Escape') {
         setIsUserMenuOpen(false);
         setActiveMegaMenu(null);
       }
     };
-    document.addEventListener('mousedown', handler);
-    document.addEventListener('touchstart', handler, { passive: true });
-    document.addEventListener('keydown', keyHandler);
+
+    // Use capture phase (true) to intercept any click across the page
+    window.addEventListener('click', handleOutsideClick, true);
+    window.addEventListener('pointerdown', handleOutsideClick, true);
+    window.addEventListener('touchstart', handleOutsideClick, true);
+    window.addEventListener('keydown', handleEscape);
+
     return () => {
-      document.removeEventListener('mousedown', handler);
-      document.removeEventListener('touchstart', handler);
-      document.removeEventListener('keydown', keyHandler);
+      window.removeEventListener('click', handleOutsideClick, true);
+      window.removeEventListener('pointerdown', handleOutsideClick, true);
+      window.removeEventListener('touchstart', handleOutsideClick, true);
+      window.removeEventListener('keydown', handleEscape);
     };
-  }, []);
+  }, [isUserMenuOpen]);
 
   /* ── Mega Menu hover handlers ──────────────────────────────── */
   const openMega = (name) => {
@@ -355,9 +374,10 @@ const Navbar = () => {
 
                 {/* User Account Button & Dropdown */}
                 {headerSettings?.profileVisible !== false && (
-                  <div className="relative shrink-0 ml-1" ref={userMenuRef}>
+                  <div className="relative shrink-0 ml-1">
                     {isAuthenticated ? (
                       <motion.button
+                        ref={userBtnRef}
                         whileHover={{ scale: 1.04 }}
                         whileTap={{ scale: 0.96 }}
                         onClick={() => {
@@ -399,27 +419,21 @@ const Navbar = () => {
                     {/* USER PROFILE DROPDOWN MENU */}
                     <AnimatePresence>
                       {isAuthenticated && isUserMenuOpen && (
-                        <>
-                          {/* Fullscreen transparent backdrop so clicking/tapping anywhere dismisses menu */}
-                          <div
-                            className="fixed inset-0 z-40 bg-transparent"
-                            onClick={() => setIsUserMenuOpen(false)}
-                          />
-
-                          <motion.div
-                            initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute right-0 mt-2 w-60 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-50 text-xs"
-                          >
-                            <div className="px-4 py-3 border-b border-white/10 bg-white/5">
-                              <p className="text-sm font-bold text-white truncate">{userName}</p>
-                              <p className="text-xs text-white/50 truncate">{user?.email}</p>
-                              <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-400/10 text-amber-400 border border-amber-400/30">
-                                {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '⚡ ADMIN' : '⭐ CUSTOMER'}
-                              </div>
+                        <motion.div
+                          ref={userDropdownRef}
+                          initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute right-0 mt-2 w-60 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-50 text-xs"
+                        >
+                          <div className="px-4 py-3 border-b border-white/10 bg-white/5">
+                            <p className="text-sm font-bold text-white truncate">{userName}</p>
+                            <p className="text-xs text-white/50 truncate">{user?.email}</p>
+                            <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-400/10 text-amber-400 border border-amber-400/30">
+                              {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '⚡ ADMIN' : '⭐ CUSTOMER'}
                             </div>
+                          </div>
 
                             <div className="py-1">
                               {[
@@ -468,7 +482,6 @@ const Navbar = () => {
                               </button>
                             </div>
                           </motion.div>
-                        </>
                       )}
                     </AnimatePresence>
                   </div>
