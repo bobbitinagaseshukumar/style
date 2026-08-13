@@ -60,13 +60,15 @@ const logAdminAction = async (req, targetUser, action, reason = null, details = 
 // Helper: Build safe where clause for search
 const buildSearchWhere = (search, extra = {}, roleQuery = null) => {
   const where = { ...extra };
-  if (roleQuery) {
+  if (roleQuery && roleQuery !== 'ALL') {
     const upperRole = roleQuery.toUpperCase();
     if (upperRole === 'CUSTOMER') {
-      where.role = { in: ['CUSTOMER', 'USER'] };
+      where.role = { notIn: ['ADMIN', 'SUPER_ADMIN'] };
     } else {
       where.role = upperRole;
     }
+  } else {
+    where.role = { notIn: ['ADMIN', 'SUPER_ADMIN'] };
   }
   if (search && search.trim()) {
     const q = search.trim();
@@ -93,7 +95,8 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
   const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
   const skip = (pageNum - 1) * limitNum;
 
-  let where = buildSearchWhere(search, {}, req.query.role || 'CUSTOMER');
+  const baseWhere = buildSearchWhere(search, {}, req.query.role || 'CUSTOMER');
+  let where = { ...baseWhere };
 
   // Status Filter
   if (status && status !== 'ALL') {
@@ -188,15 +191,15 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
     };
   });
 
-  // Step 3: Fast Overall Statistics Header (Optimized SQL aggregations)
+  // Step 3: Fast Overall Statistics Header (Optimized SQL aggregations using baseWhere)
   const [statusCounts, unverifiedCount, totalRevenueAgg] = await Promise.all([
     prisma.user.groupBy({
       by: ['status'],
-      where: { role: { in: ['CUSTOMER', 'USER'] } },
+      where: baseWhere,
       _count: { id: true }
     }),
     prisma.user.count({
-      where: { role: { in: ['CUSTOMER', 'USER'] }, isVerified: false }
+      where: { ...baseWhere, isVerified: false }
     }),
     prisma.order.aggregate({
       _sum: { totalAmount: true }
