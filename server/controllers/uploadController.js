@@ -54,25 +54,25 @@ exports.uploadImage = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // 2. Local Disk Storage Fallback (Guarantees zero upload failures)
+  // 2. Base64 Data URL Fallback (Permanent — survives Render redeploys)
+  // Render.com has an ephemeral filesystem: files saved to disk are deleted on every redeploy.
+  // By converting to Base64 Data URL, the image data is stored directly in the database,
+  // making it permanent and instantly visible on all devices.
   try {
-    const ext = path.extname(req.file.originalname) || '.webp';
-    const filename = `product-${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
-    const filePath = path.join(uploadsDir, filename);
+    const mimeType = req.file.mimetype || 'image/webp';
+    const base64String = req.file.buffer.toString('base64');
+    const dataUrl = `data:${mimeType};base64,${base64String}`;
 
-    fs.writeFileSync(filePath, req.file.buffer);
-
-    const relativeUrl = `/uploads/products/${filename}`;
-    console.log(`[IMAGE UPLOAD SUCCESS - LOCAL DISK] Saved: ${relativeUrl}`);
+    console.log(`[IMAGE UPLOAD SUCCESS - BASE64] Size: ${base64String.length} chars, MIME: ${mimeType}`);
 
     return res.status(200).json({
       success: true,
-      message: 'Image saved to server local storage successfully.',
-      url: relativeUrl,
-      publicId: filename,
+      message: 'Image uploaded successfully as Base64 Data URL.',
+      url: dataUrl,
+      publicId: `base64-${Date.now()}`,
     });
-  } catch (localErr) {
-    console.error('[LOCAL DISK SAVE FAILED]', localErr);
-    return next(new ApiError(500, 'Failed to save uploaded image.'));
+  } catch (b64Err) {
+    console.error('[BASE64 CONVERSION FAILED]', b64Err);
+    return next(new ApiError(500, 'Failed to process uploaded image.'));
   }
 });

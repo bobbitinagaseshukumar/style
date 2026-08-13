@@ -77,7 +77,7 @@ const Cart = () => {
                     <h3 className="font-semibold text-sm sm:text-base text-charcoal-900 line-clamp-1 mb-1">{item.name}</h3>
                     <div className="flex gap-2 text-xs text-gray-500 mb-3">
                       {item.size && <span className="bg-gray-100 px-2 py-0.5 rounded font-medium">Size: {item.size}</span>}
-                      {item.color && <span className="bg-gray-100 px-2 py-0.5 rounded font-medium">Color: {item.color}</span>}
+                      {item.color && <span className="bg-gray-100 px-2 py-0.5 rounded font-medium">Color: {typeof item.color === 'object' ? item.color.name : item.color}</span>}
                     </div>
 
                     <div className="flex items-center justify-between">

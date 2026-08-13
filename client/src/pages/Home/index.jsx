@@ -134,11 +134,8 @@ const Home = () => {
         let newArrivalsList = extractProducts(newArrivalsRes);
         let bestSellerList = extractProducts(bestSellerRes);
 
-        // Fallbacks: If specific badge endpoints returned empty, show all admin products
-        if (featuredList.length === 0) featuredList = allProductsList;
-        if (trendingList.length === 0) trendingList = allProductsList;
-        if (newArrivalsList.length === 0) newArrivalsList = allProductsList;
-        if (bestSellerList.length === 0) bestSellerList = allProductsList;
+        // No fallbacks — each section ONLY shows products the admin explicitly tagged.
+        // If admin hasn't tagged any products as "Featured", the Featured section won't appear.
 
         setProducts({
           featured: featuredList.slice(0, 12),
