@@ -290,20 +290,50 @@ exports.getCustomerProfile = asyncHandler(async (req, res, next) => {
   const customer = await prisma.user.findUnique({
     where: { id },
     include: {
-      addresses: { orderBy: { isDefault: 'desc' } },
+      addresses: {
+        select: {
+          id: true,
+          userId: true,
+          fullName: true,
+          phone: true,
+          street: true,
+          city: true,
+          state: true,
+          postalCode: true,
+          country: true,
+          addressType: true,
+          isDefault: true,
+          createdAt: true
+        },
+        orderBy: { isDefault: 'desc' }
+      },
       orders: {
         orderBy: { createdAt: 'desc' },
         take: 20,
-        include: {
+        select: {
+          id: true,
+          orderNumber: true,
+          userId: true,
+          totalAmount: true,
+          orderStatus: true,
+          paymentStatus: true,
+          paymentMethod: true,
+          createdAt: true,
           items: {
-            include: { product: { select: { name: true, images: true } } }
+            select: {
+              id: true,
+              productId: true,
+              quantity: true,
+              price: true,
+              product: { select: { id: true, name: true, images: { select: { id: true, url: true } } } }
+            }
           }
         }
       },
       wishlist: {
         include: {
           items: {
-            include: { product: { select: { id: true, name: true, price: true, images: true } } }
+            include: { product: { select: { id: true, name: true, price: true, images: { select: { id: true, url: true } } } } }
           }
         }
       },
@@ -323,7 +353,7 @@ exports.getCustomerProfile = asyncHandler(async (req, res, next) => {
       recentlyViewed: {
         orderBy: { updatedAt: 'desc' },
         take: 10,
-        include: { product: { select: { id: true, name: true, price: true, images: true } } }
+        include: { product: { select: { id: true, name: true, price: true, images: { select: { id: true, url: true } } } } }
       },
       notifications: {
         orderBy: { createdAt: 'desc' },

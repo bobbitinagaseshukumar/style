@@ -354,10 +354,10 @@ const CustomerProfile = ({ customerId, onBack, onRefreshList }) => {
       {activeTab === 'addresses' && (
         <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">
           <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
-            <FiMapPin className="text-amber-500" /> Saved Shipping & Billing Addresses ({data.addresses.length})
+            <FiMapPin className="text-amber-500" /> Saved Shipping & Billing Addresses ({(data.addresses || []).length})
           </h3>
 
-          {data.addresses.length === 0 ? (
+          {(!data.addresses || data.addresses.length === 0) ? (
             <p className="text-xs text-gray-400 py-8 text-center">No addresses saved by customer.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
@@ -368,11 +368,11 @@ const CustomerProfile = ({ customerId, onBack, onRefreshList }) => {
                       Default Shipping Address
                     </span>
                   )}
-                  <p className="font-bold text-gray-900 text-sm mb-1">{addr.name}</p>
+                  <p className="font-bold text-gray-900 text-sm mb-1">{addr.fullName || addr.name || data.fullName}</p>
                   <p className="text-gray-600">{addr.street}</p>
-                  <p className="text-gray-600">{addr.city}, {addr.state} - {addr.pinCode}</p>
+                  <p className="text-gray-600">{addr.city}, {addr.state} - {addr.postalCode || addr.pinCode || ''}</p>
                   <p className="text-gray-600">{addr.country || 'India'}</p>
-                  <p className="text-gray-500 mt-2 font-mono">📞 {addr.phone}</p>
+                  <p className="text-gray-500 mt-2 font-mono">📞 {addr.phone || data.phone || 'N/A'}</p>
                 </div>
               ))}
             </div>
@@ -414,9 +414,9 @@ const CustomerProfile = ({ customerId, onBack, onRefreshList }) => {
           {/* Customer Activity Log */}
           <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">
             <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
-              <FiActivity className="text-amber-500" /> Customer Activity Log ({data.activityLogs.length})
+              <FiActivity className="text-amber-500" /> Customer Activity Log ({(data.activityLogs || []).length})
             </h3>
-            {data.activityLogs.length === 0 ? (
+            {(!data.activityLogs || data.activityLogs.length === 0) ? (
               <p className="text-xs text-gray-400 py-6 text-center">No customer activity recorded.</p>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto pr-1 text-xs">
@@ -437,9 +437,9 @@ const CustomerProfile = ({ customerId, onBack, onRefreshList }) => {
           {/* Admin Audit Trail */}
           <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">
             <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
-              <FiShield className="text-amber-500" /> Admin Audit Log ({data.adminActionLogs.length})
+              <FiShield className="text-amber-500" /> Admin Audit Log ({(data.adminActionLogs || []).length})
             </h3>
-            {data.adminActionLogs.length === 0 ? (
+            {(!data.adminActionLogs || data.adminActionLogs.length === 0) ? (
               <p className="text-xs text-gray-400 py-6 text-center">No admin actions performed on this account.</p>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto pr-1 text-xs">
