@@ -105,6 +105,7 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
   if (isRecommended === 'true') whereClause.isRecommended = true;
   if (isPremium === 'true') whereClause.isPremium = true;
   if (isFestival === 'true') whereClause.isFestival = true;
+  if (showOnHomepage === 'true') whereClause.showOnHomepage = true;
 
   // Combine AND conditions
   if (andConditions.length > 0) {
