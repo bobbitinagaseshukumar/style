@@ -18,7 +18,7 @@ const MainLayout = () => {
       <CustomCursor />
       <ParticleCanvas />
       <Navbar />
-      <main className="flex-grow w-full relative z-10 pt-16 sm:pt-20 pb-16 md:pb-0">
+      <main className="flex-grow w-full relative z-10 pb-16 md:pb-0">
         <Outlet />
       </main>
       <Footer />

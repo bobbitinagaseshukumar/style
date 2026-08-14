@@ -13,7 +13,6 @@ import { formatCurrency } from '../../utils/formatCurrency';
 import ProductCard from '../../components/common/ProductCard';
 import PersonalizedSections from '../../components/common/PersonalizedSections';
 import RecentlyViewedSection from '../../components/home/RecentlyViewedSection';
-import AnnouncementBar from '../../components/home/AnnouncementBar';
 import FlashSaleSection from '../../components/home/FlashSaleSection';
 import CollectionShowcase from '../../components/home/CollectionShowcase';
 import BrandShowcase from '../../components/home/BrandShowcase';
@@ -242,9 +241,6 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* 1. ANNOUNCEMENT BAR */}
-      <AnnouncementBar />
-
       {/* 4. HERO BANNER SLIDER */}
       {heroSliders.length > 0 && (
         <section className="relative">
