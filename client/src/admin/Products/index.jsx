@@ -388,7 +388,7 @@ const AdminProducts = () => {
               const st = STATUS_MAP[product.status] || STATUS_MAP.PUBLISHED;
 
               return (
-                <motion.div key={product.id} layout variants={fadeInUp} initial="initial" animate="animate"
+                <motion.div key={product.id} variants={fadeInUp} initial="initial" animate="animate"
                   className={`bg-white rounded-2xl border overflow-hidden shadow-sm hover:shadow-lg transition-all group ${selected.has(product.id) ? 'border-amber-400 ring-2 ring-amber-200' : 'border-gray-200'}`}>
 
                   {/* Image */}

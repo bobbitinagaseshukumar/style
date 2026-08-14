@@ -13,6 +13,7 @@ import { FaWhatsapp } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../redux/auth/authSlice';
 import { toast } from 'react-toastify';
+import api from '../config/api';
 
 const sidebarGroups = [
   {
@@ -91,6 +92,21 @@ const AdminLayout = () => {
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  const [storeName, setStoreName] = useState('');
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const { data } = await api.get('/cms/settings');
+        if (data?.success && data.data) {
+          setStoreName(data.data.storeName);
+        }
+      } catch (err) {
+        console.error('Failed to fetch store settings', err);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -103,6 +119,8 @@ const AdminLayout = () => {
   const mobileDrawerScrollPos = useRef(0);
 
   const { user } = useSelector((state) => state.auth || {});
+  const { storeSettings } = useSelector((state) => state.settings || {});
+  const resolvedStoreName = storeName || storeSettings?.storeName || 'Admin';
 
   // 1. Lock body scroll & preserve scroll position on mobile sidebar drawer open
   useEffect(() => {
@@ -220,7 +238,7 @@ const AdminLayout = () => {
         {/* Logo Area */}
         <Link to="/" title="Go to Storefront Homepage" className="h-16 flex items-center px-4 border-b border-white/10 shrink-0 hover:opacity-90 transition cursor-pointer">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-gold-400 to-amber-600 flex items-center justify-center text-black font-black text-lg shrink-0 shadow-lg">
-            S
+            {resolvedStoreName.charAt(0).toUpperCase()}
           </div>
           <AnimatePresence>
             {sidebarOpen && (
@@ -230,7 +248,7 @@ const AdminLayout = () => {
                 exit={{ opacity: 0, x: -10 }}
                 className="ml-3 text-xl font-serif font-bold text-gold-400 whitespace-nowrap"
               >
-                StyleVerse
+                {resolvedStoreName}
               </motion.span>
             )}
           </AnimatePresence>

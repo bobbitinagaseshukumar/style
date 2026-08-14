@@ -306,7 +306,7 @@ const Navbar = () => {
 
                 {/* Wishlist Button (Hidden on tiny screens to protect layout) */}
                 {headerSettings?.wishlistVisible !== false && (
-                  <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="hidden sm:block shrink-0">
+                  <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="shrink-0">
                     <Link
                       to="/wishlist"
                       className="relative p-2 sm:p-2.5 rounded-xl text-white/70 hover:text-red-400 hover:bg-white/5 transition-all flex"

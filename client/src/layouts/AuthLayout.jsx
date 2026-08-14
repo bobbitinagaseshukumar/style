@@ -1,8 +1,12 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useSelector } from 'react-redux';
 
 const AuthLayout = () => {
+  const { storeSettings } = useSelector((state) => state.settings || {});
+  const storeName = storeSettings?.storeName || 'StyleVerse';
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Background Decor */}
@@ -18,7 +22,7 @@ const AuthLayout = () => {
       >
         <div className="text-center">
           <h2 className="mt-6 text-3xl font-extrabold text-white font-playfair">
-            StyleVerse
+            {storeName}
           </h2>
         </div>
         <Outlet />

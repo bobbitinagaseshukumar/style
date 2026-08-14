@@ -194,10 +194,10 @@ const Home = () => {
         // Smart published product fallback: If admin published products without tagging "featured" or "newArrival",
         // automatically display published products so the homepage always shows products immediately!
         const resolvedProducts = {
-          featured: featuredList.length > 0 ? featuredList.slice(0, 12) : allProductsList.slice(0, 12),
-          trending: trendingList.length > 0 ? trendingList.slice(0, 12) : allProductsList.slice(0, 12),
-          newArrivals: newArrivalsList.length > 0 ? newArrivalsList.slice(0, 12) : allProductsList.slice(0, 12),
-          todaysDeals: bestSellerList.length > 0 ? bestSellerList.slice(0, 12) : allProductsList.slice(0, 12),
+          featured: featuredList.slice(0, 12),
+          trending: trendingList.slice(0, 12),
+          newArrivals: newArrivalsList.slice(0, 12),
+          todaysDeals: bestSellerList.slice(0, 12),
           allPublished: allProductsList
         };
 

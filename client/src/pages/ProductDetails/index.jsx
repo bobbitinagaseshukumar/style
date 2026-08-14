@@ -251,13 +251,13 @@ const RatingBreakdown = ({ reviews }) => {
     count: reviews.filter(r => r.rating === n).length,
   }));
   const total = reviews.length || 1;
-  const avg = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : '4.8';
+  const avg = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : '0';
   return (
     <div className="flex gap-6 items-center flex-wrap sm:flex-nowrap bg-gray-50 p-5 rounded-2xl border border-gray-100">
       <div className="text-center flex-shrink-0 mx-auto sm:mx-0">
         <p className="text-5xl font-black text-gray-900">{avg}</p>
         <Stars rating={parseFloat(avg)} size={16} />
-        <p className="text-xs text-gray-400 mt-1">{reviews.length || 12} customer reviews</p>
+        <p className="text-xs text-gray-400 mt-1">{reviews.length} customer review{reviews.length !== 1 ? 's' : ''}</p>
       </div>
       <div className="flex-1 space-y-1.5 w-full">
         {counts.map(({ n, count }) => (
@@ -623,15 +623,17 @@ export default function ProductDetails() {
 
             {/* Rating row */}
             <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-100 px-3 py-1 rounded-full">
-                <StarRating 
-                  rating={reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 4.8} 
-                  size="sm" 
-                  showNumber
-                />
-              </div>
+              {reviews.length > 0 && (
+                <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-100 px-3 py-1 rounded-full">
+                  <StarRating 
+                    rating={reviews.reduce((s, r) => s + r.rating, 0) / reviews.length} 
+                    size="sm" 
+                    showNumber
+                  />
+                </div>
+              )}
               <button onClick={() => setActiveTab('reviews')} className="text-xs text-gray-500 hover:text-amber-600 hover:underline transition">
-                {reviews.length || 12} reviews
+                {reviews.length > 0 ? `${reviews.length} review${reviews.length !== 1 ? 's' : ''}` : 'No reviews yet'}
               </button>
               <span className={`text-xs font-bold ${currentStock > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                 {currentStock > 0 ? `✓ In Stock (${currentStock} available)` : '✗ Currently Out of Stock'}

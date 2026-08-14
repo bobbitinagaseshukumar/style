@@ -77,6 +77,7 @@ const AdminSettings = () => {
       setLoading(true);
       await api.put('/cms/settings', { ...settings, checkoutFields: JSON.stringify(checkoutFields) });
       toast.success('Store Settings updated & live!');
+      try { sessionStorage.removeItem('__KVLR_HOME_CACHE__'); window.dispatchEvent(new Event('kvlr:content-updated')); } catch(e){}
     } catch (err) {
       console.error(err);
       toast.success('Settings saved!');

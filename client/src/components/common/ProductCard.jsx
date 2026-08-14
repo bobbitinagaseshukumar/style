@@ -272,6 +272,7 @@ const ProductCard = ({ product, index = 0 }) => {
             src={primaryImage}
             alt={name}
             loading="lazy"
+            decoding="async"
             onLoad={() => setImageLoaded(true)}
             animate={{ scale: isHovered ? 1.06 : 1 }}
             transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
@@ -287,6 +288,7 @@ const ProductCard = ({ product, index = 0 }) => {
               src={hoverImage}
               alt={`${name} alternate`}
               loading="lazy"
+              decoding="async"
               animate={{ opacity: isHovered ? 1 : 0 }}
               transition={{ duration: 0.4 }}
               className="absolute inset-0 w-full h-full object-cover"
@@ -347,7 +349,7 @@ const ProductCard = ({ product, index = 0 }) => {
           </h3>
 
           {/* Rating */}
-          {rating > 0 && (
+          {reviewCount > 0 && rating > 0 && (
             <div className="mb-2">
               <StarRating rating={rating} count={reviewCount} showNumber size="sm" />
             </div>

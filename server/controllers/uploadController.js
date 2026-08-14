@@ -30,9 +30,9 @@ exports.uploadImage = asyncHandler(async (req, res, next) => {
           {
             folder: 'styleverse/products',
             resource_type: 'image',
-            quality: 'auto',
+            quality: 'auto:best',
             fetch_format: 'auto',
-            transformation: [{ width: 1200, height: 1200, crop: 'limit' }],
+            transformation: [{ width: 1600, height: 2000, crop: 'limit', quality: 'auto:best' }],
           },
           (error, res) => {
             if (error) reject(error);
@@ -59,8 +59,22 @@ exports.uploadImage = asyncHandler(async (req, res, next) => {
   // By converting to Base64 Data URL, the image data is stored directly in the database,
   // making it permanent and instantly visible on all devices.
   try {
-    const mimeType = req.file.mimetype || 'image/webp';
-    const base64String = req.file.buffer.toString('base64');
+    // Use sharp if available to optimize the image before base64 encoding
+    let optimizedBuffer = req.file.buffer;
+    let mimeType = 'image/webp';
+    try {
+      const sharp = require('sharp');
+      optimizedBuffer = await sharp(req.file.buffer)
+        .resize(1600, 2000, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 85 })
+        .toBuffer();
+    } catch (sharpErr) {
+      // sharp not available, use raw buffer
+      mimeType = req.file.mimetype || 'image/webp';
+      optimizedBuffer = req.file.buffer;
+    }
+
+    const base64String = optimizedBuffer.toString('base64');
     const dataUrl = `data:${mimeType};base64,${base64String}`;
 
     console.log(`[IMAGE UPLOAD SUCCESS - BASE64] Size: ${base64String.length} chars, MIME: ${mimeType}`);

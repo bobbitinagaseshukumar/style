@@ -85,11 +85,14 @@ exports.getRecentlyViewed = asyncHandler(async (req, res) => {
     },
   });
 
-  const formattedProducts = items.map((item) => ({
-    ...item.product,
-    viewedAt: item.updatedAt,
-    viewCount: item.viewCount,
-  }));
+  // Filter out deleted/null products and only show published ones
+  const formattedProducts = items
+    .filter((item) => item.product && item.product.status === 'PUBLISHED')
+    .map((item) => ({
+      ...item.product,
+      viewedAt: item.updatedAt,
+      viewCount: item.viewCount,
+    }));
 
   res.status(200).json({ success: true, data: formattedProducts });
 });
