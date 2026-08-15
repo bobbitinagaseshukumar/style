@@ -367,13 +367,17 @@ const AdminLayout = () => {
                       const Icon = link.icon;
                       const isActive = location.pathname === link.path || (link.path === '/admin/dashboard' && location.pathname === '/admin');
                       return (
-                        <NavLink
+                        <button
                           key={link.label}
-                          to={link.path}
-                          onClick={() => {
-                            closeMobileDrawer();
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate(link.path);
+                            setTimeout(() => {
+                              closeMobileDrawer();
+                            }, 50);
                           }}
-                          className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 min-h-[44px] cursor-pointer touch-manipulation select-none ${
+                          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 min-h-[44px] text-left cursor-pointer touch-manipulation select-none ${
                             isActive
                               ? 'bg-gradient-to-r from-amber-500/20 to-amber-500/5 text-amber-400 border border-amber-500/30 font-bold'
                               : 'text-gray-400 hover:text-white hover:bg-white/5 font-medium'
@@ -381,7 +385,7 @@ const AdminLayout = () => {
                         >
                           <Icon className="w-5 h-5 shrink-0 pointer-events-none" />
                           <span className="text-xs pointer-events-none">{link.label}</span>
-                        </NavLink>
+                        </button>
                       );
                     })}
                   </div>

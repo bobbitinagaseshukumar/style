@@ -1,17 +1,26 @@
 import React, { useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiChevronRight, FiHome, FiGrid, FiUser, FiShoppingBag, FiHeart, FiLogOut, FiPackage } from 'react-icons/fi';
 import { useSelector } from 'react-redux';
 import { useAuth } from '../../hooks/useAuth';
 
 const MobileMenu = ({ isOpen, onClose }) => {
+  const navigate = useNavigate();
   const { categories } = useSelector((state) => state.category);
   const { storeSettings } = useSelector((state) => state.settings);
   const { isAuthenticated, user, logout } = useAuth();
   const navRef = useRef(null);
   const menuScrollPos = useRef(0);
   const storeName = storeSettings?.storeName || 'KVLR Styles';
+
+  const handleNavClick = (path, e) => {
+    if (e) e.preventDefault();
+    navigate(path);
+    setTimeout(() => {
+      onClose();
+    }, 50);
+  };
 
   // Lock body scroll when open & restore drawer scroll position
   useEffect(() => {
@@ -78,15 +87,15 @@ const MobileMenu = ({ isOpen, onClose }) => {
             >
               {/* Main Links */}
               {mainLinks.map((link) => (
-                <Link
+                <button
                   key={link.name}
-                  to={link.path}
-                  onClick={onClose}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                  type="button"
+                  onClick={(e) => handleNavClick(link.path, e)}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer touch-manipulation"
                 >
-                  <link.icon className="w-5 h-5 text-yellow-400/70" />
-                  <span className="text-sm font-medium">{link.name}</span>
-                </Link>
+                  <link.icon className="w-5 h-5 text-yellow-400/70 pointer-events-none" />
+                  <span className="text-sm font-medium pointer-events-none">{link.name}</span>
+                </button>
               ))}
 
               {/* Categories Section */}
@@ -94,15 +103,15 @@ const MobileMenu = ({ isOpen, onClose }) => {
                 <div className="pt-4 mt-2 border-t border-white/10">
                   <p className="px-3 text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">Shop by Category</p>
                   {categories.slice(0, 10).map((cat) => (
-                    <Link
+                    <button
                       key={cat.id || cat._id}
-                      to={`/categories/${cat.slug}`}
-                      onClick={onClose}
-                      className="flex items-center justify-between px-3 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+                      type="button"
+                      onClick={(e) => handleNavClick(`/categories/${cat.slug}`, e)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer touch-manipulation"
                     >
-                      <span className="text-sm">{cat.name}</span>
-                      <FiChevronRight className="h-3.5 w-3.5 text-white/20" />
-                    </Link>
+                      <span className="text-sm pointer-events-none">{cat.name}</span>
+                      <FiChevronRight className="h-3.5 w-3.5 text-white/20 pointer-events-none" />
+                    </button>
                   ))}
                 </div>
               )}
@@ -112,15 +121,15 @@ const MobileMenu = ({ isOpen, onClose }) => {
                 <div className="pt-4 mt-2 border-t border-white/10">
                   <p className="px-3 text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">My Account</p>
                   {accountLinks.map((link) => (
-                    <Link
+                    <button
                       key={link.name}
-                      to={link.path}
-                      onClick={onClose}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+                      type="button"
+                      onClick={(e) => handleNavClick(link.path, e)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer touch-manipulation"
                     >
-                      <link.icon className="w-4 h-4 text-yellow-400/70" />
-                      <span className="text-sm">{link.name}</span>
-                    </Link>
+                      <link.icon className="w-4 h-4 text-yellow-400/70 pointer-events-none" />
+                      <span className="text-sm pointer-events-none">{link.name}</span>
+                    </button>
                   ))}
                 </div>
               )}
