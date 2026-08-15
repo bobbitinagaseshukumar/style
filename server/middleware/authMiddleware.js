@@ -32,13 +32,34 @@ const protect = asyncHandler(async (req, res, next) => {
             return next(new ApiError(401, 'User belonging to this token no longer exists.'));
         }
 
-        // Session Termination Check across devices
+        // Session Limit Cleanup & Active Token Touch
         try {
-            const sessionCount = await prisma.userSession.count({ where: { userId: user.id } });
-            if (sessionCount > 0) {
-                const activeSession = await prisma.userSession.findFirst({ where: { userId: user.id, token } });
-                if (!activeSession) {
+            const sessions = await prisma.userSession.findMany({
+                where: { userId: user.id },
+                orderBy: { lastActiveAt: 'desc' }
+            });
+
+            if (sessions.length > 0) {
+                const matchingSession = sessions.find(s => s.token === token);
+                if (matchingSession) {
+                    await prisma.userSession.update({
+                        where: { id: matchingSession.id },
+                        data: { lastActiveAt: new Date() }
+                    });
+                } else if (sessions.length >= 3) {
                     return next(new ApiError(401, 'Your session was logged out from another device. Please log in again.'));
+                } else {
+                    await prisma.userSession.create({
+                        data: {
+                            userId: user.id,
+                            deviceFingerprint: `fp-${req.headers['user-agent']?.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30) || 'default'}`,
+                            deviceName: 'Web Device',
+                            browser: req.headers['user-agent'] || 'Web Browser',
+                            ipAddress: req.ip || 'Unknown IP',
+                            token,
+                            lastActiveAt: new Date()
+                        }
+                    });
                 }
             }
         } catch (sessErr) {

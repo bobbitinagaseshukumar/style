@@ -103,6 +103,36 @@ exports.verifyOTP = asyncHandler(async (req, res, next) => {
   // Generate JWT token
   const token = generateToken(user.id, user.role);
 
+  // Save or update UserSession record
+  try {
+    const deviceFingerprint = req.body.deviceFingerprint || `fp-${req.headers['user-agent']?.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30) || 'default'}`;
+    const deviceName = req.body.deviceName || 'Web Session';
+    const existingSession = await prisma.userSession.findFirst({
+      where: { userId: user.id, deviceFingerprint }
+    });
+
+    if (existingSession) {
+      await prisma.userSession.update({
+        where: { id: existingSession.id },
+        data: { token, lastActiveAt: new Date() }
+      });
+    } else {
+      await prisma.userSession.create({
+        data: {
+          userId: user.id,
+          deviceFingerprint,
+          deviceName,
+          browser: req.headers['user-agent'] || 'Web Browser',
+          ipAddress: req.ip || 'Unknown IP',
+          token,
+          lastActiveAt: new Date()
+        }
+      });
+    }
+  } catch (sessErr) {
+    console.warn('[VERIFY OTP SESSION SAVE NOTICE]', sessErr.message);
+  }
+
   res.status(200).json({
     success: true,
     message: 'Email verified successfully! Welcome to StyleVerse.',
@@ -546,8 +576,37 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
     },
   });
 
-  // Generate JWT token (7d expiration)
   const token = generateToken(updatedUser.id, updatedUser.role);
+
+  // Save or update UserSession record
+  try {
+    const deviceFingerprint = req.body.deviceFingerprint || `fp-${req.headers['user-agent']?.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30) || 'default'}`;
+    const deviceName = req.body.deviceName || 'Google Web Session';
+    const existingSession = await prisma.userSession.findFirst({
+      where: { userId: updatedUser.id, deviceFingerprint }
+    });
+
+    if (existingSession) {
+      await prisma.userSession.update({
+        where: { id: existingSession.id },
+        data: { token, lastActiveAt: new Date() }
+      });
+    } else {
+      await prisma.userSession.create({
+        data: {
+          userId: updatedUser.id,
+          deviceFingerprint,
+          deviceName,
+          browser: req.headers['user-agent'] || 'Web Browser',
+          ipAddress: req.ip || 'Unknown IP',
+          token,
+          lastActiveAt: new Date()
+        }
+      });
+    }
+  } catch (sessErr) {
+    console.warn('[GOOGLE AUTH SESSION SAVE NOTICE]', sessErr.message);
+  }
 
   // Set secure HTTP-only cookie
   const cookieOptions = {

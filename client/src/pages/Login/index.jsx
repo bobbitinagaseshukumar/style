@@ -275,15 +275,20 @@ const Login = ({ initialMode }) => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const { isAuthenticated, user, token: reduxToken } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    if (isAuthenticated && user) {
-      const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
-      const targetPath = isAdmin ? '/admin/dashboard' : '/';
-      navigate(targetPath, { replace: true });
+    const storedToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (isAuthenticated || reduxToken || storedToken) {
+      if (user) {
+        const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+        const targetPath = isAdmin ? '/admin/dashboard' : '/';
+        navigate(targetPath, { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, reduxToken, user, navigate]);
 
   const handleMouseMove = (e) => {
     if (mouseRef.current) {
