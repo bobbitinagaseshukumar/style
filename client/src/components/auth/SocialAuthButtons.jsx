@@ -45,7 +45,7 @@ const SocialAuthButtons = ({ mode = 'login', onSuccess }) => {
         dispatch(setCredentials({ user: data.user, token: data.token }));
         localStorage.setItem('token', data.token);
         toast.success(`Welcome back ${data.user.fullName || data.user.name}!`);
-        const targetPath = data.user?.role === 'ADMIN' || data.user?.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/dashboard';
+        const targetPath = data.user?.role === 'ADMIN' || data.user?.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/';
         navigate(targetPath, { replace: true });
         if (onSuccess) onSuccess();
       } else if (data.status === 'ACCOUNT_NOT_FOUND') {

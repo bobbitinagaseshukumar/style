@@ -278,8 +278,9 @@ const Login = ({ initialMode }) => {
   const { isAuthenticated, user } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      const targetPath = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/dashboard';
+    if (isAuthenticated && user) {
+      const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+      const targetPath = isAdmin ? '/admin/dashboard' : '/';
       navigate(targetPath, { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
@@ -395,7 +396,7 @@ const Login = ({ initialMode }) => {
         setAuthSuccess(true);
         dispatch(setCredentials({ user, token }));
         toast.success(isRegister ? '🎉 Account created successfully!' : '✨ Welcome back!');
-        const targetPath = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/dashboard';
+        const targetPath = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/';
         navigate(targetPath, { replace: true });
       } else {
         setError(res.data?.message || 'Authentication failed');
