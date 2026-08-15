@@ -231,7 +231,66 @@ exports.verifyAdminOTP = asyncHandler(async (req, res, next) => {
     });
   }
 
+  // ── Multi-Device Session Limit Check (Max 3 Devices) ──
+  const fingerprint = deviceFingerprint || `fp-${req.headers['user-agent']?.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30) || 'default'}`;
+  const devName = deviceName || 'Admin Web Portal';
+
+  const activeSessions = await prisma.userSession.findMany({
+    where: { userId: admin.id },
+    orderBy: { lastActiveAt: 'desc' }
+  });
+
+  const existingSession = activeSessions.find(s => s.deviceFingerprint === fingerprint);
+
+  if (!existingSession && activeSessions.length >= 3) {
+    return res.status(200).json({
+      success: false,
+      code: 'MAX_DEVICES_REACHED',
+      message: 'Maximum limit of 3 logged-in devices reached. Select a device to log out from to continue.',
+      data: {
+        adminId: admin.id,
+        email: admin.email,
+        activeSessions: activeSessions.map(s => ({
+          id: s.id,
+          deviceName: s.deviceName || 'Admin Browser Session',
+          browser: s.browser || 'Web Browser',
+          ipAddress: s.ipAddress || req.ip || 'Unknown IP',
+          lastActiveAt: s.lastActiveAt
+        }))
+      }
+    });
+  }
+
   const token = generateToken(admin.id, admin.role, admin.tokenVersion);
+
+  // Save or update UserSession record
+  try {
+    if (existingSession) {
+      await prisma.userSession.update({
+        where: { id: existingSession.id },
+        data: {
+          token,
+          lastActiveAt: new Date(),
+          deviceName: devName,
+          ipAddress: String(req.ip || '127.0.0.1')
+        }
+      });
+    } else {
+      await prisma.userSession.create({
+        data: {
+          userId: admin.id,
+          token,
+          deviceFingerprint: fingerprint,
+          deviceName: devName,
+          browser: req.headers['user-agent']?.substring(0, 50) || 'Web Browser',
+          ipAddress: String(req.ip || '127.0.0.1')
+        }
+      });
+    }
+  } catch (sessErr) {
+    console.warn('[ADMIN SESSION RECORD FAILED]', sessErr.message);
+  }
+
   await logLoginAttempt(admin.id, admin.email, req, 'SUCCESS', 'OTP verified successfully');
 
   res.status(200).json({

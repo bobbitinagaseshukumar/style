@@ -81,6 +81,7 @@ model User {
 
   trustedDevices      AdminTrustedDevice[]
   loginHistory        AdminLoginHistory[]
+  sessions            UserSession[]
 
   @@index([firebaseUid])
   @@index([googleId])
@@ -110,6 +111,21 @@ model AdminLoginHistory {
   status            String    // SUCCESS | FAILED | BLOCKED | OTP_REQUIRED
   failureReason     String?
   createdAt         DateTime  @default(now())
+}
+
+model UserSession {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceFingerprint String
+  deviceName        String?
+  browser           String?
+  ipAddress         String?
+  token             String    @unique
+  lastActiveAt      DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model SystemSetting {

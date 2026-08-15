@@ -6,6 +6,7 @@ import { useDispatch } from 'react-redux';
 import { setCredentials } from '../../redux/auth/authSlice';
 import { FiShield, FiKey, FiRefreshCw, FiCheck, FiArrowLeft } from 'react-icons/fi';
 import api from '../../config/api';
+import DeviceLimitModal from '../../components/common/DeviceLimitModal';
 
 const AdminVerifyOTP = () => {
   const location = useLocation();
@@ -32,6 +33,7 @@ const AdminVerifyOTP = () => {
   const [timer, setTimer] = useState(60);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [deviceLimitData, setDeviceLimitData] = useState(null);
 
   const inputsRef = useRef([]);
 
@@ -107,6 +109,11 @@ const AdminVerifyOTP = () => {
         deviceFingerprint,
         deviceName
       });
+
+      if (res.data?.code === 'MAX_DEVICES_REACHED') {
+        setDeviceLimitData(res.data.data);
+        return;
+      }
 
       const { user, token } = res.data.data;
       dispatch(setCredentials({ user, token }));
@@ -245,6 +252,18 @@ const AdminVerifyOTP = () => {
           </button>
         </div>
       </motion.div>
+
+      <DeviceLimitModal
+        isOpen={!!deviceLimitData}
+        onClose={() => setDeviceLimitData(null)}
+        activeSessions={deviceLimitData?.activeSessions || []}
+        userId={deviceLimitData?.adminId || deviceLimitData?.userId}
+        email={deviceLimitData?.email}
+        onSessionTerminated={() => {
+          setDeviceLimitData(null);
+          handleVerify();
+        }}
+      />
     </div>
   );
 };

@@ -20,6 +20,7 @@ router.post('/forgot-password', authLimiter, forgotPasswordValidator, validate, 
 router.post('/verify-reset-otp', authLimiter, authController.verifyResetOTP);
 router.post('/reset-password', authLimiter, resetPasswordValidator, validate, authController.resetPassword);
 router.post('/logout', authController.logout);
+router.post('/terminate-session', authController.terminateSession);
 router.get('/me', protect, authController.getMe);
 
 // Auth Settings Routes (Enterprise Auth Manager)

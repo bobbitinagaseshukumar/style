@@ -11,6 +11,7 @@ import { setCredentials } from '../../redux/auth/authSlice';
 import { toast } from 'react-toastify';
 import SocialAuthButtons from '../../components/auth/SocialAuthButtons';
 import LoginScene from './LoginScene';
+import DeviceLimitModal from '../../components/common/DeviceLimitModal';
 
 const customStyles = `
   @keyframes float-particle {
@@ -147,6 +148,7 @@ const Login = ({ initialMode }) => {
   const [error, setError] = useState('');
 
   const mouseRef = useRef({ x: 0, y: 0 });
+  const [deviceLimitData, setDeviceLimitData] = useState(null);
 
   // Forgot Password Modal State
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
@@ -292,6 +294,11 @@ const Login = ({ initialMode }) => {
           : { email: form.email, password: form.password };
 
       const res = await api.post(endpoint, payload);
+
+      if (res.data?.code === 'MAX_DEVICES_REACHED') {
+        setDeviceLimitData(res.data.data);
+        return;
+      }
 
       if (res.data?.success && res.data.token) {
         if (form.rememberMe && form.email) {
@@ -874,6 +881,18 @@ const Login = ({ initialMode }) => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <DeviceLimitModal
+          isOpen={!!deviceLimitData}
+          onClose={() => setDeviceLimitData(null)}
+          activeSessions={deviceLimitData?.activeSessions || []}
+          userId={deviceLimitData?.userId}
+          email={deviceLimitData?.email}
+          onSessionTerminated={() => {
+            setDeviceLimitData(null);
+            handleLogin();
+          }}
+        />
       </div>
     </>
   );

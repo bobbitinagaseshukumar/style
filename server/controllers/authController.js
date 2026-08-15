@@ -170,28 +170,70 @@ exports.login = asyncHandler(async (req, res, next) => {
     data: { lastLoginAt: new Date(), isVerified: true },
   });
 
-  // Record Multi-Device Activity Log
-  try {
-    const ip = req.ip || req.headers['x-forwarded-for'] || '127.0.0.1';
-    const userAgent = req.headers['user-agent'] || 'Unknown Browser';
-    await prisma.activityLog.create({
+  // ── Multi-Device Session Limit Check (Max 3 Devices) ──
+  const deviceFingerprint = req.body.deviceFingerprint || `fp-${req.headers['user-agent']?.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30) || 'default'}`;
+  const deviceName = req.body.deviceName || 'Web Browser';
+
+  const activeSessions = await prisma.userSession.findMany({
+    where: { userId: user.id },
+    orderBy: { lastActiveAt: 'desc' }
+  });
+
+  const existingSession = activeSessions.find(s => s.deviceFingerprint === deviceFingerprint);
+
+  if (!existingSession && activeSessions.length >= 3) {
+    return res.status(200).json({
+      success: false,
+      code: 'MAX_DEVICES_REACHED',
+      message: 'Maximum limit of 3 logged-in devices reached. Select a device to log out from to continue.',
       data: {
         userId: user.id,
-        action: 'LOGIN',
-        details: `Multi-device login successful from ${userAgent}`,
-        ipAddress: String(ip),
-      },
+        email: user.email,
+        activeSessions: activeSessions.map(s => ({
+          id: s.id,
+          deviceName: s.deviceName || 'Browser Session',
+          browser: s.browser || 'Web Browser',
+          ipAddress: s.ipAddress || req.ip || 'Unknown IP',
+          lastActiveAt: s.lastActiveAt
+        }))
+      }
     });
-  } catch (err) {
-    console.error('Failed to log activity:', err);
   }
 
   // Generate Multi-Device JWT Token (30-Day Expiration)
   const token = generateToken(user.id, user.role);
 
+  // Save or update UserSession record
+  try {
+    if (existingSession) {
+      await prisma.userSession.update({
+        where: { id: existingSession.id },
+        data: {
+          token,
+          lastActiveAt: new Date(),
+          deviceName,
+          ipAddress: String(req.ip || '127.0.0.1')
+        }
+      });
+    } else {
+      await prisma.userSession.create({
+        data: {
+          userId: user.id,
+          token,
+          deviceFingerprint,
+          deviceName,
+          browser: req.headers['user-agent']?.substring(0, 50) || 'Web Browser',
+          ipAddress: String(req.ip || '127.0.0.1')
+        }
+      });
+    }
+  } catch (sessErr) {
+    console.warn('[USER SESSION RECORD FAILED]', sessErr.message);
+  }
+
   res.status(200).json({
     success: true,
-    message: 'Login successful! Multi-device session active.',
+    message: 'Login successful! Active device session established.',
     data: {
       user: {
         id: user.id,
@@ -202,6 +244,29 @@ exports.login = asyncHandler(async (req, res, next) => {
       },
       token,
     },
+  });
+});
+
+// ==================== TERMINATE SESSION (LOG OUT FROM SPECIFIC DEVICE) ====================
+exports.terminateSession = asyncHandler(async (req, res, next) => {
+  const { sessionId, userId, email, terminateAllExceptCurrent } = req.body;
+
+  if (terminateAllExceptCurrent && (userId || email)) {
+    let targetId = userId;
+    if (!targetId && email) {
+      const u = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+      if (u) targetId = u.id;
+    }
+    if (targetId) {
+      await prisma.userSession.deleteMany({ where: { userId: targetId } });
+    }
+  } else if (sessionId) {
+    await prisma.userSession.delete({ where: { id: sessionId } }).catch(() => {});
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Selected device session terminated successfully. You can now sign in.'
   });
 });
 
