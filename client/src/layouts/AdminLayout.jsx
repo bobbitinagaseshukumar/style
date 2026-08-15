@@ -73,23 +73,12 @@ const sidebarGroups = [
   }
 ];
 
-const INITIAL_NOTIFICATIONS = [
-  { id: 1, title: 'New Customer Order', time: '10m ago', text: 'Order #KVLR-1082 received for ₹2,499', unread: true },
-  { id: 2, title: 'Inventory Alert', time: '1h ago', text: 'Silk Saree Blue Stock below 5 units', unread: true },
-  { id: 3, title: 'Customer Registration', time: '2h ago', text: 'New customer account created via Google', unread: true },
-];
-
-/**
- * Enterprise Admin Dashboard Layout
- * Guarantees zero page merging / overlapping, working interactive header search quick-jump,
- * notification bell modal, smooth profile dropdown, body scroll locking, and scroll reset on route change.
- */
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [storeName, setStoreName] = useState('');
@@ -105,7 +94,18 @@ const AdminLayout = () => {
         console.error('Failed to fetch store settings', err);
       }
     };
+    const fetchAdminNotifications = async () => {
+      try {
+        const { data } = await api.get('/notifications/admin-notifications');
+        if (data?.success && Array.isArray(data.data?.notifications)) {
+          setNotifications(data.data.notifications);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch admin notifications', err.message);
+      }
+    };
     fetchSettings();
+    fetchAdminNotifications();
   }, []);
 
   const location = useLocation();
@@ -520,20 +520,32 @@ const AdminLayout = () => {
                     </div>
 
                     <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                      {notifications.map((item) => (
-                        <div
-                          key={item.id}
-                          className={`p-2.5 rounded-xl border transition ${
-                            item.unread ? 'bg-amber-50/60 border-amber-200/80' : 'bg-gray-50 border-gray-100'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-0.5">
-                            <p className="font-bold text-gray-900 text-xs">{item.title}</p>
-                            <span className="text-[10px] text-gray-400">{item.time}</span>
-                          </div>
-                          <p className="text-[11px] text-gray-600 leading-tight">{item.text}</p>
+                      {notifications.length > 0 ? (
+                        notifications.map((item) => (
+                          <Link
+                            key={item.id}
+                            to={item.link || '/admin/orders'}
+                            onClick={() => setNotificationOpen(false)}
+                            className={`block p-2.5 rounded-xl border transition cursor-pointer hover:border-amber-400 ${
+                              item.unread ? 'bg-amber-50/60 border-amber-200/80' : 'bg-gray-50 border-gray-100'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-0.5">
+                              <p className="font-bold text-gray-900 text-xs">{item.title}</p>
+                              <span className="text-[10px] text-gray-400">
+                                {item.time ? new Date(item.time).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-gray-600 leading-tight">{item.text}</p>
+                          </Link>
+                        ))
+                      ) : (
+                        <div className="py-6 text-center text-gray-500 space-y-1">
+                          <FiBell className="w-6 h-6 mx-auto text-gray-300 opacity-60" />
+                          <p className="font-semibold text-xs text-gray-600">No new notifications</p>
+                          <p className="text-[10px] text-gray-400">Real customer orders & stock alerts will show here</p>
                         </div>
-                      ))}
+                      )}
                     </div>
 
                     <div className="pt-1 border-t border-gray-100 text-center">
