@@ -211,6 +211,14 @@ const Login = ({ initialMode }) => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const targetPath = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/dashboard';
+      navigate(targetPath, { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleMouseMove = (e) => {
     if (mouseRef.current) {

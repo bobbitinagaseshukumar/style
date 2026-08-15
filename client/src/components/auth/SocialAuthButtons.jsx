@@ -44,9 +44,10 @@ const SocialAuthButtons = ({ mode = 'login', onSuccess }) => {
         // Existing account — login directly
         dispatch(setCredentials({ user: data.user, token: data.token }));
         localStorage.setItem('token', data.token);
-        toast.success(`Welcome back ${data.user.fullName}!`);
+        toast.success(`Welcome back ${data.user.fullName || data.user.name}!`);
+        const targetPath = data.user?.role === 'ADMIN' || data.user?.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/dashboard';
+        navigate(targetPath, { replace: true });
         if (onSuccess) onSuccess();
-        else navigate('/dashboard');
       } else if (data.status === 'ACCOUNT_NOT_FOUND') {
         // New Google user — redirect to registration with Google profile
         toast.info('Please complete your account details to continue.');
