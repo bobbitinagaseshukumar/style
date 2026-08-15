@@ -33,12 +33,16 @@ const protect = asyncHandler(async (req, res, next) => {
         }
 
         // Session Termination Check across devices
-        const sessionCount = await prisma.userSession.count({ where: { userId: user.id } });
-        if (sessionCount > 0) {
-            const activeSession = await prisma.userSession.findFirst({ where: { userId: user.id, token } });
-            if (!activeSession) {
-                return next(new ApiError(401, 'Your session was logged out from another device. Please log in again.'));
+        try {
+            const sessionCount = await prisma.userSession.count({ where: { userId: user.id } });
+            if (sessionCount > 0) {
+                const activeSession = await prisma.userSession.findFirst({ where: { userId: user.id, token } });
+                if (!activeSession) {
+                    return next(new ApiError(401, 'Your session was logged out from another device. Please log in again.'));
+                }
             }
+        } catch (sessErr) {
+            console.warn('[AUTH MIDDLEWARE SESSION NOTICE]', sessErr.message);
         }
 
         // Token Version Validation (Force Logout Enforcement for non-admin accounts)

@@ -235,30 +235,37 @@ exports.verifyAdminOTP = asyncHandler(async (req, res, next) => {
   const fingerprint = deviceFingerprint || `fp-${req.headers['user-agent']?.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30) || 'default'}`;
   const devName = deviceName || 'Admin Web Portal';
 
-  const activeSessions = await prisma.userSession.findMany({
-    where: { userId: admin.id },
-    orderBy: { lastActiveAt: 'desc' }
-  });
+  let activeSessions = [];
+  let existingSession = null;
 
-  const existingSession = activeSessions.find(s => s.deviceFingerprint === fingerprint);
-
-  if (!existingSession && activeSessions.length >= 3) {
-    return res.status(200).json({
-      success: false,
-      code: 'MAX_DEVICES_REACHED',
-      message: 'Maximum limit of 3 logged-in devices reached. Select a device to log out from to continue.',
-      data: {
-        adminId: admin.id,
-        email: admin.email,
-        activeSessions: activeSessions.map(s => ({
-          id: s.id,
-          deviceName: s.deviceName || 'Admin Browser Session',
-          browser: s.browser || 'Web Browser',
-          ipAddress: s.ipAddress || req.ip || 'Unknown IP',
-          lastActiveAt: s.lastActiveAt
-        }))
-      }
+  try {
+    activeSessions = await prisma.userSession.findMany({
+      where: { userId: admin.id },
+      orderBy: { lastActiveAt: 'desc' }
     });
+
+    existingSession = activeSessions.find(s => s.deviceFingerprint === fingerprint);
+
+    if (!existingSession && activeSessions.length >= 3) {
+      return res.status(200).json({
+        success: false,
+        code: 'MAX_DEVICES_REACHED',
+        message: 'Maximum limit of 3 logged-in devices reached. Select a device to log out from to continue.',
+        data: {
+          adminId: admin.id,
+          email: admin.email,
+          activeSessions: activeSessions.map(s => ({
+            id: s.id,
+            deviceName: s.deviceName || 'Admin Browser Session',
+            browser: s.browser || 'Web Browser',
+            ipAddress: s.ipAddress || req.ip || 'Unknown IP',
+            lastActiveAt: s.lastActiveAt
+          }))
+        }
+      });
+    }
+  } catch (sessErr) {
+    console.warn('[ADMIN SESSION CHECK NOTICE]', sessErr.message);
   }
 
   const token = generateToken(admin.id, admin.role, admin.tokenVersion);

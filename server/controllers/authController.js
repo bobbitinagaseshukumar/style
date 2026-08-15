@@ -174,30 +174,37 @@ exports.login = asyncHandler(async (req, res, next) => {
   const deviceFingerprint = req.body.deviceFingerprint || `fp-${req.headers['user-agent']?.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30) || 'default'}`;
   const deviceName = req.body.deviceName || 'Web Browser';
 
-  const activeSessions = await prisma.userSession.findMany({
-    where: { userId: user.id },
-    orderBy: { lastActiveAt: 'desc' }
-  });
+  let activeSessions = [];
+  let existingSession = null;
 
-  const existingSession = activeSessions.find(s => s.deviceFingerprint === deviceFingerprint);
-
-  if (!existingSession && activeSessions.length >= 3) {
-    return res.status(200).json({
-      success: false,
-      code: 'MAX_DEVICES_REACHED',
-      message: 'Maximum limit of 3 logged-in devices reached. Select a device to log out from to continue.',
-      data: {
-        userId: user.id,
-        email: user.email,
-        activeSessions: activeSessions.map(s => ({
-          id: s.id,
-          deviceName: s.deviceName || 'Browser Session',
-          browser: s.browser || 'Web Browser',
-          ipAddress: s.ipAddress || req.ip || 'Unknown IP',
-          lastActiveAt: s.lastActiveAt
-        }))
-      }
+  try {
+    activeSessions = await prisma.userSession.findMany({
+      where: { userId: user.id },
+      orderBy: { lastActiveAt: 'desc' }
     });
+
+    existingSession = activeSessions.find(s => s.deviceFingerprint === deviceFingerprint);
+
+    if (!existingSession && activeSessions.length >= 3) {
+      return res.status(200).json({
+        success: false,
+        code: 'MAX_DEVICES_REACHED',
+        message: 'Maximum limit of 3 logged-in devices reached. Select a device to log out from to continue.',
+        data: {
+          userId: user.id,
+          email: user.email,
+          activeSessions: activeSessions.map(s => ({
+            id: s.id,
+            deviceName: s.deviceName || 'Browser Session',
+            browser: s.browser || 'Web Browser',
+            ipAddress: s.ipAddress || req.ip || 'Unknown IP',
+            lastActiveAt: s.lastActiveAt
+          }))
+        }
+      });
+    }
+  } catch (sessErr) {
+    console.warn('[USER SESSION CHECK NOTICE]', sessErr.message);
   }
 
   // Generate Multi-Device JWT Token (30-Day Expiration)
