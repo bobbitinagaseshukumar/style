@@ -606,22 +606,13 @@ const Login = ({ initialMode }) => {
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-semibold text-gray-300">Password</label>
-                          <div className="flex items-center gap-3">
-                            <button
-                              type="button"
-                              onClick={handleRequestLoginOTP}
-                              className="text-[11px] text-amber-400 hover:text-amber-300 hover:underline transition-colors"
-                            >
-                              Sign In via OTP
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setForgotModalOpen(true)}
-                              className="text-[11px] text-amber-400 hover:text-amber-300 hover:underline transition-colors"
-                            >
-                              Forgot Password?
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setForgotModalOpen(true)}
+                            className="text-[11px] text-amber-400 hover:text-amber-300 hover:underline transition-colors"
+                          >
+                            Forgot Password?
+                          </button>
                         </div>
                         <div className="relative group">
                           <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-amber-500 transition-colors z-10" />

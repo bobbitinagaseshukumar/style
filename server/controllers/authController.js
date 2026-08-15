@@ -169,30 +169,31 @@ exports.login = asyncHandler(async (req, res, next) => {
     return next(new ApiError(403, 'Your account has been suspended. Please contact support.'));
   }
 
-  // Option A: Email OTP Login
-  if (loginType === 'OTP') {
-    const otp = await createOTP(user.id);
-    try {
-      await sendOTPEmail(user.email, user.fullName, otp);
-      console.log(`[CUSTOMER LOGIN OTP] 6-digit OTP (${otp}) successfully emailed to ${user.email}`);
-    } catch (mailErr) {
-      console.error('[CUSTOMER LOGIN OTP EMAIL FAILED]', mailErr);
-      return next(new ApiError(500, `Failed to send OTP email to ${user.email}: ${mailErr.message}`));
-    }
-    return res.status(200).json({
-      success: true,
-      message: `Login OTP sent to ${user.email}`,
-      data: { userId: user.id, email: user.email, requiresOTP: true },
-    });
+  // Verify Password & Trigger Mandatory 2FA OTP
+  if (!password) {
+    return next(new ApiError(400, 'Password is required'));
   }
 
-  // Option B: Password Login
-  if (password) {
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return next(new ApiError(401, 'Invalid password. Please check your credentials or click Forgot Password.'));
-    }
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    return next(new ApiError(401, 'Invalid password. Please check your credentials or click Forgot Password.'));
   }
+
+  // Password matched! Issue 6-digit OTP code to email for login verification
+  const otp = await createOTP(user.id);
+  try {
+    await sendOTPEmail(user.email, user.fullName, otp);
+    console.log(`[LOGIN 2FA OTP] 6-digit OTP (${otp}) successfully emailed to ${user.email}`);
+  } catch (mailErr) {
+    console.error('[LOGIN 2FA OTP EMAIL FAILED]', mailErr);
+    return next(new ApiError(500, `Failed to send OTP verification email to ${user.email}: ${mailErr.message}`));
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: `Authentication code sent to ${user.email}. Please enter the 6-digit code to complete sign in.`,
+    data: { userId: user.id, email: user.email, requiresOTP: true }
+  });
 
   // Update last login timestamp
   await prisma.user.update({
