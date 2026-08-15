@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { formatCurrency } from '../../utils/formatCurrency';
+import { formatImageUrl } from '../../utils/formatImageUrl';
 
 const RecentlyViewed = ({ currentProductId }) => {
   const [recentProducts, setRecentProducts] = useState([]);
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem('styleverse_recently_viewed') || '[]');
-      const filtered = saved.filter(p => p.id !== currentProductId);
-      setRecentProducts(filtered.slice(0, 4));
+      localStorage.removeItem('styleverse_recently_viewed');
+      setRecentProducts([]);
     } catch (err) {
       console.error(err);
     }

@@ -471,15 +471,26 @@ exports.deleteProduct = asyncHandler(async (req, res, next) => {
       return next(new ApiError(500, `Failed to delete product: ${err.message}`));
     }
   } else {
-    // Soft Delete / Archive
-    await prisma.product.update({
-      where: { id },
-      data: {
-        status: 'DELETED',
-        isVisible: false,
-        showOnHomepage: false
-      }
-    });
+    // Soft Delete / Archive — wipe out active references so it never appears anywhere
+    await prisma.$transaction([
+      prisma.recentlyViewed.deleteMany({ where: { productId: id } }),
+      prisma.wishlistItem.deleteMany({ where: { productId: id } }),
+      prisma.cartItem.deleteMany({ where: { productId: id } }),
+      prisma.product.update({
+        where: { id },
+        data: {
+          status: 'DELETED',
+          isVisible: false,
+          showOnHomepage: false,
+          featured: false,
+          trending: false,
+          newArrival: false,
+          bestSeller: false,
+          flashSale: false,
+          todaysDeal: false,
+        }
+      })
+    ]);
   }
 
   res.status(200).json({

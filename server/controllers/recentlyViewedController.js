@@ -85,9 +85,9 @@ exports.getRecentlyViewed = asyncHandler(async (req, res) => {
     },
   });
 
-  // Filter out deleted/null products and only show published ones
+  // Filter out deleted/null/hidden products and only show strictly published ones
   const formattedProducts = items
-    .filter((item) => item.product && item.product.status === 'PUBLISHED')
+    .filter((item) => item.product && item.product.status === 'PUBLISHED' && item.product.isVisible !== false)
     .map((item) => ({
       ...item.product,
       viewedAt: item.updatedAt,

@@ -21,6 +21,8 @@ import { formatCurrency } from '../../utils/formatCurrency';
 import ReviewSection from '../../components/reviews/ReviewSection';
 import WriteReviewModal from '../../components/reviews/WriteReviewModal';
 import StarRating from '../../components/reviews/StarRating';
+import ProductCard from '../../components/common/ProductCard';
+import RecentlyViewedSection from '../../components/home/RecentlyViewedSection';
 import { toast } from 'react-toastify';
 
 /* ═══ HELPER: SAFE JSON PARSER ═══ */
@@ -401,13 +403,10 @@ export default function ProductDetails() {
         if (sizes.length > 0) setSelectedSize(sizes[0]);
         setSelectedImgIdx(0);
 
-        // Save to Recently Viewed
+        // Save to Recently Viewed via server API & clear stale local cache
         try {
           api.post('/recently-viewed', { productId: prod.id }).catch(() => {});
-          const saved = safeJSON(localStorage.getItem('styleverse_recently_viewed'));
-          const item = { id: prod.id, name: prod.name, slug: prod.slug, price: prod.discountPrice || prod.price, image: prod.images?.[0]?.url };
-          const next = [item, ...saved.filter(p => p.id !== prod.id)].slice(0, 10);
-          localStorage.setItem('styleverse_recently_viewed', JSON.stringify(next));
+          localStorage.removeItem('styleverse_recently_viewed');
         } catch {}
 
         // Fetch Related & Recommended
@@ -976,15 +975,33 @@ export default function ProductDetails() {
         )}
 
         {/* ═══════════════════════════════════════════════════
+            SIMILAR STYLES YOU MAY LIKE (SAME CATEGORY)
+        ═══════════════════════════════════════════════════ */}
+        {relatedProducts.length > 0 && (
+          <div className="mt-12 border-t border-gray-100 pt-10">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-serif font-bold text-gray-900">Similar Styles You May Like</h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
+              {relatedProducts.slice(0, 4).map(p => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════
             RECOMMENDED FOR YOU / TRENDING
         ═══════════════════════════════════════════════════ */}
         {recommendedProducts.length > 0 && (
           <div className="mt-12 border-t border-gray-100 pt-10">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-black text-gray-900">Recommended For You</h2>
+              <h2 className="text-xl font-serif font-bold text-gray-900">Recommended For You</h2>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none">
-              {recommendedProducts.map(p => <MiniProductCard key={p.id} product={p} />)}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
+              {recommendedProducts.slice(0, 4).map(p => (
+                <ProductCard key={p.id} product={p} />
+              ))}
             </div>
           </div>
         )}
@@ -1121,40 +1138,3 @@ export default function ProductDetails() {
     </div>
   );
 }
-
-/* ═══ RECENTLY VIEWED SECTION ═══ */
-const RecentlyViewedSection = ({ currentId }) => {
-  const navigate = useNavigate();
-  const [items, setItems] = useState([]);
-
-  useEffect(() => {
-    try {
-      const saved = safeJSON(localStorage.getItem('styleverse_recently_viewed'));
-      setItems(saved.filter(p => p.id !== currentId).slice(0, 6));
-    } catch {}
-  }, [currentId]);
-
-  if (items.length === 0) return null;
-
-  return (
-    <div className="mt-12 border-t border-gray-100 pt-10">
-      <h3 className="text-xl font-black text-gray-900 mb-6">Recently Viewed Products</h3>
-      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none">
-        {items.map(item => (
-          <button key={item.id} onClick={() => navigate(`/product/${item.slug || item.id}`)}
-            className="flex-shrink-0 w-36 sm:w-44 text-left group bg-white rounded-2xl border border-gray-100 p-2 hover:shadow-md transition">
-            <div className="w-full aspect-[3/4] rounded-xl overflow-hidden bg-gray-50 mb-2">
-              {item.image ? (
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-              ) : (
-                <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-300 text-2xl">👔</div>
-              )}
-            </div>
-            <p className="text-xs font-bold text-gray-800 truncate px-1">{item.name}</p>
-            <p className="text-sm font-black text-gray-900 mt-0.5 px-1">{formatCurrency(item.price)}</p>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-};
