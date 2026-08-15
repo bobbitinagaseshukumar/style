@@ -150,6 +150,13 @@ const Login = ({ initialMode }) => {
   const mouseRef = useRef({ x: 0, y: 0 });
   const [deviceLimitData, setDeviceLimitData] = useState(null);
 
+  // OTP Login State
+  const [loginOtpStep, setLoginOtpStep] = useState(false);
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otpUserId, setOtpUserId] = useState('');
+  const [loginOtpCode, setLoginOtpCode] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+
   // Forgot Password Modal State
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
@@ -158,6 +165,63 @@ const Login = ({ initialMode }) => {
   const [newPassword, setNewPassword] = useState('');
 
   const [dynamicFields, setDynamicFields] = useState([]);
+
+  const handleRequestLoginOTP = async () => {
+    if (!form.email.trim()) {
+      setError('Please enter your email address first');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const res = await api.post('/auth/login', { email: form.email.trim(), loginType: 'OTP' });
+      if (res.data?.success && res.data.data?.requiresOTP) {
+        setOtpEmail(res.data.data.email || form.email);
+        setOtpUserId(res.data.data.userId);
+        setLoginOtpStep(true);
+        toast.success(res.data.message || `6-digit OTP code sent to ${form.email}`);
+      } else {
+        setError(res.data?.message || 'Failed to send OTP code.');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to send OTP code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyLoginOTP = async (e) => {
+    if (e) e.preventDefault();
+    if (!loginOtpCode || loginOtpCode.trim().length !== 6) {
+      toast.error('Please enter the 6-digit OTP code sent to your email');
+      return;
+    }
+    setOtpLoading(true);
+    try {
+      const res = await api.post('/auth/verify-otp', {
+        userId: otpUserId,
+        email: otpEmail,
+        otp: loginOtpCode.trim()
+      });
+
+      const token = res.data?.token || res.data?.data?.token;
+      const user = res.data?.user || res.data?.data?.user;
+
+      if (res.data?.success && token && user) {
+        setAuthSuccess(true);
+        dispatch(setCredentials({ user, token }));
+        toast.success('🎉 Login successful! Welcome back.');
+        const targetPath = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/dashboard';
+        navigate(targetPath, { replace: true });
+      } else {
+        toast.error(res.data?.message || 'Invalid OTP code');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'OTP verification failed');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (isGoogleMode) {
@@ -308,7 +372,18 @@ const Login = ({ initialMode }) => {
         return;
       }
 
-      if (res.data?.success && res.data.token) {
+      const token = res.data?.token || res.data?.data?.token;
+      const user = res.data?.user || res.data?.data?.user;
+
+      if (res.data?.data?.requiresOTP) {
+        setOtpEmail(res.data.data.email || form.email);
+        setOtpUserId(res.data.data.userId);
+        setLoginOtpStep(true);
+        toast.info(res.data.message || `6-digit OTP sent to ${res.data.data.email}`);
+        return;
+      }
+
+      if (res.data?.success && token && user) {
         if (form.rememberMe && form.email) {
           localStorage.setItem('remembered_email', form.email);
         } else {
@@ -318,10 +393,10 @@ const Login = ({ initialMode }) => {
           sessionStorage.removeItem('googleProfile');
         }
         setAuthSuccess(true);
-        dispatch(setCredentials({ user: res.data.user, token: res.data.token }));
+        dispatch(setCredentials({ user, token }));
         toast.success(isRegister ? '🎉 Account created successfully!' : '✨ Welcome back!');
-        const targetPath = res.data.user?.role === 'ADMIN' ? '/admin/dashboard' : '/dashboard';
-        setTimeout(() => navigate(targetPath), 1200);
+        const targetPath = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/dashboard';
+        navigate(targetPath, { replace: true });
       } else {
         setError(res.data?.message || 'Authentication failed');
       }
@@ -488,76 +563,121 @@ const Login = ({ initialMode }) => {
                     </div>
                   </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="font-bold text-gray-300">Password</label>
-                      <button
-                        type="button"
-                        onClick={() => setForgotModalOpen(true)}
-                        className="text-[11px] text-amber-400 hover:text-amber-300 hover:underline transition-colors"
-                      >
-                        Forgot Password?
-                      </button>
-                    </div>
-                    <div className="relative group">
-                      <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-amber-500 transition-colors z-10" />
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        name="password"
-                        autoComplete="new-password"
-                        required
-                        value={form.password}
-                        onChange={handleChange}
-                        placeholder="••••••••••••"
-                        className={`w-full pl-10 pr-10 py-3 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 ${error && !isRegister ? 'border-red-500' : ''} ${authSuccess ? 'border-emerald-500' : ''}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white z-10 transition-colors"
-                      >
-                        {showPassword ? <FiEyeOff /> : <FiEye />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1">
-                    <label className="flex items-center gap-2 text-gray-400 cursor-pointer hover:text-gray-300 transition-colors">
-                      <input
-                        type="checkbox"
-                        name="rememberMe"
-                        checked={form.rememberMe}
-                        onChange={handleChange}
-                        className="rounded text-amber-500 focus:ring-amber-500 bg-white/10 border-gray-700 w-4 h-4 cursor-pointer"
-                      />
-                      <span>Remember me</span>
-                    </label>
-                  </div>
-
-                  <RippleButton
-                    type="submit"
-                    disabled={loading || authSuccess}
-                    className={`w-full py-3.5 min-h-[44px] rounded-xl font-black uppercase tracking-wider text-xs shadow-lg transition-all duration-300 flex items-center justify-center gap-2 ${
-                      authSuccess 
-                        ? 'bg-emerald-500 text-white shadow-emerald-500/30' 
-                        : 'bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-black shadow-amber-500/20 hover:-translate-y-[2px] active:scale-[0.98]'
-                    }`}
-                  >
-                    {authSuccess ? (
-                      <>
-                        <FiCheckCircle className="w-5 h-5" /> Authenticated!
-                      </>
-                    ) : loading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
-                        Signing In...
+                  {loginOtpStep ? (
+                    <div className="space-y-4">
+                      <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300">
+                        🔑 A 6-digit OTP code has been emailed to <span className="font-bold text-white">{otpEmail}</span>. Enter it below to log in.
                       </div>
-                    ) : (
-                      <>
-                        Sign In <FiArrowRight />
-                      </>
-                    )}
-                  </RippleButton>
+                      <div className="relative group">
+                        <FiKey className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 z-10" />
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={loginOtpCode}
+                          onChange={(e) => setLoginOtpCode(e.target.value.replace(/\D/g, ''))}
+                          placeholder="Enter 6-digit OTP"
+                          className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-mono text-center tracking-widest text-lg focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleVerifyLoginOTP}
+                        disabled={otpLoading || loginOtpCode.length !== 6}
+                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 font-bold text-black uppercase tracking-wider text-xs hover:from-amber-400 hover:to-yellow-500 transition cursor-pointer disabled:opacity-50"
+                      >
+                        {otpLoading ? 'Verifying OTP...' : 'Verify OTP & Log In'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLoginOtpStep(false)}
+                        className="w-full text-center text-xs text-gray-400 hover:text-white transition cursor-pointer"
+                      >
+                        ← Back to Password Sign In
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold text-gray-300">Password</label>
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={handleRequestLoginOTP}
+                              className="text-[11px] text-amber-400 hover:text-amber-300 hover:underline transition-colors"
+                            >
+                              Sign In via OTP
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setForgotModalOpen(true)}
+                              className="text-[11px] text-amber-400 hover:text-amber-300 hover:underline transition-colors"
+                            >
+                              Forgot Password?
+                            </button>
+                          </div>
+                        </div>
+                        <div className="relative group">
+                          <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-amber-500 transition-colors z-10" />
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            name="password"
+                            autoComplete="new-password"
+                            required
+                            value={form.password}
+                            onChange={handleChange}
+                            placeholder="••••••••••••"
+                            className={`w-full pl-10 pr-10 py-3 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 ${error && !isRegister ? 'border-red-500' : ''} ${authSuccess ? 'border-emerald-500' : ''}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white z-10 transition-colors"
+                          >
+                            {showPassword ? <FiEyeOff /> : <FiEye />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <label className="flex items-center gap-2 text-gray-400 cursor-pointer hover:text-gray-300 transition-colors">
+                          <input
+                            type="checkbox"
+                            name="rememberMe"
+                            checked={form.rememberMe}
+                            onChange={handleChange}
+                            className="rounded text-amber-500 focus:ring-amber-500 bg-white/10 border-gray-700 w-4 h-4 cursor-pointer"
+                          />
+                          <span>Remember me</span>
+                        </label>
+                      </div>
+
+                      <RippleButton
+                        type="submit"
+                        disabled={loading || authSuccess}
+                        className={`w-full py-3.5 min-h-[44px] rounded-xl font-black uppercase tracking-wider text-xs shadow-lg transition-all duration-300 flex items-center justify-center gap-2 ${
+                          authSuccess 
+                            ? 'bg-emerald-500 text-white shadow-emerald-500/30' 
+                            : 'bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-black shadow-amber-500/20 hover:-translate-y-[2px] active:scale-[0.98]'
+                        }`}
+                      >
+                        {authSuccess ? (
+                          <>
+                            <FiCheckCircle className="w-5 h-5" /> Authenticated!
+                          </>
+                        ) : loading ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                            Signing In...
+                          </div>
+                        ) : (
+                          <>
+                            Sign In <FiArrowRight />
+                          </>
+                        )}
+                      </RippleButton>
+                    </>
+                  )}
                 </form>
 
                 <div className="relative z-10 mt-6">
