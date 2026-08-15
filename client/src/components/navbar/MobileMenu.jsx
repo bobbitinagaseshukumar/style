@@ -14,12 +14,12 @@ const MobileMenu = ({ isOpen, onClose }) => {
   const menuScrollPos = useRef(0);
   const storeName = storeSettings?.storeName || 'KVLR Styles';
 
-  const handleNavClick = (path, e) => {
-    if (e) e.preventDefault();
-    navigate(path);
-    setTimeout(() => {
-      onClose();
-    }, 50);
+  const handleNavClick = (path) => {
+    onClose();
+    document.body.style.overflow = '';
+    if (window.location.pathname !== path) {
+      navigate(path);
+    }
   };
 
   // Lock body scroll when open & restore drawer scroll position
