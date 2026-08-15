@@ -100,7 +100,7 @@ exports.sendNewsletterOTP = asyncHandler(async (req, res, next) => {
         return res.status(200).json({
             success: true,
             alreadySubscribed: true,
-            message: 'You are already a verified subscriber to our newsletter!'
+            message: 'This email address is already subscribed to our newsletter!'
         });
     }
 

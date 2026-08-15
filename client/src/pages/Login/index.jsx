@@ -5,7 +5,7 @@ import {
   FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiCheck,
   FiAlertCircle, FiArrowRight, FiShield, FiPhone, FiKey, FiStar, FiCheckCircle
 } from 'react-icons/fi';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import api from '../../config/api';
 import { setCredentials } from '../../redux/auth/authSlice';
 import { toast } from 'react-toastify';

@@ -65,8 +65,10 @@ const NewsletterSubscribe = ({ variant = 'section' }) => {
       const res = await api.post('/cms/newsletter/send-otp', { email: cleanEmail });
 
       if (res.data?.alreadySubscribed) {
-        toast.info(res.data.message || 'You are already a verified subscriber!');
-        setStep('SUCCESS');
+        const msg = res.data.message || 'This email address is already subscribed to our newsletter!';
+        toast.warning(msg);
+        setErrorMsg(msg);
+        setStep('INPUT');
         return;
       }
 
