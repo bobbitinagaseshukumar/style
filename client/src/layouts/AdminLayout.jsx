@@ -476,67 +476,74 @@ const AdminLayout = () => {
               {/* Notification Modal Panel */}
               <AnimatePresence>
                 {notificationOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl p-3.5 z-50 text-xs space-y-2 text-gray-900"
-                  >
-                    <div className="flex items-center justify-between px-2 pb-2 border-b border-gray-100">
-                      <div className="flex items-center gap-1.5 font-bold text-gray-900">
-                        <FiBell className="w-4 h-4 text-amber-600" />
-                        <span>System Notifications</span>
-                      </div>
-                      {unreadNotificationCount > 0 && (
-                        <button
-                          onClick={markAllNotificationsRead}
-                          className="text-[10px] font-bold text-amber-700 hover:text-amber-800 transition cursor-pointer"
-                        >
-                          Mark all as read
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                      {notifications.length > 0 ? (
-                        notifications.map((item) => (
-                          <Link
-                            key={item.id}
-                            to={item.link || '/admin/orders'}
-                            onClick={() => setNotificationOpen(false)}
-                            className={`block p-2.5 rounded-xl border transition cursor-pointer hover:border-amber-400 ${
-                              item.unread ? 'bg-amber-50/60 border-amber-200/80' : 'bg-gray-50 border-gray-100'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-0.5">
-                              <p className="font-bold text-gray-900 text-xs">{item.title}</p>
-                              <span className="text-[10px] text-gray-400">
-                                {item.time ? new Date(item.time).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-gray-600 leading-tight">{item.text}</p>
-                          </Link>
-                        ))
-                      ) : (
-                        <div className="py-6 text-center text-gray-500 space-y-1">
-                          <FiBell className="w-6 h-6 mx-auto text-gray-300 opacity-60" />
-                          <p className="font-semibold text-xs text-gray-600">No new notifications</p>
-                          <p className="text-[10px] text-gray-400">Real customer orders & stock alerts will show here</p>
+                  <>
+                    <div
+                      className="fixed inset-0 z-40 bg-black/20"
+                      onClick={() => setNotificationOpen(false)}
+                      onTouchEnd={() => setNotificationOpen(false)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl p-3.5 z-50 text-xs space-y-2 text-gray-900"
+                    >
+                      <div className="flex items-center justify-between px-2 pb-2 border-b border-gray-100">
+                        <div className="flex items-center gap-1.5 font-bold text-gray-900">
+                          <FiBell className="w-4 h-4 text-amber-600" />
+                          <span>System Notifications</span>
                         </div>
-                      )}
-                    </div>
+                        {unreadNotificationCount > 0 && (
+                          <button
+                            onClick={markAllNotificationsRead}
+                            className="text-[10px] font-bold text-amber-700 hover:text-amber-800 transition cursor-pointer"
+                          >
+                            Mark all as read
+                          </button>
+                        )}
+                      </div>
 
-                    <div className="pt-1 border-t border-gray-100 text-center">
-                      <Link
-                        to="/admin/orders"
-                        onClick={() => setNotificationOpen(false)}
-                        className="text-[11px] font-bold text-amber-700 hover:underline"
-                      >
-                        View Recent Customer Orders →
-                      </Link>
-                    </div>
-                  </motion.div>
+                      <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                        {notifications.length > 0 ? (
+                          notifications.map((item) => (
+                            <Link
+                              key={item.id}
+                              to={item.link || '/admin/orders'}
+                              onClick={() => setNotificationOpen(false)}
+                              className={`block p-2.5 rounded-xl border transition cursor-pointer hover:border-amber-400 active:scale-[0.99] ${
+                                item.unread ? 'bg-amber-50/60 border-amber-200/80' : 'bg-gray-50 border-gray-100'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-0.5">
+                                <p className="font-bold text-gray-900 text-xs">{item.title}</p>
+                                <span className="text-[10px] text-gray-400">
+                                  {item.time ? new Date(item.time).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-gray-600 leading-tight">{item.text}</p>
+                            </Link>
+                          ))
+                        ) : (
+                          <div className="py-6 text-center text-gray-500 space-y-1">
+                            <FiBell className="w-6 h-6 mx-auto text-gray-300 opacity-60" />
+                            <p className="font-semibold text-xs text-gray-600">No new notifications</p>
+                            <p className="text-[10px] text-gray-400">Real customer orders & stock alerts will show here</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-1 border-t border-gray-100 text-center">
+                        <Link
+                          to="/admin/orders"
+                          onClick={() => setNotificationOpen(false)}
+                          className="text-[11px] font-bold text-amber-700 hover:underline"
+                        >
+                          View Recent Customer Orders →
+                        </Link>
+                      </div>
+                    </motion.div>
+                  </>
                 )}
               </AnimatePresence>
             </div>
