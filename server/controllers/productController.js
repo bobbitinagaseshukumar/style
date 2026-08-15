@@ -42,8 +42,8 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
       whereClause.status = status.toUpperCase();
     }
   } else {
-    // Guest & Customer public storefront view: Show all published products
-    whereClause.status = { notIn: ['DELETED', 'ARCHIVED', 'deleted', 'archived'] };
+    // Guest & Customer public storefront view: Show strictly published, active products
+    whereClause.status = { notIn: ['DELETED', 'ARCHIVED', 'DRAFT', 'deleted', 'archived', 'draft'] };
   }
 
   // Text Search

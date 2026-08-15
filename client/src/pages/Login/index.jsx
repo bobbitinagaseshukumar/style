@@ -251,14 +251,8 @@ const Login = ({ initialMode }) => {
     };
     fetchDynamicFields();
 
-    const savedEmail = localStorage.getItem('remembered_email');
-    if (savedEmail) {
-      setForm((prev) => ({
-        ...prev,
-        email: savedEmail,
-        rememberMe: true,
-      }));
-    }
+    // Always clear remembered email to keep login form fresh and blank
+    localStorage.removeItem('remembered_email');
   }, []);
 
   const cardRef = useRef(null);
@@ -390,11 +384,7 @@ const Login = ({ initialMode }) => {
       }
 
       if (res.data?.success && token && user) {
-        if (form.rememberMe && form.email) {
-          localStorage.setItem('remembered_email', form.email);
-        } else {
-          localStorage.removeItem('remembered_email');
-        }
+        localStorage.removeItem('remembered_email');
         if (isGoogleMode) {
           sessionStorage.removeItem('googleProfile');
         }

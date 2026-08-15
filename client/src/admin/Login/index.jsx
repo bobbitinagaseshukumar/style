@@ -249,10 +249,14 @@ const AdminLogin = () => {
           </form>
 
           <div className="mt-12 text-center md:text-left">
-            <Link to="/" className="inline-flex items-center gap-2 text-[10px] text-stone-500 hover:text-amber-500 transition-colors uppercase tracking-widest font-medium">
+            <button
+              type="button"
+              onClick={() => navigate('/', { replace: true })}
+              className="inline-flex items-center gap-2 text-[10px] text-stone-500 hover:text-amber-500 transition-colors uppercase tracking-widest font-medium cursor-pointer"
+            >
               <FiArrowRight className="rotate-180" size={10} />
               Return to Storefront
-            </Link>
+            </button>
           </div>
         </div>
       </motion.div>

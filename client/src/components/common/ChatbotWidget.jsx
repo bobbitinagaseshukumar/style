@@ -71,8 +71,13 @@ const ChatbotWidget = () => {
     }
   }, [isOpen, messages]);
 
-  // Hide on checkout if configured
-  if (settings && !settings.isEnabled) return null;
+  // Hide if disabled by Admin or hidden on current device view or checkout
+  const isMobileView = typeof window !== 'undefined' && window.innerWidth < 768;
+  if (settings) {
+    if (settings.isEnabled === false) return null;
+    if (isMobileView && settings.showOnMobile === false) return null;
+    if (!isMobileView && settings.showOnDesktop === false) return null;
+  }
   if (settings?.hideOnCheckout && location.pathname.startsWith('/checkout')) return null;
 
   const handleSendMessage = async (textToSend) => {

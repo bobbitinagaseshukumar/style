@@ -24,7 +24,7 @@ const AdminRoute = ({ children }) => {
 
   // If unauthenticated or non-admin, redirect to dedicated Admin Login page
   if (!isAdmin) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/admin/login" replace={false} />;
   }
 
   return children;
