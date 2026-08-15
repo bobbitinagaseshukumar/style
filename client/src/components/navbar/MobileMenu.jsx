@@ -11,7 +11,7 @@ const MobileMenu = ({ isOpen, onClose }) => {
   const { isAuthenticated, user, logout } = useAuth();
   const navRef = useRef(null);
   const menuScrollPos = useRef(0);
-  const storeName = storeSettings?.storeName || 'StyleVerse';
+  const storeName = storeSettings?.storeName || 'KVLR Styles';
 
   // Lock body scroll when open & restore drawer scroll position
   useEffect(() => {

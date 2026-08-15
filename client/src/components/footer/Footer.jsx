@@ -15,7 +15,7 @@ const Footer = () => {
           {/* Brand & About */}
           <div>
             <Link to="/" className="font-playfair text-3xl font-bold text-gold-500 mb-6 block">
-              {storeSettings?.logoText || 'StyleVerse'}
+              {storeSettings?.storeName || storeSettings?.logoText || 'KVLR Styles'}
             </Link>
             <p className="text-sm leading-relaxed text-gray-400 mb-6">
               {storeSettings?.footerAboutText || 'Experience luxury fashion redefined. We curate the finest styles for the modern individual.'}
@@ -71,7 +71,7 @@ const Footer = () => {
 
         <div className="border-t border-charcoal-800 pt-8 flex flex-col sm:flex-row justify-between items-center text-xs gap-4 sm:gap-0 text-center sm:text-left">
           <p className="text-gray-500">
-            &copy; {new Date().getFullYear()} {storeSettings?.storeName || 'StyleVerse'}. All rights reserved.
+            &copy; {new Date().getFullYear()} {storeSettings?.storeName || 'KVLR Styles'}. All rights reserved.
           </p>
           <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-6 text-gray-500">
             <Link to="/admin/login" className="hover:text-gold-400 font-semibold transition-colors flex items-center gap-1 opacity-75 hover:opacity-100">

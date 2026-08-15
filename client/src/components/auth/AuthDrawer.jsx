@@ -16,6 +16,7 @@ const AuthDrawer = ({ isOpen, onClose }) => {
 
   const dispatch = useDispatch();
   const { isLoading, error, isAuthenticated, user } = useSelector((state) => state.auth);
+  const { storeSettings } = useSelector((state) => state.settings);
 
   // Auto close on ESC key
   useEffect(() => {
@@ -86,7 +87,7 @@ const AuthDrawer = ({ isOpen, onClose }) => {
             <div>
               <div className="p-6 bg-charcoal-900 border-b border-gold-500/20 text-white flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gold-400">STYLEVERSE LUXURY</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gold-400">{(storeSettings?.storeName || 'KVLR STYLES').toUpperCase()} LUXURY</span>
                   <h2 className="text-xl font-serif font-bold mt-0.5">
                     {mode === 'login' ? 'Customer Sign In' : 'Create Account'}
                   </h2>

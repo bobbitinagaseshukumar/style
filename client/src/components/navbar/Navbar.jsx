@@ -82,9 +82,10 @@ const Navbar = () => {
   useEffect(() => {
     const fetchHeaderData = async () => {
       try {
-        const [menusRes, settingsRes] = await Promise.allSettled([
+        const [menusRes, settingsRes, storeSettingsRes] = await Promise.allSettled([
           api.get('/cms/header-menus/public'),
-          api.get('/cms/header-settings')
+          api.get('/cms/header-settings'),
+          api.get('/cms/settings')
         ]);
 
         if (menusRes.status === 'fulfilled' && menusRes.value.data?.data?.length > 0) {
@@ -101,11 +102,18 @@ const Navbar = () => {
         if (settingsRes.status === 'fulfilled' && settingsRes.value.data?.data) {
           setHeaderSettings(settingsRes.value.data.data);
         }
+
+        if (storeSettingsRes.status === 'fulfilled' && storeSettingsRes.value.data?.data?.storeName) {
+          setStoreName(storeSettingsRes.value.data.data.storeName);
+        }
       } catch (err) {
         console.error('Failed to load dynamic header data:', err);
       }
     };
     fetchHeaderData();
+
+    window.addEventListener('kvlr:content-updated', fetchHeaderData);
+    return () => window.removeEventListener('kvlr:content-updated', fetchHeaderData);
   }, []);
 
 

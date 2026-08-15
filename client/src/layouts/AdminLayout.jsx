@@ -340,9 +340,9 @@ const AdminLayout = () => {
               <div className="h-16 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
                 <Link to="/" onClick={closeMobileDrawer} title="Go to Storefront Homepage" className="flex items-center gap-3 hover:opacity-90 transition cursor-pointer">
                   <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-black font-black text-lg shadow-md">
-                    K
+                    {resolvedStoreName.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-xl font-serif font-bold text-amber-400">KVLR Admin</span>
+                  <span className="text-xl font-serif font-bold text-amber-400">{resolvedStoreName}</span>
                 </Link>
                 <button
                   onClick={closeMobileDrawer}
@@ -370,15 +370,17 @@ const AdminLayout = () => {
                         <NavLink
                           key={link.label}
                           to={link.path}
-                          onClick={closeMobileDrawer}
-                          className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 min-h-[44px] cursor-pointer ${
+                          onClick={() => {
+                            closeMobileDrawer();
+                          }}
+                          className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 min-h-[44px] cursor-pointer touch-manipulation select-none ${
                             isActive
                               ? 'bg-gradient-to-r from-amber-500/20 to-amber-500/5 text-amber-400 border border-amber-500/30 font-bold'
                               : 'text-gray-400 hover:text-white hover:bg-white/5 font-medium'
                           }`}
                         >
-                          <Icon className="w-5 h-5 shrink-0" />
-                          <span className="text-xs">{link.label}</span>
+                          <Icon className="w-5 h-5 shrink-0 pointer-events-none" />
+                          <span className="text-xs pointer-events-none">{link.label}</span>
                         </NavLink>
                       );
                     })}
@@ -386,7 +388,7 @@ const AdminLayout = () => {
                 ))}
                 
                 <div className="mt-8 text-center text-[10px] text-gray-500 uppercase tracking-widest font-bold">
-                  KVLR Styles Admin Portal
+                  {resolvedStoreName} Admin Portal
                 </div>
               </nav>
             </motion.aside>
