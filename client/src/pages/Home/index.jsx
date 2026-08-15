@@ -191,13 +191,13 @@ const Home = () => {
         let newArrivalsList = extractProducts(newArrivalsRes);
         let bestSellerList = extractProducts(bestSellerRes);
 
-        // Smart published product fallback: If admin published products without tagging "featured" or "newArrival",
-        // automatically display newly published products so the homepage ALWAYS shows uploaded products within milliseconds!
+        // Strict section resolution: Products ONLY appear in sections admin explicitly selected!
+        // Untagged products publish normally without being forced into Featured/Deals/NewArrivals.
         const resolvedProducts = {
-          featured: featuredList.length > 0 ? featuredList.slice(0, 12) : allProductsList.slice(0, 12),
-          trending: trendingList.length > 0 ? trendingList.slice(0, 12) : allProductsList.slice(0, 12),
-          newArrivals: newArrivalsList.length > 0 ? newArrivalsList.slice(0, 12) : allProductsList.slice(0, 12),
-          todaysDeals: bestSellerList.length > 0 ? bestSellerList.slice(0, 12) : allProductsList.slice(0, 12),
+          featured: featuredList.slice(0, 12),
+          trending: trendingList.slice(0, 12),
+          newArrivals: newArrivalsList.slice(0, 12),
+          todaysDeals: bestSellerList.slice(0, 12),
           allPublished: allProductsList
         };
 
@@ -435,6 +435,31 @@ const Home = () => {
             </motion.div>
             <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
               {products.newArrivals.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* NORMAL CATALOG SHOWCASE — For published products when admin publishes without specific section badges */}
+      {products.allPublished.length > 0 &&
+       products.featured.length === 0 &&
+       products.todaysDeals.length === 0 &&
+       products.newArrivals.length === 0 && (
+        <section className="py-12 lg:py-16">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4">
+            <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">Explore Our Collection 🛍️</h2>
+                <p className="text-gray-500 mt-1">Browse all our published creations</p>
+              </div>
+              <Link to="/categories" className="hidden sm:inline-flex items-center gap-1 text-amber-600 hover:text-amber-700 font-bold text-sm">
+                View All <FiArrowRight className="w-4 h-4" />
+              </Link>
+            </motion.div>
+            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+              {products.allPublished.slice(0, 12).map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </motion.div>
