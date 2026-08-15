@@ -163,20 +163,25 @@ const AdminProducts = () => {
   /* ─── DUPLICATE PRODUCT ─────────────────────────────────── */
   const handleDuplicate = async (product) => {
     try {
+      const resolvedCategoryId = product.categoryId || product.category?.id || (categories.length > 0 ? categories[0].id : null);
+      if (!resolvedCategoryId) {
+        toast.error('Cannot duplicate: Please select a valid Category first.');
+        return;
+      }
       const dupData = {
         name: `${product.name} (Copy)`,
-        sku: `${product.sku}-copy-${Date.now().toString(36)}`,
-        price: product.price,
-        discountPrice: product.discountPrice,
-        discountPercent: product.discountPercent,
-        stock: product.stock,
-        categoryId: product.categoryId,
-        subCategoryId: product.subCategoryId,
-        brandId: product.brandId,
-        description: product.description,
-        shortDesc: product.shortDesc,
-        sizes: product.sizes,
-        colors: product.colors,
+        sku: `${product.sku || 'SKU'}-copy-${Date.now().toString(36)}`,
+        price: Number(product.price) || 0,
+        discountPrice: Number(product.discountPrice) || 0,
+        discountPercent: Number(product.discountPercent) || 0,
+        stock: Number(product.stock) || 0,
+        categoryId: resolvedCategoryId,
+        subCategoryId: product.subCategoryId || product.subCategory?.id || null,
+        brandId: product.brandId || product.brand?.id || null,
+        description: product.description || '',
+        shortDesc: product.shortDesc || '',
+        sizes: typeof product.sizes === 'string' ? product.sizes : JSON.stringify(product.sizes || []),
+        colors: typeof product.colors === 'string' ? product.colors : JSON.stringify(product.colors || []),
         status: 'DRAFT',
       };
       await api.post('/products', dupData);
@@ -668,15 +673,15 @@ const AdminProducts = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                         <p className="text-[10px] text-gray-500 font-bold uppercase">Category</p>
-                        <p className="text-xs font-bold text-gray-900">{previewProduct.category?.name || '—'}</p>
+                        <p className="text-xs font-bold text-gray-900">{typeof previewProduct.category === 'object' ? (previewProduct.category?.name || '—') : (previewProduct.category || '—')}</p>
                       </div>
                       <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                         <p className="text-[10px] text-gray-500 font-bold uppercase">Subcategory</p>
-                        <p className="text-xs font-bold text-gray-900">{previewProduct.subCategory?.name || '—'}</p>
+                        <p className="text-xs font-bold text-gray-900">{typeof previewProduct.subCategory === 'object' ? (previewProduct.subCategory?.name || '—') : (previewProduct.subCategory || '—')}</p>
                       </div>
                       <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                         <p className="text-[10px] text-gray-500 font-bold uppercase">Brand</p>
-                        <p className="text-xs font-bold text-gray-900">{previewProduct.brand?.name || '—'}</p>
+                        <p className="text-xs font-bold text-gray-900">{typeof previewProduct.brand === 'object' ? (previewProduct.brand?.name || '—') : (previewProduct.brand || '—')}</p>
                       </div>
                       <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                         <p className="text-[10px] text-gray-500 font-bold uppercase">Stock</p>
@@ -684,19 +689,41 @@ const AdminProducts = () => {
                       </div>
                     </div>
 
-                    {(() => { try { const s = JSON.parse(previewProduct.sizes || '[]'); return s.length > 0 ? (
-                      <div>
-                        <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Available Sizes</p>
-                        <div className="flex flex-wrap gap-1">{s.map((sz, i) => <span key={i} className="px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-bold text-gray-700 border border-gray-200">{sz}</span>)}</div>
-                      </div>
-                    ) : null; } catch { return null; } })()}
+                    {(() => {
+                      try {
+                        const raw = typeof previewProduct.sizes === 'string' ? JSON.parse(previewProduct.sizes || '[]') : (previewProduct.sizes || []);
+                        const s = Array.isArray(raw) ? raw : [raw];
+                        return s.length > 0 ? (
+                          <div>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Available Sizes</p>
+                            <div className="flex flex-wrap gap-1">
+                              {s.map((sz, i) => {
+                                const txt = typeof sz === 'object' ? (sz?.label || sz?.name || sz?.size || sz?.value || JSON.stringify(sz)) : String(sz);
+                                return <span key={i} className="px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-bold text-gray-700 border border-gray-200">{txt}</span>;
+                              })}
+                            </div>
+                          </div>
+                        ) : null;
+                      } catch { return null; }
+                    })()}
 
-                    {(() => { try { const c = JSON.parse(previewProduct.colors || '[]'); return c.length > 0 ? (
-                      <div>
-                        <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Available Colors</p>
-                        <div className="flex flex-wrap gap-1">{c.map((cl, i) => <span key={i} className="px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-bold text-gray-700 border border-gray-200">{cl}</span>)}</div>
-                      </div>
-                    ) : null; } catch { return null; } })()}
+                    {(() => {
+                      try {
+                        const raw = typeof previewProduct.colors === 'string' ? JSON.parse(previewProduct.colors || '[]') : (previewProduct.colors || []);
+                        const c = Array.isArray(raw) ? raw : [raw];
+                        return c.length > 0 ? (
+                          <div>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Available Colors</p>
+                            <div className="flex flex-wrap gap-1">
+                              {c.map((cl, i) => {
+                                const txt = typeof cl === 'object' ? (cl?.label || cl?.name || cl?.color || cl?.value || JSON.stringify(cl)) : String(cl);
+                                return <span key={i} className="px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-bold text-gray-700 border border-gray-200">{txt}</span>;
+                              })}
+                            </div>
+                          </div>
+                        ) : null;
+                      } catch { return null; }
+                    })()}
 
                     {previewProduct.shortDesc && (
                       <div>
