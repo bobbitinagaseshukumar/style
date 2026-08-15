@@ -9,6 +9,7 @@ import {
   FiAlertCircle, FiArrowRight, FiCpu, FiKey
 } from 'react-icons/fi';
 import api from '../../config/api';
+import LoginScene from '../../pages/Login/LoginScene';
 
 /**
  * KVLR STYLES - Luxury Admin Authentication Portal
@@ -87,6 +88,13 @@ const AdminLogin = () => {
       {/* Decorative Gold Accents */}
       <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] bg-amber-600/5 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute -bottom-[20%] -left-[10%] w-[50%] h-[50%] bg-indigo-900/10 rounded-full blur-[120px] pointer-events-none" />
+
+      {/* 3D Gold Jewellery Background Scene */}
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-60">
+        <React.Suspense fallback={null}>
+          <LoginScene />
+        </React.Suspense>
+      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

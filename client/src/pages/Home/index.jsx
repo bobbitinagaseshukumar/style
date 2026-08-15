@@ -192,12 +192,12 @@ const Home = () => {
         let bestSellerList = extractProducts(bestSellerRes);
 
         // Smart published product fallback: If admin published products without tagging "featured" or "newArrival",
-        // automatically display published products so the homepage always shows products immediately!
+        // automatically display newly published products so the homepage ALWAYS shows uploaded products within milliseconds!
         const resolvedProducts = {
-          featured: featuredList.slice(0, 12),
-          trending: trendingList.slice(0, 12),
-          newArrivals: newArrivalsList.slice(0, 12),
-          todaysDeals: bestSellerList.slice(0, 12),
+          featured: featuredList.length > 0 ? featuredList.slice(0, 12) : allProductsList.slice(0, 12),
+          trending: trendingList.length > 0 ? trendingList.slice(0, 12) : allProductsList.slice(0, 12),
+          newArrivals: newArrivalsList.length > 0 ? newArrivalsList.slice(0, 12) : allProductsList.slice(0, 12),
+          todaysDeals: bestSellerList.length > 0 ? bestSellerList.slice(0, 12) : allProductsList.slice(0, 12),
           allPublished: allProductsList
         };
 
@@ -221,9 +221,13 @@ const Home = () => {
     };
 
     fetchHomeData();
-    const interval = setInterval(fetchHomeData, 8000);
+    const interval = setInterval(fetchHomeData, 5000); // 5s multi-device auto sync
     const handleFocus = () => fetchHomeData();
-    const handleContentUpdate = () => fetchHomeData();
+    const handleContentUpdate = () => {
+      try { sessionStorage.removeItem('__KVLR_HOME_CACHE__'); } catch (e) {}
+      fetchHomeData();
+    };
+
     window.addEventListener('focus', handleFocus);
     window.addEventListener('kvlr:content-updated', handleContentUpdate);
     window.addEventListener('storage', handleContentUpdate);

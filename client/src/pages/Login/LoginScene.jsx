@@ -1,6 +1,20 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, Component } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Torus, Box, Sphere, Stars } from '@react-three/drei';
+
+class CanvasErrorBoundary extends Component {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(err) {
+    console.warn('[3D Canvas Error Handled]', err);
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
 
 /* ─── Floating Ring ──────────────────────────────────────────── */
 const LuxuryRing = ({ position, scale = 1 }) => {
@@ -111,32 +125,34 @@ const CameraController = ({ mouse }) => {
 /* ─── Main Login Scene ───────────────────────────────────────── */
 const LoginScene = ({ mouse }) => {
   return (
-    <Canvas
-      camera={{ position: [0, 0, 5], fov: 60 }}
-      style={{ width: '100%', height: '100%' }}
-      gl={{ antialias: true, alpha: true }}
-      dpr={[1, 1.5]}
-    >
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[5, 5, 5]} intensity={0.8} color="#ffffff" />
-      <pointLight position={[-3, 3, 2]} intensity={1.2} color="#D4AF37" />
-      <pointLight position={[3, -2, 1]} intensity={0.6} color="#C8A951" />
-      <spotLight position={[0, 8, 4]} angle={0.4} penumbra={0.8} intensity={1.5} color="#FFF8DC" />
+    <CanvasErrorBoundary>
+      <Canvas
+        camera={{ position: [0, 0, 5], fov: 60 }}
+        style={{ width: '100%', height: '100%' }}
+        gl={{ antialias: true, alpha: true }}
+        dpr={[1, 1.5]}
+      >
+        <ambientLight intensity={0.4} />
+        <directionalLight position={[5, 5, 5]} intensity={0.8} color="#ffffff" />
+        <pointLight position={[-3, 3, 2]} intensity={1.2} color="#D4AF37" />
+        <pointLight position={[3, -2, 1]} intensity={0.6} color="#C8A951" />
+        <spotLight position={[0, 8, 4]} angle={0.4} penumbra={0.8} intensity={1.5} color="#FFF8DC" />
 
-      <Stars radius={80} depth={40} count={600} factor={3} fade speed={0.3} />
-      <GoldParticles />
-      <CameraController mouse={mouse} />
+        <Stars radius={80} depth={40} count={600} factor={3} fade speed={0.3} />
+        <GoldParticles />
+        <CameraController mouse={mouse} />
 
-      <LuxuryRing position={[-2.2, 1.2, -1]} scale={1.1} />
-      <LuxuryRing position={[1.8, -1.5, -2]} scale={0.75} />
-      <LuxuryPearl position={[2.5, 1.5, 0]} color="#FFFAF0" scale={1} />
-      <LuxuryPearl position={[-1.5, -1.8, -1]} color="#F0E6D3" scale={0.7} />
-      <LuxuryBox position={[-2.8, -0.5, -1.5]} scale={0.9} />
-      <LuxuryBox position={[2.2, 0.8, -2.5]} scale={0.65} />
-      <LuxuryBangle position={[0.5, 2.2, -1]} scale={1} />
-      <LuxuryBangle position={[-3.2, 1.8, -2]} scale={0.8} />
-      <LuxuryPearl position={[3.5, -0.5, -3]} color="#D4AF37" scale={0.5} />
-    </Canvas>
+        <LuxuryRing position={[-2.2, 1.2, -1]} scale={1.1} />
+        <LuxuryRing position={[1.8, -1.5, -2]} scale={0.75} />
+        <LuxuryPearl position={[2.5, 1.5, 0]} color="#FFFAF0" scale={1} />
+        <LuxuryPearl position={[-1.5, -1.8, -1]} color="#F0E6D3" scale={0.7} />
+        <LuxuryBox position={[-2.8, -0.5, -1.5]} scale={0.9} />
+        <LuxuryBox position={[2.2, 0.8, -2.5]} scale={0.65} />
+        <LuxuryBangle position={[0.5, 2.2, -1]} scale={1} />
+        <LuxuryBangle position={[-3.2, 1.8, -2]} scale={0.8} />
+        <LuxuryPearl position={[3.5, -0.5, -3]} color="#D4AF37" scale={0.5} />
+      </Canvas>
+    </CanvasErrorBoundary>
   );
 };
 

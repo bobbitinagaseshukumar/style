@@ -405,7 +405,7 @@ const AdminBanner = () => {
                   {/* Checkbox & Quick Actions */}
                   <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
                     <label className="flex items-center gap-2 cursor-pointer bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/20">
-                      <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(banner.id)} className="rounded text-amber-500 focus:ring-amber-400 w-3.5 h-3.5 cursor-pointer" />
+                      <input type="checkbox" checked={isSelected} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); toggleSelect(banner.id); }} className="rounded text-amber-500 focus:ring-amber-400 w-3.5 h-3.5 cursor-pointer" />
                       <span className="text-[10px] font-bold text-white uppercase">Select</span>
                     </label>
                     <div className="flex gap-1">

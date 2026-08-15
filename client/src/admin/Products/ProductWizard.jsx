@@ -304,6 +304,11 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
         toast.success(publishStatus === 'published' ? '🚀 Product published!' : '📝 Draft saved!');
       }
 
+      try {
+        sessionStorage.removeItem('__KVLR_HOME_CACHE__');
+        window.dispatchEvent(new Event('kvlr:content-updated'));
+      } catch (e) {}
+
       onSaved?.();
       onClose?.();
     } catch (err) {

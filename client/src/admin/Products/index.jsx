@@ -215,8 +215,12 @@ const AdminProducts = () => {
     } catch { toast.error('Bulk action failed'); }
   };
 
-  const toggleSelect = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const selectAll = () => setSelected(new Set(products.map(p => p.id)));
+  const getId = useCallback((p) => p?.id || p?._id, []);
+  const toggleSelect = useCallback((id) => {
+    if (!id) return;
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }, []);
+  const selectAll = useCallback(() => setSelected(new Set(products.map(getId).filter(Boolean))), [products, getId]);
 
   /* ─── STATS ─────────────────────────────────────────────── */
   const stats = useMemo(() => ({
@@ -407,7 +411,13 @@ const AdminProducts = () => {
                       {product.flashSale && <span className="px-1.5 py-0.5 rounded bg-red-500 text-white text-[9px] font-extrabold">⚡ FLASH SALE</span>}
                     </div>
                     {/* Checkbox */}
-                    <input type="checkbox" checked={selected.has(product.id)} onChange={() => toggleSelect(product.id)} className="absolute top-2 right-2 rounded text-amber-500 w-4 h-4 cursor-pointer" />
+                    <input
+                      type="checkbox"
+                      checked={selected.has(getId(product))}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => { e.stopPropagation(); toggleSelect(getId(product)); }}
+                      className="absolute top-2 right-2 rounded text-amber-500 w-4 h-4 cursor-pointer z-10"
+                    />
                     {/* Status badge */}
                     <span className={`absolute bottom-2 left-2 px-2 py-0.5 rounded-md text-[9px] font-bold border ${st.color}`}>{st.label}</span>
                     {/* Quick preview */}
@@ -482,7 +492,13 @@ const AdminProducts = () => {
                     return (
                       <tr key={product.id} className={`hover:bg-gray-50/70 transition ${selected.has(product.id) ? 'bg-amber-50/30' : ''}`}>
                         <td className="px-4 py-3">
-                          <input type="checkbox" checked={selected.has(product.id)} onChange={() => toggleSelect(product.id)} className="rounded text-amber-500 cursor-pointer" />
+                          <input
+                            type="checkbox"
+                            checked={selected.has(getId(product))}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => { e.stopPropagation(); toggleSelect(getId(product)); }}
+                            className="rounded text-amber-500 cursor-pointer z-10"
+                          />
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">

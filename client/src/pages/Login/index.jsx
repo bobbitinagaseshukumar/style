@@ -10,6 +10,7 @@ import api from '../../config/api';
 import { setCredentials } from '../../redux/auth/authSlice';
 import { toast } from 'react-toastify';
 import SocialAuthButtons from '../../components/auth/SocialAuthButtons';
+import LoginScene from './LoginScene';
 
 const customStyles = `
   @keyframes float-particle {
@@ -357,6 +358,13 @@ const Login = ({ initialMode }) => {
         <div className="absolute top-[40%] left-[50%] w-[300px] h-[300px] bg-amber-400/5 rounded-full blur-[80px] pointer-events-none" style={{ animation: 'orb-float 15s infinite ease-in-out', animationDelay: '-5s' }} />
 
         <Particles />
+
+        {/* 3D Gold Jewellery Background Scene */}
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-60">
+          <React.Suspense fallback={null}>
+            <LoginScene mouse={mouseRef} />
+          </React.Suspense>
+        </div>
 
         {/* Global Spotlight Beam following external mouse (if needed) */}
         {!isMobile && (

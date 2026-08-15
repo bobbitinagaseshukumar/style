@@ -614,7 +614,7 @@ const AdminHomepage = () => {
                       <button onClick={() => handleMove(index, 'DOWN')} disabled={index === sections.length - 1} className="p-1 rounded text-gray-300 hover:text-gray-600 disabled:opacity-20 cursor-pointer transition"><FiArrowDown size={13} /></button>
                     </div>
 
-                    <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(sec.id)} className="rounded text-amber-500 focus:ring-amber-400 w-4 h-4 cursor-pointer shrink-0" />
+                    <input type="checkbox" checked={isSelected} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); toggleSelect(sec.id); }} className="rounded text-amber-500 focus:ring-amber-400 w-4 h-4 cursor-pointer shrink-0" />
 
                     {/* Section preview thumbnail */}
                     <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 shrink-0 border border-gray-200 flex items-center justify-center">
