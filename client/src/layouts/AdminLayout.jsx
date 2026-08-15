@@ -122,25 +122,11 @@ const AdminLayout = () => {
   const { storeSettings } = useSelector((state) => state.settings || {});
   const resolvedStoreName = storeName || storeSettings?.storeName || 'Admin';
 
-  // 1. Lock body scroll & preserve scroll position on mobile sidebar drawer open
+  // 1. Preserve scroll position on mobile sidebar drawer open
   useEffect(() => {
-    if (mobileSidebar) {
-      document.body.style.overflow = 'hidden';
-      if (mobileNavRef.current) {
-        mobileNavRef.current.scrollTop = mobileDrawerScrollPos.current;
-        setTimeout(() => {
-          if (mobileNavRef.current) {
-            const activeEl = mobileNavRef.current.querySelector('.border-gold-500\\/30');
-            if (activeEl) {
-              activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-            }
-          }
-        }, 30);
-      }
+    if (mobileSidebar && mobileNavRef.current) {
+      mobileNavRef.current.scrollTop = mobileDrawerScrollPos.current;
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
   }, [mobileSidebar]);
 
   // 2. Auto-close dropdowns & reset scroll position on route change
@@ -204,17 +190,8 @@ const AdminLayout = () => {
     weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
   }).format(new Date());
 
-  const closeMobileDrawer = (e) => {
-    if (e && e.stopPropagation) e.stopPropagation();
+  const closeMobileDrawer = () => {
     setMobileSidebar(false);
-    document.body.style.overflow = '';
-  };
-
-  const handleMobileNavClick = (path, e) => {
-    if (e && e.stopPropagation) e.stopPropagation();
-    setMobileSidebar(false);
-    document.body.style.overflow = '';
-    navigate(path);
   };
 
   // Filter search results
@@ -337,7 +314,6 @@ const AdminLayout = () => {
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/80 backdrop-blur-md z-[90] lg:hidden"
               onClick={closeMobileDrawer}
-              onTouchEnd={closeMobileDrawer}
             />
             <motion.aside
               initial={{ x: '-100%' }}
@@ -347,15 +323,15 @@ const AdminLayout = () => {
               className="fixed left-0 top-0 bottom-0 w-[290px] bg-[#0D0D12] text-white z-[100] lg:hidden shadow-2xl flex flex-col border-r border-white/10"
             >
               <div className="h-16 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
-                <Link to="/" onClick={closeMobileDrawer} onTouchEnd={closeMobileDrawer} title="Go to Storefront Homepage" className="flex items-center gap-3 hover:opacity-90 transition cursor-pointer">
+                <Link to="/" onClick={closeMobileDrawer} title="Go to Storefront Homepage" className="flex items-center gap-3 hover:opacity-90 transition cursor-pointer">
                   <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-black font-black text-lg shadow-md">
                     {resolvedStoreName.charAt(0).toUpperCase()}
                   </div>
                   <span className="text-xl font-serif font-bold text-amber-400">{resolvedStoreName}</span>
                 </Link>
                 <button
+                  type="button"
                   onClick={closeMobileDrawer}
-                  onTouchEnd={closeMobileDrawer}
                   className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/10 transition cursor-pointer"
                   aria-label="Close Sidebar"
                 >
@@ -380,8 +356,7 @@ const AdminLayout = () => {
                         <Link
                           key={link.label}
                           to={link.path}
-                          onClick={(e) => handleMobileNavClick(link.path, e)}
-                          onTouchEnd={(e) => handleMobileNavClick(link.path, e)}
+                          onClick={closeMobileDrawer}
                           className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 min-h-[44px] text-left cursor-pointer touch-manipulation select-none ${
                             isActive
                               ? 'bg-gradient-to-r from-amber-500/20 to-amber-500/5 text-amber-400 border border-amber-500/30 font-bold'
