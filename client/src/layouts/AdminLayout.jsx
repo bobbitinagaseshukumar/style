@@ -481,7 +481,7 @@ const AdminLayout = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-72 sm:w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl p-3 z-50 text-xs space-y-2 text-gray-900"
+                    className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl p-3.5 z-50 text-xs space-y-2 text-gray-900"
                   >
                     <div className="flex items-center justify-between px-2 pb-2 border-b border-gray-100">
                       <div className="flex items-center gap-1.5 font-bold text-gray-900">
