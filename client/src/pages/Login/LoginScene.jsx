@@ -114,9 +114,9 @@ const GoldParticles = () => {
 /* ─── Camera Mouse Parallax ──────────────────────────────────── */
 const CameraController = ({ mouse }) => {
   useFrame((state) => {
-    if (!mouse?.current) return;
-    state.camera.position.x += (mouse.current.x * 0.8 - state.camera.position.x) * 0.04;
-    state.camera.position.y += (mouse.current.y * 0.5 - state.camera.position.y) * 0.04;
+    const m = mouse?.current || { x: 0, y: 0 };
+    state.camera.position.x += (m.x * 0.8 - state.camera.position.x) * 0.04;
+    state.camera.position.y += (m.y * 0.5 - state.camera.position.y) * 0.04;
     state.camera.lookAt(0, 0, 0);
   });
   return null;

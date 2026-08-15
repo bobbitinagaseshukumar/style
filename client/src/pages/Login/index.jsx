@@ -146,6 +146,8 @@ const Login = ({ initialMode }) => {
   const [authSuccess, setAuthSuccess] = useState(false);
   const [error, setError] = useState('');
 
+  const mouseRef = useRef({ x: 0, y: 0 });
+
   // Forgot Password Modal State
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
@@ -209,6 +211,12 @@ const Login = ({ initialMode }) => {
   const navigate = useNavigate();
 
   const handleMouseMove = (e) => {
+    if (mouseRef.current) {
+      mouseRef.current = {
+        x: (e.clientX / window.innerWidth) * 2 - 1,
+        y: -(e.clientY / window.innerHeight) * 2 + 1,
+      };
+    }
     if (!cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;

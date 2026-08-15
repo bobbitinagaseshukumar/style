@@ -304,11 +304,11 @@ const Navbar = () => {
                   </motion.button>
                 )}
 
-                {/* Wishlist Button (Hidden on tiny screens to protect layout) */}
+                {/* Wishlist Button */}
                 {headerSettings?.wishlistVisible !== false && (
                   <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="shrink-0">
                     <Link
-                      to="/wishlist"
+                      to={isAuthenticated ? "/wishlist" : "/login"}
                       className="relative p-2 sm:p-2.5 rounded-xl text-white/70 hover:text-red-400 hover:bg-white/5 transition-all flex"
                       aria-label="Wishlist"
                     >
@@ -334,7 +334,13 @@ const Navbar = () => {
                   <motion.button
                     whileHover={{ scale: 1.08 }}
                     whileTap={{ scale: 0.92 }}
-                    onClick={() => openDrawer('cart')}
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        navigate('/login');
+                      } else {
+                        openDrawer('cart');
+                      }
+                    }}
                     className="relative p-2 sm:p-2.5 rounded-xl text-white/70 hover:text-amber-400 hover:bg-white/5 transition-all cursor-pointer shrink-0"
                     aria-label="Cart"
                   >
@@ -407,12 +413,12 @@ const Navbar = () => {
                       <motion.button
                         whileHover={{ scale: 1.04 }}
                         whileTap={{ scale: 0.96 }}
-                        onClick={() => openDrawer('auth')}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-black text-xs font-extrabold shadow-md transition-all cursor-pointer border border-amber-300/50 shrink-0 min-h-[36px]"
+                        onClick={() => navigate('/login')}
+                        className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-black text-xs font-extrabold shadow-md transition-all cursor-pointer border border-amber-300/50 shrink-0 min-h-[34px] sm:min-h-[36px]"
                         aria-label="Sign In"
                       >
                         <FiUser size={14} className="shrink-0" />
-                        <span>Sign In</span>
+                        <span className="hidden sm:inline">Sign In</span>
                       </motion.button>
                     )}
 
