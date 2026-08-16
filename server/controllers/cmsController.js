@@ -1613,7 +1613,8 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
         // In-memory instant filtering (Eliminates 4 heavy database roundtrips & table scans!)
         const featuredProducts = allProducts.filter(p => p.featured).slice(0, 12);
         const trendingProducts = allProducts.filter(p => p.trending).slice(0, 12);
-        const newArrivalProducts = allProducts.filter(p => p.newArrival || p.isNew).slice(0, 12);
+        const explicitNewArrivals = allProducts.filter(p => p.newArrival || p.isNew).slice(0, 12);
+        const newArrivalProducts = explicitNewArrivals.length > 0 ? explicitNewArrivals : allProducts.slice(0, 12);
         const bestSellerProducts = allProducts.filter(p => p.bestSeller || p.todaysDeal).slice(0, 12);
 
         // Enrich trendingSelection products if set
