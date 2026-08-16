@@ -117,25 +117,36 @@ const Navbar = () => {
 
 
 
-  /* ── Close user menu on outside click & escape key ─────────── */
+  /* ── Close user menu: ANY click anywhere closes it (except toggle button) ── */
   const userBtnRef = useRef(null);
   const userDropdownRef = useRef(null);
+  const closeListenerRef = useRef(null);
 
   useEffect(() => {
-    if (!isUserMenuOpen) return;
+    if (!isUserMenuOpen) {
+      // Clean up if somehow still attached
+      if (closeListenerRef.current) {
+        document.removeEventListener('click', closeListenerRef.current, true);
+        closeListenerRef.current = null;
+      }
+      return;
+    }
 
-    const handleOutsideClick = (e) => {
-      // If clicking inside the toggle button, let button handle toggle
-      if (userBtnRef.current && userBtnRef.current.contains(e.target)) {
-        return;
-      }
-      // If clicking inside the dropdown menu itself, let the link/button handle it
-      if (userDropdownRef.current && userDropdownRef.current.contains(e.target)) {
-        return;
-      }
-      // Clicked anywhere outside -> close immediately!
-      setIsUserMenuOpen(false);
-    };
+    // Delay by 1 frame so the opening click doesn't immediately close
+    const raf = requestAnimationFrame(() => {
+      const closeMenu = (e) => {
+        // Only skip if clicking the toggle button itself (so it can toggle)
+        if (userBtnRef.current && userBtnRef.current.contains(e.target)) {
+          return;
+        }
+        // EVERYTHING else closes the menu — menu items, page background, anywhere
+        setIsUserMenuOpen(false);
+        setActiveMegaMenu(null);
+      };
+
+      closeListenerRef.current = closeMenu;
+      document.addEventListener('click', closeMenu, true); // capture phase = fires first
+    });
 
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
@@ -143,12 +154,14 @@ const Navbar = () => {
         setActiveMegaMenu(null);
       }
     };
-
-    document.addEventListener('pointerdown', handleOutsideClick);
     window.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener('pointerdown', handleOutsideClick);
+      cancelAnimationFrame(raf);
+      if (closeListenerRef.current) {
+        document.removeEventListener('click', closeListenerRef.current, true);
+        closeListenerRef.current = null;
+      }
       window.removeEventListener('keydown', handleEscape);
     };
   }, [isUserMenuOpen]);
@@ -429,10 +442,11 @@ const Navbar = () => {
                       {isAuthenticated && isUserMenuOpen && (
                         <motion.div
                           ref={userDropdownRef}
+                          key="user-dropdown"
                           initial={{ opacity: 0, y: 8, scale: 0.96 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                          transition={{ duration: 0.15 }}
+                          transition={{ duration: 0.12 }}
                           className="absolute right-0 mt-2 w-60 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-50 text-xs"
                         >
                           <div className="px-4 py-3 border-b border-white/10 bg-white/5">
@@ -453,44 +467,38 @@ const Navbar = () => {
                               { label: 'Profile Settings', icon: FiUser, path: '/profile' },
                               { label: 'Notifications', icon: FiBell, path: '/notifications' },
                             ].map((item) => (
-                              <Link
+                              <div
                                 key={item.label}
-                                to={item.path}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setIsUserMenuOpen(false);
-                                  setActiveMegaMenu(null);
-                                }}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => navigate(item.path)}
                                 className="flex items-center gap-3 px-4 py-2.5 text-white/80 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                               >
                                 <item.icon size={14} className="text-amber-400/80 shrink-0" />
                                 <span className="font-semibold">{item.label}</span>
-                              </Link>
+                              </div>
                             ))}
                           </div>
 
                           {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.isAdmin) && (
                             <div className="border-t border-white/10 py-1">
-                              <Link
-                                to="/admin/dashboard"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setIsUserMenuOpen(false);
-                                  setActiveMegaMenu(null);
-                                }}
+                              <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => navigate('/admin/dashboard')}
                                 className="flex items-center gap-3 px-4 py-2.5 text-amber-400 hover:bg-amber-400/10 font-bold transition-colors cursor-pointer"
                               >
                                 <FiSettings size={14} className="shrink-0" />
                                 Super Admin Panel
-                              </Link>
+                              </div>
                             </div>
                           )}
 
                           <div className="border-t border-white/10 p-1 space-y-1">
-                            <button
-                              type="button"
+                            <div
+                              role="button"
+                              tabIndex={0}
                               onClick={() => {
-                                setIsUserMenuOpen(false);
                                 logout();
                                 navigate('/login?switch=true');
                               }}
@@ -498,18 +506,16 @@ const Navbar = () => {
                             >
                               <FiRefreshCw size={14} className="shrink-0" />
                               Switch Account
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsUserMenuOpen(false);
-                                logout();
-                              }}
+                            </div>
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => logout()}
                               className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 font-bold text-xs transition-colors cursor-pointer"
                             >
                               <FiLogOut size={14} className="shrink-0" />
                               Sign Out
-                            </button>
+                            </div>
                           </div>
                         </motion.div>
                       )}
