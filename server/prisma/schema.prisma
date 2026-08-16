@@ -13,6 +13,7 @@ model User {
   email               String        @unique
   username            String?       @unique
   password            String
+  previousPassword    String?
   fullName            String
   firstName           String?
   lastName            String?

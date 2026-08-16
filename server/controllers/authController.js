@@ -176,6 +176,12 @@ exports.login = asyncHandler(async (req, res, next) => {
 
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
+    if (user.previousPassword) {
+      const isPreviousMatch = await bcrypt.compare(password, user.previousPassword);
+      if (isPreviousMatch) {
+        return next(new ApiError(401, 'This is your previous password. Please try logging in with your new updated password.'));
+      }
+    }
     return next(new ApiError(401, 'Invalid password. Please check your credentials or click Forgot Password.'));
   }
 

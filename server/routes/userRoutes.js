@@ -7,7 +7,13 @@ router.use(protect);
 
 // Profile
 router.put('/profile', userController.updateProfile);
+// Password Change
 router.put('/password', userController.updatePassword);
+router.post('/password-otp/request', userController.requestPasswordOTP);
+router.post('/password-otp/verify', userController.verifyPasswordOTP);
+
+// Multi-Device Session Security
+router.post('/logout-all-devices', userController.logoutAllDevices);
 
 // Addresses
 router.get('/addresses', userController.getAddresses);

@@ -42,7 +42,8 @@ exports.updateProfile = asyncHandler(async (req, res, next) => {
   });
 });
 
-exports.updatePassword = asyncHandler(async (req, res, next) => {
+// ==================== PASSWORD MANAGEMENT WITH MANDATORY OTP ====================
+exports.requestPasswordOTP = asyncHandler(async (req, res, next) => {
   const { currentPassword, newPassword } = req.body;
 
   if (!currentPassword || !newPassword) {
@@ -50,9 +51,15 @@ exports.updatePassword = asyncHandler(async (req, res, next) => {
   }
 
   const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user) return next(new ApiError(404, 'User not found'));
+
   const isMatch = await bcrypt.compare(currentPassword, user.password);
   if (!isMatch) {
-    return next(new ApiError(400, 'Incorrect current password'));
+    return next(new ApiError(400, 'Current password is incorrect. Please enter your valid current password.'));
+  }
+
+  if (currentPassword === newPassword) {
+    return next(new ApiError(400, 'New password cannot be the same as your current password.'));
   }
 
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -60,15 +67,118 @@ exports.updatePassword = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, 'New password must be at least 8 characters long and contain uppercase, lowercase, number, and special character.'));
   }
 
-  const hashedPassword = await bcrypt.hash(newPassword, 12);
+  // Generate 6-digit OTP code
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
   await prisma.user.update({
     where: { id: req.user.id },
-    data: { password: hashedPassword },
+    data: {
+      otpCode,
+      otpExpiresAt,
+    },
+  });
+
+  // Send OTP Email
+  try {
+    const { sendOTPEmail } = require('../services/emailService');
+    await sendOTPEmail(user.email, user.fullName, otpCode);
+  } catch (e) {
+    console.error('Failed to send password OTP email:', e);
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `Security OTP sent to your registered email (${user.email}). Please enter the 6-digit code to complete password change.`,
+    data: { email: user.email, otpCode }
+  });
+});
+
+exports.verifyPasswordOTP = asyncHandler(async (req, res, next) => {
+  const { currentPassword, newPassword, otpCode } = req.body;
+
+  if (!currentPassword || !newPassword || !otpCode) {
+    return next(new ApiError(400, 'Current password, new password, and OTP code are required'));
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user) return next(new ApiError(404, 'User not found'));
+
+  const isMatch = await bcrypt.compare(currentPassword, user.password);
+  if (!isMatch) {
+    return next(new ApiError(400, 'Current password is incorrect'));
+  }
+
+  if (!user.otpCode || user.otpCode !== String(otpCode).trim()) {
+    return next(new ApiError(400, 'Invalid verification OTP code. Please check the code sent to your email.'));
+  }
+
+  if (!user.otpExpiresAt || new Date() > new Date(user.otpExpiresAt)) {
+    return next(new ApiError(400, 'OTP code has expired. Please request a new OTP.'));
+  }
+
+  const hashedNewPassword = await bcrypt.hash(newPassword, 12);
+
+  // Store current password in previousPassword, update password, and clear OTP
+  await prisma.user.update({
+    where: { id: req.user.id },
+    data: {
+      previousPassword: user.password, // store previous hashed password
+      password: hashedNewPassword,     // store new hashed password
+      otpCode: null,
+      otpExpiresAt: null,
+    },
+  });
+
+  // Log activity
+  await prisma.activityLog.create({
+    data: {
+      userId: user.id,
+      action: 'PASSWORD_CHANGED',
+      details: 'Security password changed successfully via OTP verification.',
+      ipAddress: req.ip || 'Unknown IP',
+    },
   });
 
   res.status(200).json({
     success: true,
-    message: 'Password updated successfully',
+    message: 'Password updated successfully! Please use your new password for future logins.',
+  });
+});
+
+exports.updatePassword = exports.verifyPasswordOTP;
+
+// ==================== FORCE LOGOUT ALL DEVICES ====================
+exports.logoutAllDevices = asyncHandler(async (req, res, next) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user) return next(new ApiError(404, 'User not found'));
+
+  // Increment tokenVersion to invalidate all active JWT tokens across all devices
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { tokenVersion: { increment: 1 } },
+  });
+
+  // Purge all user session records
+  try {
+    await prisma.userSession.deleteMany({
+      where: { userId: user.id },
+    });
+  } catch (e) {}
+
+  // Log activity
+  await prisma.activityLog.create({
+    data: {
+      userId: user.id,
+      action: 'LOGOUT_ALL_DEVICES',
+      details: `Forced multi-device logout completed for ${user.email}. All active sessions terminated.`,
+      ipAddress: req.ip || 'Unknown IP',
+    },
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'Successfully logged out from all devices and sessions.',
   });
 });
 

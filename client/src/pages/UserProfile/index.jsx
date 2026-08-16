@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   FiUser, FiShoppingBag, FiMapPin, FiHeart, FiShield,
-  FiEdit, FiPlus, FiTrash2, FiSave, FiLock, FiCheckCircle, FiPrinter
+  FiEdit, FiPlus, FiTrash2, FiSave, FiLock, FiCheckCircle, FiPrinter, FiLogOut, FiKey, FiSmartphone
 } from 'react-icons/fi';
 import { useDispatch, useSelector } from 'react-redux';
 import api from '../../config/api';
@@ -12,7 +12,7 @@ import Button from '../../components/common/Button';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDate } from '../../utils/formatDate';
 import { toast } from 'react-toastify';
-import { updateUser, getMe } from '../../redux/auth/authSlice';
+import { updateUser, getMe, logoutUser } from '../../redux/auth/authSlice';
 
 const UserProfile = () => {
   const [activeTab, setActiveTab] = useState('profile');
@@ -99,14 +99,62 @@ const UserProfile = () => {
     }
   };
 
-  const handlePasswordSave = async (e) => {
+  const [otpModal, setOtpModal] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [requestingOtp, setRequestingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+
+  const handleRequestPasswordOTP = async (e) => {
     e.preventDefault();
+    if (!passForm.currentPassword || !passForm.newPassword) {
+      toast.error('Please enter your current password and new password');
+      return;
+    }
     try {
-      await api.put('/users/password', passForm);
-      toast.success('Password changed successfully!');
-      setPassForm({ currentPassword: '', newPassword: '' });
+      setRequestingOtp(true);
+      const res = await api.post('/users/password-otp/request', passForm);
+      toast.success(res.data?.message || 'Verification OTP code sent to your registered email!');
+      setOtpModal(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Password update failed');
+      toast.error(err.response?.data?.message || 'Failed to send OTP for password change');
+    } finally {
+      setRequestingOtp(false);
+    }
+  };
+
+  const handleVerifyPasswordOTP = async (e) => {
+    e.preventDefault();
+    if (!otpCode || otpCode.trim().length !== 6) {
+      toast.error('Please enter a valid 6-digit OTP code');
+      return;
+    }
+    try {
+      setVerifyingOtp(true);
+      const res = await api.post('/users/password-otp/verify', {
+        ...passForm,
+        otpCode: otpCode.trim()
+      });
+      toast.success(res.data?.message || 'Password changed successfully!');
+      setOtpModal(false);
+      setOtpCode('');
+      setPassForm({ currentPassword: '', newPassword: '' });
+      fetchUserData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Invalid or expired OTP code');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleLogoutAllDevices = async () => {
+    if (!window.confirm('Are you sure you want to forcibly log out from all active sessions across all devices?')) return;
+    try {
+      await api.post('/users/logout-all-devices');
+      toast.success('Logged out from all devices successfully');
+      dispatch(logoutUser());
+      window.location.href = '/login';
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to log out from all devices');
     }
   };
 
@@ -349,13 +397,43 @@ const UserProfile = () => {
           {/* TAB 4: SECURITY & LOGS */}
           {activeTab === 'security' && (
             <div className="space-y-8">
-              <form onSubmit={handlePasswordSave} className="space-y-4">
-                <h3 className="text-xl font-serif font-bold text-charcoal-900 border-b pb-3">Change Security Password</h3>
-                <Input label="Current Password" type="password" value={passForm.currentPassword} onChange={e => setPassForm({ ...passForm, currentPassword: e.target.value })} required />
-                <Input label="New Password" type="password" value={passForm.newPassword} onChange={e => setPassForm({ ...passForm, newPassword: e.target.value })} required />
-                <Button type="submit" icon={FiLock}>Update Password</Button>
+              {/* Change Security Password */}
+              <form onSubmit={handleRequestPasswordOTP} className="space-y-4 bg-amber-50/30 p-6 rounded-2xl border border-amber-200/60 shadow-sm">
+                <div className="border-b border-amber-200/60 pb-3">
+                  <h3 className="text-xl font-serif font-bold text-charcoal-900 flex items-center gap-2">
+                    <FiLock className="text-amber-600" /> Change Security Password
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    An OTP verification code will be sent to your email to confirm the password update.
+                  </p>
+                </div>
+                <Input label="Current Password *" type="password" value={passForm.currentPassword} onChange={e => setPassForm({ ...passForm, currentPassword: e.target.value })} required />
+                <Input label="New Password *" type="password" value={passForm.newPassword} onChange={e => setPassForm({ ...passForm, newPassword: e.target.value })} required />
+                <Button type="submit" icon={FiKey} disabled={requestingOtp}>
+                  {requestingOtp ? 'Sending Security OTP...' : 'Send Security OTP for Verification'}
+                </Button>
               </form>
 
+              {/* Force Multi-Device Logout Section */}
+              <div className="bg-red-50/40 p-6 rounded-2xl border border-red-200/60 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h4 className="font-bold text-red-950 text-base flex items-center gap-2">
+                    <FiSmartphone className="text-red-600" /> Multi-Device Session Security
+                  </h4>
+                  <p className="text-xs text-gray-600 mt-1 max-w-xl">
+                    Want to secure your account across all phones, tablets, and computers? Click below to forcibly log out from all active sessions in one click.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLogoutAllDevices}
+                  className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-sm transition-all whitespace-nowrap"
+                >
+                  <FiLogOut size={14} /> Logout All Devices
+                </button>
+              </div>
+
+              {/* Recent Login Activity */}
               <div>
                 <div className="flex justify-between items-center mb-3">
                   <h4 className="font-bold text-charcoal-900 text-sm">Recent Login Activity</h4>
@@ -428,6 +506,33 @@ const UserProfile = () => {
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => { setAddressModal(false); setEditingAddressId(null); }}>Cancel</Button>
             <Button type="submit">{editingAddressId ? "Update Address" : "Save Address"}</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal: Security OTP Verification for Password Change */}
+      <Modal isOpen={otpModal} onClose={() => setOtpModal(false)} title="Security OTP Verification">
+        <form onSubmit={handleVerifyPasswordOTP} className="space-y-4">
+          <p className="text-xs text-gray-600">
+            A 6-digit security code was sent to your registered email address ({user?.email}). Please enter it below to confirm your new password.
+          </p>
+          <div>
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">6-Digit OTP Code *</label>
+            <input
+              type="text"
+              maxLength={6}
+              required
+              value={otpCode}
+              onChange={e => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="123456"
+              className="w-full text-center text-2xl tracking-[0.5em] font-mono py-3 border border-gray-300 rounded-xl focus:border-amber-600 outline-none"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={() => setOtpModal(false)}>Cancel</Button>
+            <Button type="submit" disabled={verifyingOtp}>
+              {verifyingOtp ? 'Verifying OTP...' : 'Verify OTP & Save Password'}
+            </Button>
           </div>
         </form>
       </Modal>
