@@ -117,19 +117,19 @@ const Navbar = () => {
 
 
 
-  /* ── Close user menu immediately on item click OR tap/click anywhere on site ─────────── */
+  /* ── Close user menu on outside click & escape key ─────────── */
   const userBtnRef = useRef(null);
   const userDropdownRef = useRef(null);
 
   useEffect(() => {
     if (!isUserMenuOpen) return;
 
-    const handleGlobalClick = (e) => {
-      // If clicking/tapping the user account toggle button itself, let button handle toggle
-      if (userBtnRef.current && userBtnRef.current.contains(e.target)) {
+    const handleOutsideClick = (e) => {
+      // If clicking/tapping the user account toggle button or inside the dropdown, let their handlers handle it
+      if (userBtnRef.current?.contains(e.target) || userDropdownRef.current?.contains(e.target)) {
         return;
       }
-      // Clicked/tapped ANYWHERE else on the website (menu item OR outside on page) -> close dropdown immediately!
+      // Clicked outside -> close immediately!
       setIsUserMenuOpen(false);
     };
 
@@ -140,13 +140,13 @@ const Navbar = () => {
       }
     };
 
-    window.addEventListener('click', handleGlobalClick, true);
-    window.addEventListener('touchstart', handleGlobalClick, { passive: true, capture: true });
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick, { passive: true });
     window.addEventListener('keydown', handleEscape);
 
     return () => {
-      window.removeEventListener('click', handleGlobalClick, true);
-      window.removeEventListener('touchstart', handleGlobalClick, { capture: true });
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
       window.removeEventListener('keydown', handleEscape);
     };
   }, [isUserMenuOpen]);
@@ -425,21 +425,26 @@ const Navbar = () => {
                     {/* USER PROFILE DROPDOWN MENU */}
                     <AnimatePresence>
                       {isAuthenticated && isUserMenuOpen && (
-                        <motion.div
-                          ref={userDropdownRef}
-                          initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                          transition={{ duration: 0.15 }}
-                          className="absolute right-0 mt-2 w-60 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-50 text-xs"
-                        >
-                          <div className="px-4 py-3 border-b border-white/10 bg-white/5">
-                            <p className="text-sm font-bold text-white truncate">{userName}</p>
-                            <p className="text-xs text-white/50 truncate">{user?.email}</p>
-                            <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-400/10 text-amber-400 border border-amber-400/30">
-                              {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '⚡ ADMIN' : '⭐ CUSTOMER'}
+                        <>
+                          <div
+                            className="fixed inset-0 z-40 bg-transparent cursor-default"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          />
+                          <motion.div
+                            ref={userDropdownRef}
+                            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute right-0 mt-2 w-60 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-50 text-xs"
+                          >
+                            <div className="px-4 py-3 border-b border-white/10 bg-white/5">
+                              <p className="text-sm font-bold text-white truncate">{userName}</p>
+                              <p className="text-xs text-white/50 truncate">{user?.email}</p>
+                              <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-400/10 text-amber-400 border border-amber-400/30">
+                                {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '⚡ ADMIN' : '⭐ CUSTOMER'}
+                              </div>
                             </div>
-                          </div>
 
                             <div className="py-1">
                               {[
@@ -506,6 +511,7 @@ const Navbar = () => {
                               </button>
                             </div>
                           </motion.div>
+                        </>
                       )}
                     </AnimatePresence>
                   </div>
