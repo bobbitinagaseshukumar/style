@@ -222,13 +222,17 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
 // ==================== GET PRODUCT BY SLUG / ID / SKU ====================
 exports.getProductBySlug = asyncHandler(async (req, res, next) => {
   const { slug } = req.params;
+  const clean = String(slug).trim();
 
   let product = await prisma.product.findFirst({
     where: {
       OR: [
-        { slug: slug },
-        { id: slug },
-        { sku: slug }
+        { slug: { equals: clean, mode: 'insensitive' } },
+        { slug: { contains: clean, mode: 'insensitive' } },
+        { id: clean },
+        { sku: { equals: clean, mode: 'insensitive' } },
+        { name: { equals: clean, mode: 'insensitive' } },
+        { name: { contains: clean, mode: 'insensitive' } },
       ]
     },
     include: {

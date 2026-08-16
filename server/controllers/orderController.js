@@ -664,17 +664,61 @@ exports.adminApproveOrder = asyncHandler(async (req, res, next) => {
     },
   });
 
-  // Notify Customer
+  // Notify Customer (In-App & Email)
   await prisma.notification.create({
     data: {
       userId: order.userId,
-      title: `Order Approved (#${order.orderNumber})`,
+      title: `✅ Order Approved (#${order.orderNumber})`,
       message: `Your order has been approved! Expected Delivery: ${deliveryDate || '3-5 Business Days'}.${
         cancellationAllowed ? ' Cancellation window is open.' : ''
       }`,
       type: 'ORDER',
       link: '/orders',
     },
+  });
+
+  setImmediate(async () => {
+    try {
+      const orderPayload = {
+        orderNumber: order.orderNumber,
+        orderId: order.id,
+        customerName: order.user?.fullName || 'Valued Customer',
+        customerEmail: order.user?.email || '',
+        customerPhone: order.user?.phone || order.address?.phone || 'N/A',
+        paymentMethod: order.paymentMethod || 'Online Payment',
+        items: order.items.map(i => {
+          const primaryImg = i.product?.images?.find(img => img.isPrimary) || i.product?.images?.[0];
+          const imgUrl = i.productImage || primaryImg?.url || i.product?.images?.[0]?.url || (typeof i.product?.images?.[0] === 'string' ? i.product?.images?.[0] : null);
+          return {
+            slug: i.product?.slug || i.productId || i.id,
+            name: i.productName || i.product?.name || 'Product Item',
+            price: i.price,
+            quantity: i.quantity,
+            color: i.color,
+            size: i.size,
+            image: imgUrl,
+            imgId: primaryImg?.id,
+            productId: i.productId || i.product?.id,
+          };
+        }),
+        subtotal: order.subtotal,
+        discount: order.discountAmount,
+        shippingCharge: order.shippingFee,
+        total: order.totalAmount,
+        shippingAddress: order.address
+          ? `${order.address.fullName || order.user?.fullName || ''}, ${order.address.street}, ${order.address.city}, ${order.address.state} - ${order.address.postalCode}`
+          : 'N/A',
+        estimatedDelivery: deliveryDate || '3-5 Business Days',
+        packingDate: packingDate || null,
+        shippingDate: shippingDate || null,
+        deliveryTime: deliveryTime || null,
+      };
+      if (order.user?.email) {
+        await emailService.sendOrderPlacedEmail(order.user.email, order.user.fullName || 'Valued Customer', orderPayload);
+      }
+    } catch (mailErr) {
+      console.error('[APPROVAL EMAIL ERROR]', mailErr.message);
+    }
   });
 
   res.status(200).json({
@@ -691,7 +735,7 @@ exports.adminRejectOrder = asyncHandler(async (req, res, next) => {
 
   const order = await prisma.order.findUnique({
     where: { id },
-    include: { items: true },
+    include: { items: true, user: { select: { email: true, fullName: true } } },
   });
 
   if (!order) return next(new ApiError(404, 'Order not found'));
@@ -709,22 +753,46 @@ exports.adminRejectOrder = asyncHandler(async (req, res, next) => {
 
     // Restore Stock
     for (const item of order.items) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stock: { increment: item.quantity } },
-      });
+      if (item.productId) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
     }
 
-    // Customer Notification
+    // Customer In-App Notification
     await tx.notification.create({
       data: {
         userId: order.userId,
-        title: `Order Rejected (#${order.orderNumber})`,
-        message: `Your order was rejected by Admin. Reason: ${reason || 'Stock unavailable'}`,
+        title: `❌ Order Rejected (#${order.orderNumber})`,
+        message: `Your order was rejected by seller. Reason: ${reason || 'Stock unavailable / Verification failed'}`,
         type: 'ORDER',
         link: '/orders',
       },
     });
+  });
+
+  // Send Customer Rejection Email
+  setImmediate(async () => {
+    try {
+      if (order.user?.email) {
+        const orderPayload = {
+          orderNumber: order.orderNumber,
+          orderId: order.id,
+          reason: reason || 'Order rejected by seller',
+          items: (order.items || []).map(i => ({
+            name: i.productName || 'Product Item',
+            price: i.price,
+            quantity: i.quantity,
+          })),
+          total: order.totalAmount,
+        };
+        await emailService.sendOrderCancelledEmail(order.user.email, order.user.fullName || 'Valued Customer', orderPayload);
+      }
+    } catch (mailErr) {
+      console.error('[REJECTION EMAIL ERROR]', mailErr.message);
+    }
   });
 
   res.status(200).json({ success: true, message: 'Order rejected and inventory restored.' });
