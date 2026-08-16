@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiBell, FiShield, FiLock, FiCheck, FiKey, FiSmartphone } from 'react-icons/fi';
+import { FiBell, FiShield, FiLock, FiCheck, FiKey, FiSmartphone, FiLogOut } from 'react-icons/fi';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
 import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
-import { updateUser, getMe } from '../../redux/auth/authSlice';
+import { updateUser, getMe, logoutUser } from '../../redux/auth/authSlice';
 
 const Toggle = ({ value, onChange, disabled }) => (
   <button
@@ -49,6 +49,18 @@ const SettingsTab = () => {
   const [otpModal, setOtpModal] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+
+  const handleLogoutAllDevices = async () => {
+    if (!window.confirm('Are you sure you want to forcibly log out from all active sessions across all devices?')) return;
+    try {
+      await api.post('/users/logout-all-devices');
+      toast.success('Logged out from all devices successfully');
+      dispatch(logoutUser());
+      window.location.href = '/login';
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to log out from all devices');
+    }
+  };
 
   const togglePref = (key) => setPrefs((p) => ({ ...p, [key]: !p[key] }));
 
@@ -214,6 +226,25 @@ const SettingsTab = () => {
           className="px-6 py-2.5 rounded-xl border border-yellow-400/40 text-yellow-400 text-xs font-bold hover:bg-yellow-400/10 transition cursor-pointer disabled:opacity-50"
         >
           {saving ? 'Saving Preferences...' : 'Save Notification Preferences'}
+        </button>
+      </div>
+
+      {/* Force Multi-Device Logout Section */}
+      <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h4 className="font-bold text-red-400 text-sm flex items-center gap-2">
+            <FiSmartphone className="text-red-400" /> Multi-Device Session Security
+          </h4>
+          <p className="text-xs text-white/50 mt-1 max-w-xl">
+            Want to secure your account across all phones, tablets, and computers? Click below to forcibly log out from all active sessions in one click.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleLogoutAllDevices}
+          className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs rounded-xl flex items-center gap-2 shadow-md transition-all whitespace-nowrap cursor-pointer"
+        >
+          <FiLogOut size={14} /> Logout All Devices
         </button>
       </div>
 
