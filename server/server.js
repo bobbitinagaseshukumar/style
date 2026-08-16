@@ -8,26 +8,16 @@ const prisma = require('./config/db');
 
 const autoPublishVisibleProducts = async () => {
   try {
-    const result = await prisma.product.updateMany({
-      where: {
-        OR: [
-          { status: 'published' },
-          { status: 'DRAFT' },
-          { status: 'draft' },
-          { status: 'hidden' },
-          { status: null },
-        ],
-        isVisible: true,
-      },
-      data: {
-        status: 'PUBLISHED',
-      },
-    });
-    if (result.count > 0) {
-      console.log(`[AUTO-PUBLISH] Migrated ${result.count} product(s) to PUBLISHED status.`);
+    // Use raw SQL to avoid Prisma client schema mismatch on older databases
+    const result = await prisma.$executeRawUnsafe(
+      `UPDATE "Product" SET "status" = 'PUBLISHED' WHERE "isVisible" = true AND ("status" IS NULL OR "status" IN ('published', 'DRAFT', 'draft', 'hidden'))`
+    );
+    if (result > 0) {
+      console.log(`[AUTO-PUBLISH] Migrated ${result} product(s) to PUBLISHED status.`);
     }
   } catch (err) {
-    console.error('[AUTO-PUBLISH ERROR]:', err.message);
+    // Non-critical: server continues running even if auto-publish fails
+    console.warn('[AUTO-PUBLISH] Skipped:', err.message?.substring(0, 100));
   }
 };
 
