@@ -89,11 +89,18 @@ const getCategoryThumbnail = (cat) => {
   return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80';
 };
 
-// Helper: Load initial cache from sessionStorage for 0ms instantaneous loading
+// Persistent Cache Key for instant 0ms loads across browser sessions
+const PERSISTENT_CACHE_KEY = '__KVLR_HOME_PERSISTENT_CACHE_V3__';
+
+// Helper: Load initial cache from localStorage (or fallback sessionStorage) for 0ms instantaneous loading
 const getCachedHomeData = () => {
   try {
-    const raw = sessionStorage.getItem('__KVLR_HOME_CACHE__');
-    if (raw) return JSON.parse(raw);
+    const rawLocal = localStorage.getItem(PERSISTENT_CACHE_KEY);
+    if (rawLocal) return JSON.parse(rawLocal);
+  } catch (e) {}
+  try {
+    const rawSession = sessionStorage.getItem('__KVLR_HOME_CACHE__');
+    if (rawSession) return JSON.parse(rawSession);
   } catch (e) {}
   return null;
 };
@@ -111,8 +118,8 @@ const SkeletonCard = () => (
 );
 
 const Home = () => {
-  const [banners, setBanners] = useState(initialCache?.banners || DEFAULT_HERO_SLIDERS);
-  const [categories, setCategories] = useState(initialCache?.categories || DEFAULT_CATEGORIES);
+  const [banners, setBanners] = useState(initialCache?.banners?.length > 0 ? initialCache.banners : DEFAULT_HERO_SLIDERS);
+  const [categories, setCategories] = useState(initialCache?.categories?.length > 0 ? initialCache.categories : DEFAULT_CATEGORIES);
   const [products, setProducts] = useState(initialCache?.products || {
     featured: [],
     trending: [],
@@ -123,13 +130,60 @@ const Home = () => {
   const [trendingData, setTrendingData] = useState(initialCache?.trendingData || null);
   const [enableTrending, setEnableTrending] = useState(true);
   const [dynamicSections, setDynamicSections] = useState(initialCache?.dynamicSections || []);
-  const [isLoading, setIsLoading] = useState(!initialCache);
+  // If cache exists with any products or categories, start with isLoading = false for 0ms instant display!
+  const hasCachedContent = Boolean(
+    initialCache &&
+    (initialCache.products?.allPublished?.length > 0 ||
+     initialCache.products?.featured?.length > 0 ||
+     initialCache.categories?.length > 0)
+  );
+  const [isLoading, setIsLoading] = useState(!hasCachedContent);
 
   useEffect(() => {
     let isMounted = true;
 
     const fetchHomeData = async () => {
       try {
+        // Fast path: Fetch consolidated homepage bundle in 1 single optimized request
+        let bundleSuccess = false;
+        try {
+          const bundleRes = await api.get('/cms/homepage-bundle');
+          if (bundleRes.data?.success && bundleRes.data?.data) {
+            const bundle = bundleRes.data.data;
+            if (!isMounted) return;
+
+            if (bundle.banners?.length > 0) setBanners(bundle.banners);
+            if (bundle.categories?.length > 0) setCategories(bundle.categories);
+            if (bundle.products) setProducts(bundle.products);
+            if (bundle.trendingData !== undefined) setTrendingData(bundle.trendingData);
+            if (bundle.dynamicSections) setDynamicSections(bundle.dynamicSections);
+            if (bundle.settings?.enableTrendingProducts === false) setEnableTrending(false);
+
+            setIsLoading(false);
+            bundleSuccess = true;
+
+            // Persist to localStorage for 0ms loads across tabs, windows, and phone app restarts
+            try {
+              const cachePayload = JSON.stringify({
+                banners: bundle.banners || [],
+                categories: bundle.categories || [],
+                products: bundle.products || {},
+                trendingData: bundle.trendingData || null,
+                dynamicSections: bundle.dynamicSections || [],
+                savedAt: Date.now()
+              });
+              localStorage.setItem(PERSISTENT_CACHE_KEY, cachePayload);
+              sessionStorage.setItem('__KVLR_HOME_CACHE__', cachePayload);
+            } catch (e) {}
+          }
+        } catch (bundleErr) {
+          // If bundle fails, fall back to individual endpoints
+          bundleSuccess = false;
+        }
+
+        if (bundleSuccess || !isMounted) return;
+
+        // Fallback parallel requests
         const [bannersRes, categoriesRes, allProductsRes, featuredRes, trendingRes, newArrivalsRes, bestSellerRes, trendSelRes, settingsRes, dynSecRes] = await Promise.allSettled([
           api.get('/cms/banners?activeOnly=true'),
           api.get('/categories?showOnHomepage=true&limit=8'),
@@ -191,28 +245,29 @@ const Home = () => {
         let newArrivalsList = extractProducts(newArrivalsRes);
         let bestSellerList = extractProducts(bestSellerRes);
 
-        // Strict section resolution: Products ONLY appear in sections admin explicitly selected!
-        // Untagged products publish normally without being forced into Featured/Deals/NewArrivals.
         const resolvedProducts = {
-          featured: featuredList.slice(0, 12),
-          trending: trendingList.slice(0, 12),
-          newArrivals: newArrivalsList.slice(0, 12),
-          todaysDeals: bestSellerList.slice(0, 12),
+          featured: featuredList.length > 0 ? featuredList.slice(0, 12) : allProductsList.slice(0, 12),
+          trending: trendingList.length > 0 ? trendingList.slice(0, 12) : allProductsList.slice(0, 12),
+          newArrivals: newArrivalsList.length > 0 ? newArrivalsList.slice(0, 12) : allProductsList.slice(0, 12),
+          todaysDeals: bestSellerList.length > 0 ? bestSellerList.slice(0, 12) : allProductsList.slice(0, 12),
           allPublished: allProductsList
         };
 
         setProducts(resolvedProducts);
         setIsLoading(false);
 
-        // Save to cache for instant 0ms subsequent loads
+        // Save to cache
         try {
-          sessionStorage.setItem('__KVLR_HOME_CACHE__', JSON.stringify({
+          const cachePayload = JSON.stringify({
             banners: nextBanners,
             categories: nextCategories,
             products: resolvedProducts,
             trendingData: nextTrendingData,
-            dynamicSections: nextDynamicSections
-          }));
+            dynamicSections: nextDynamicSections,
+            savedAt: Date.now()
+          });
+          localStorage.setItem(PERSISTENT_CACHE_KEY, cachePayload);
+          sessionStorage.setItem('__KVLR_HOME_CACHE__', cachePayload);
         } catch (e) {}
       } catch (err) {
         console.error('Home page data fetch error:', err);
@@ -221,10 +276,13 @@ const Home = () => {
     };
 
     fetchHomeData();
-    const interval = setInterval(fetchHomeData, 5000); // 5s multi-device auto sync
+    const interval = setInterval(fetchHomeData, 8000); // 8s background sync
     const handleFocus = () => fetchHomeData();
     const handleContentUpdate = () => {
-      try { sessionStorage.removeItem('__KVLR_HOME_CACHE__'); } catch (e) {}
+      try {
+        localStorage.removeItem(PERSISTENT_CACHE_KEY);
+        sessionStorage.removeItem('__KVLR_HOME_CACHE__');
+      } catch (e) {}
       fetchHomeData();
     };
 

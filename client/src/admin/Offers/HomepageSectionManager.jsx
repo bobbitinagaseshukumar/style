@@ -10,6 +10,7 @@ import {
 import api from '../../config/api';
 import GlobalImageEditor from '../../components/common/GlobalImageEditor';
 import { toast } from 'react-toastify';
+import { notifyContentUpdated } from '../../utils/cacheUtils';
 
 /* ─────────────────────────────────────────────
    CONSTANTS
@@ -474,6 +475,7 @@ const HomepageSectionManager = () => {
         toast.success('New section created!');
       }
       setIsModalOpen(false);
+      notifyContentUpdated();
       fetchInitialData();
     } catch (err) {
       console.error('Failed to save homepage section:', err);
@@ -488,6 +490,7 @@ const HomepageSectionManager = () => {
     try {
       await api.put(`/cms/homepage/sections/${sec.id}`, { status: nextStatus, isActive: nextStatus === 'PUBLISHED' });
       setSections(prev => prev.map(s => s.id === sec.id ? { ...s, status: nextStatus, isActive: nextStatus === 'PUBLISHED' } : s));
+      notifyContentUpdated();
       toast.success(`Section ${nextStatus === 'PUBLISHED' ? 'published' : 'hidden'}`);
     } catch { toast.error('Failed to toggle status'); }
   };
@@ -496,6 +499,7 @@ const HomepageSectionManager = () => {
     try {
       await api.post(`/cms/homepage/sections/${sec.id}/duplicate`);
       toast.success('Section duplicated');
+      notifyContentUpdated();
       fetchInitialData();
     } catch { toast.error('Failed to duplicate section'); }
   };
@@ -509,6 +513,7 @@ const HomepageSectionManager = () => {
           await api.delete(`/cms/homepage/sections/${sec.id}`);
           toast.success('Section deleted. All products remain safe in the database.');
           setConfirmDialog({ open: false });
+          notifyContentUpdated();
           fetchInitialData();
         } catch { toast.error('Failed to delete section'); setConfirmDialog({ open: false }); }
       }
@@ -527,6 +532,7 @@ const HomepageSectionManager = () => {
       await api.put('/cms/homepage/sections/reorder', {
         items: withOrder.map(s => ({ id: s.id, sortOrder: s.sortOrder }))
       });
+      notifyContentUpdated();
       toast.success('Section order saved');
     } catch { toast.error('Failed to save order'); fetchInitialData(); }
   };

@@ -12,6 +12,7 @@ import {
   FiCalendar, FiLayers, FiLayout, FiZap, FiStar, FiCrop, FiShield
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import { notifyContentUpdated } from '../../utils/cacheUtils';
 
 /* ─── Configs & Helpers ──────────────────────────────────── */
 const fadeInUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -12 } };
@@ -226,6 +227,7 @@ const AdminBanner = () => {
         toast.success('Banner Published Successfully! 🚀');
       }
       setDrawerOpen(false);
+      notifyContentUpdated();
       fetchAll();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save banner');
@@ -237,6 +239,7 @@ const AdminBanner = () => {
     try {
       await api.post(`/cms/banners/${banner.id}/duplicate`);
       toast.success(`Banner "${banner.title || 'Copy'}" Duplicated Successfully!`);
+      notifyContentUpdated();
       fetchAll();
     } catch { toast.error('Failed to duplicate banner'); }
   };
@@ -248,6 +251,7 @@ const AdminBanner = () => {
     try {
       await api.put(`/cms/banners/${banner.id}`, { status: newStatus, isActive: newActive });
       toast.success(newActive ? 'Banner Published Successfully!' : 'Banner Saved as Draft!');
+      notifyContentUpdated();
       fetchAll();
     } catch { toast.error('Failed to update banner status'); }
   };
@@ -260,6 +264,7 @@ const AdminBanner = () => {
       await api.delete(`/cms/banners/${deleteTarget.id}`);
       toast.success('Banner Deleted Successfully! 🗑️');
       setDeleteTarget(null);
+      notifyContentUpdated();
       fetchAll();
     } catch { toast.error('Failed to delete banner'); }
     finally { setDeleting(false); }
@@ -281,6 +286,7 @@ const AdminBanner = () => {
         toast.success(`${ids.length} Banners Deleted Successfully!`);
       }
       setSelected(new Set());
+      notifyContentUpdated();
       fetchAll();
     } catch { toast.error('Bulk action failed'); }
   };

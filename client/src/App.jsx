@@ -18,6 +18,10 @@ const App = () => {
   // Fetch global store settings on app boot so storeName, colors, etc. are available everywhere
   useEffect(() => {
     dispatch(fetchStoreSettings());
+    // Pre-warm live backend instance in background
+    try {
+      fetch('https://style-q21b.onrender.com/api/v1/health', { mode: 'no-cors' }).catch(() => {});
+    } catch (e) {}
   }, [dispatch]);
 
   return (

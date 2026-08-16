@@ -31,6 +31,31 @@ const autoPublishVisibleProducts = async () => {
   }
 };
 
+const startKeepAliveEngine = () => {
+  const PING_INTERVAL_MS = 8 * 60 * 1000; // 8 minutes
+
+  setInterval(async () => {
+    try {
+      // 1. Keep Neon DB connection pool active
+      await prisma.$queryRaw`SELECT 1`;
+      console.log(`[KEEP-ALIVE] DB pool touch successful at ${new Date().toISOString()}`);
+
+      // 2. Self-ping Render web service to prevent idle spin-down
+      const backendUrl = process.env.RENDER_EXTERNAL_URL || 'https://style-q21b.onrender.com';
+      if (backendUrl && !backendUrl.includes('localhost')) {
+        const https = require('https');
+        https.get(`${backendUrl}/api/v1/health`, (res) => {
+          res.on('data', () => {}); // Consume stream
+        }).on('error', (e) => {
+          console.warn('[KEEP-ALIVE] Health ping warn:', e.message);
+        });
+      }
+    } catch (err) {
+      console.warn('[KEEP-ALIVE ERROR]:', err.message);
+    }
+  }, PING_INTERVAL_MS);
+};
+
 const server = app.listen(PORT, async () => {
   console.log(`====================================================`);
   console.log(`  StyleVerse Enterprise Server running on port ${PORT}`);
@@ -38,6 +63,7 @@ const server = app.listen(PORT, async () => {
   console.log(`====================================================`);
   await bootstrapSuperAdmin();
   await autoPublishVisibleProducts();
+  startKeepAliveEngine();
 });
 
 process.on('unhandledRejection', (err) => {

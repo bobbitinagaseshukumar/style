@@ -1442,5 +1442,147 @@ exports.updateHeaderSettings = asyncHandler(async (req, res) => {
     res.status(200).json({ success: true, message: 'Header settings updated', data: settings });
 });
 
+// ==================== CONSOLIDATED HOMEPAGE BUNDLE (LIGHTNING FAST) ====================
+let homepageBundleCache = null;
+let homepageBundleCacheTime = 0;
+const BUNDLE_CACHE_TTL_MS = 60 * 1000; // 60s memory cache
 
+exports.invalidateHomepageBundleCache = () => {
+    homepageBundleCache = null;
+    homepageBundleCacheTime = 0;
+};
 
+exports.getHomepageBundle = asyncHandler(async (req, res) => {
+    const now = Date.now();
+    if (homepageBundleCache && (now - homepageBundleCacheTime < BUNDLE_CACHE_TTL_MS)) {
+        return res.status(200).json({ success: true, cached: true, data: homepageBundleCache });
+    }
+
+    try {
+        const productInclude = {
+            images: {
+                orderBy: { displayOrder: 'asc' }
+            },
+            category: {
+                select: { id: true, name: true, slug: true }
+            }
+        };
+
+        const [
+            banners,
+            categories,
+            allProducts,
+            featuredProducts,
+            trendingProducts,
+            newArrivalProducts,
+            bestSellerProducts,
+            trendingSelection,
+            storeSettings,
+            rawDynamicSections
+        ] = await Promise.all([
+            prisma.banner.findMany({
+                where: { isActive: true },
+                orderBy: { order: 'asc' }
+            }).catch(() => []),
+            prisma.category.findMany({
+                where: { showOnHomepage: true, isVisible: true },
+                take: 12,
+                orderBy: { displayOrder: 'asc' }
+            }).catch(() => []),
+            prisma.product.findMany({
+                where: { status: 'PUBLISHED', isVisible: true },
+                take: 50,
+                orderBy: { createdAt: 'desc' },
+                include: productInclude
+            }).catch(() => []),
+            prisma.product.findMany({
+                where: { status: 'PUBLISHED', isVisible: true, featured: true },
+                take: 12,
+                orderBy: { createdAt: 'desc' },
+                include: productInclude
+            }).catch(() => []),
+            prisma.product.findMany({
+                where: { status: 'PUBLISHED', isVisible: true, trending: true },
+                take: 12,
+                orderBy: { createdAt: 'desc' },
+                include: productInclude
+            }).catch(() => []),
+            prisma.product.findMany({
+                where: { status: 'PUBLISHED', isVisible: true, newArrival: true },
+                take: 12,
+                orderBy: { createdAt: 'desc' },
+                include: productInclude
+            }).catch(() => []),
+            prisma.product.findMany({
+                where: { status: 'PUBLISHED', isVisible: true, bestSeller: true },
+                take: 12,
+                orderBy: { createdAt: 'desc' },
+                include: productInclude
+            }).catch(() => []),
+            prisma.trendingSelection.findFirst({
+                where: { isActive: true, status: 'PUBLISHED' }
+            }).catch(() => null),
+            prisma.storeSettings.findFirst().catch(() => null),
+            prisma.homepageSection.findMany({
+                where: { isActive: true, status: 'PUBLISHED' },
+                orderBy: { sortOrder: 'asc' }
+            }).catch(() => [])
+        ]);
+
+        // Enrich trendingSelection products if set
+        let enrichedTrending = null;
+        if (trendingSelection) {
+            let pIds = [];
+            try { pIds = JSON.parse(trendingSelection.productIds || '[]'); } catch (e) { pIds = []; }
+            let tProducts = [];
+            if (pIds.length > 0) {
+                tProducts = await prisma.product.findMany({
+                    where: { id: { in: pIds }, status: 'PUBLISHED', isVisible: true },
+                    include: productInclude
+                }).catch(() => []);
+            }
+            enrichedTrending = { ...trendingSelection, products: tProducts };
+        }
+
+        // Enrich dynamicSections products
+        const enrichedDynamicSections = await Promise.all(
+            (rawDynamicSections || []).map(async (sec) => {
+                let pIds = [];
+                try { pIds = JSON.parse(sec.productIds || '[]'); } catch (e) { pIds = []; }
+                let sProducts = [];
+                if (pIds.length > 0) {
+                    const rawProds = await prisma.product.findMany({
+                        where: { id: { in: pIds }, status: 'PUBLISHED', isVisible: true },
+                        include: productInclude
+                    }).catch(() => []);
+                    const prodMap = new Map(rawProds.map((p) => [p.id, p]));
+                    sProducts = pIds.map((id) => prodMap.get(id)).filter(Boolean);
+                }
+                return { ...sec, products: sProducts };
+            })
+        );
+
+        const bundleData = {
+            banners: banners || [],
+            categories: categories || [],
+            products: {
+                allPublished: allProducts || [],
+                featured: (featuredProducts && featuredProducts.length > 0) ? featuredProducts : (allProducts || []).slice(0, 12),
+                trending: (trendingProducts && trendingProducts.length > 0) ? trendingProducts : (allProducts || []).slice(0, 12),
+                newArrivals: (newArrivalProducts && newArrivalProducts.length > 0) ? newArrivalProducts : (allProducts || []).slice(0, 12),
+                todaysDeals: (bestSellerProducts && bestSellerProducts.length > 0) ? bestSellerProducts : (allProducts || []).slice(0, 12)
+            },
+            trendingData: enrichedTrending,
+            settings: storeSettings,
+            dynamicSections: enrichedDynamicSections
+        };
+
+        homepageBundleCache = bundleData;
+        homepageBundleCacheTime = Date.now();
+
+        res.status(200).json({ success: true, cached: false, data: bundleData });
+    } catch (err) {
+        console.error('[HOMEPAGE BUNDLE ERROR]:', err.message);
+        res.status(500).json({ success: false, message: 'Failed to load homepage bundle', error: err.message });
+    }
+});

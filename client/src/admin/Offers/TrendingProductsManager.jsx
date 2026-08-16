@@ -8,6 +8,7 @@ import {
   FiToggleLeft, FiToggleRight, FiGrid, FiSliders, FiCheck, FiArrowUp, FiArrowDown
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import { notifyContentUpdated } from '../../utils/cacheUtils';
 
 const TrendingProductsManager = () => {
   const [products, setProducts] = useState([]);
@@ -66,6 +67,7 @@ const TrendingProductsManager = () => {
     try {
       await api.put('/cms/settings', { enableTrendingProducts: nextVal });
       setMasterEnabled(nextVal);
+      notifyContentUpdated();
       toast.success(nextVal ? 'Trending Products section ENABLED' : 'Trending Products section DISABLED');
     } catch { toast.error('Failed to update setting'); }
   };
@@ -77,6 +79,7 @@ const TrendingProductsManager = () => {
         ...selection,
         productIds: JSON.stringify(selection.productIds)
       });
+      notifyContentUpdated();
       toast.success('Trending Products configuration saved! 🔥');
       fetchData();
     } catch { toast.error('Failed to save selection'); }

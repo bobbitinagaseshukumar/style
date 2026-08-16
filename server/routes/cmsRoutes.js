@@ -5,6 +5,7 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 
 // ── Public endpoints ──────────────────────────────────────────
 // Public endpoints
+router.get('/homepage-bundle', cmsController.getHomepageBundle);
 router.get('/settings', cmsController.getStoreSettings);
 router.get('/announcements', cmsController.getAnnouncements);
 router.get('/banners', cmsController.getBanners);
