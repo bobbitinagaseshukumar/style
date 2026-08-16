@@ -22,9 +22,6 @@ import InstagramGallery from '../../components/home/InstagramGallery';
 import FAQPreview from '../../components/home/FAQPreview';
 import NewsletterSubscribe from '../../components/common/NewsletterSubscribe';
 
-const fadeInUp = { initial: { opacity: 1, y: 0 }, animate: { opacity: 1, y: 0 } };
-const stagger = { initial: { opacity: 1 }, animate: { opacity: 1 } };
-
 // Luxury Fallbacks
 const DEFAULT_HERO_SLIDERS = [
   {
@@ -119,6 +116,7 @@ const SkeletonCard = () => (
 );
 
 const Home = () => {
+  const prevDataRef = React.useRef(null);
   const [banners, setBanners] = useState(initialCache?.banners?.length > 0 ? initialCache.banners : DEFAULT_HERO_SLIDERS);
   const [categories, setCategories] = useState(initialCache?.categories?.length > 0 ? initialCache.categories : DEFAULT_CATEGORIES);
   const [products, setProducts] = useState(initialCache?.products || {
@@ -153,17 +151,25 @@ const Home = () => {
             const bundle = bundleRes.data.data;
             if (!isMounted) return;
 
-            if (bundle.banners?.length > 0) setBanners(bundle.banners);
-            if (bundle.categories?.length > 0) setCategories(bundle.categories);
-            if (bundle.products) {
-              const bProds = bundle.products;
-              setProducts({
-                featured: bProds.featured || [],
-                trending: bProds.trending || [],
-                newArrivals: bProds.newArrivals || [],
-                todaysDeals: bProds.todaysDeals || [],
-                allPublished: bProds.allPublished || []
-              });
+            const newDataKey = JSON.stringify({
+              b: (bundle.banners || []).map(b => b.id),
+              c: (bundle.categories || []).map(c => c.id),
+              p: (bundle.products?.allPublished || []).map(p => p.id)
+            });
+            if (newDataKey !== prevDataRef.current) {
+              prevDataRef.current = newDataKey;
+              if (bundle.banners?.length > 0) setBanners(bundle.banners);
+              if (bundle.categories?.length > 0) setCategories(bundle.categories);
+              if (bundle.products) {
+                const bProds = bundle.products;
+                setProducts({
+                  featured: bProds.featured || [],
+                  trending: bProds.trending || [],
+                  newArrivals: bProds.newArrivals || [],
+                  todaysDeals: bProds.todaysDeals || [],
+                  allPublished: bProds.allPublished || []
+                });
+              }
             }
             if (bundle.trendingData !== undefined) setTrendingData(bundle.trendingData);
             if (bundle.dynamicSections) setDynamicSections(bundle.dynamicSections);
@@ -398,15 +404,15 @@ const Home = () => {
       {categories.length > 0 && (
         <section className="py-12 lg:py-16 bg-gray-50">
           <div className="max-w-7xl mx-auto px-3 sm:px-4">
-            <motion.div {...fadeInUp} className="text-center mb-10">
+            <div className="text-center mb-10">
               <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900 mb-2">Shop by Category</h2>
               <p className="text-gray-500">Explore our handcrafted luxury collections</p>
-            </motion.div>
-            <motion.div {...stagger} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
               {categories
                 .filter(cat => (cat.status || 'PUBLISHED') === 'PUBLISHED' && cat.isVisible !== false && cat.showOnHomepage !== false)
                 .map((cat) => (
-                <motion.div key={cat.id} variants={fadeInUp}>
+                <div key={cat.id}>
                   <Link to={`/categories/${cat.slug}`}
                     className="group relative block aspect-[4/5] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 bg-charcoal-900">
                     <img
@@ -427,9 +433,9 @@ const Home = () => {
                       </span>
                     </div>
                   </Link>
-                </motion.div>
+                </div>
               ))}
-            </motion.div>
+            </div>
           </div>
         </section>
       )}
@@ -603,7 +609,7 @@ const Home = () => {
 
               {/* Section Header */}
               {!sec.bannerUrl && (
-                <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
+                <div className="flex items-center justify-between mb-8">
                   <div>
                     <h2 className="text-2xl lg:text-3xl font-serif font-bold" style={{ color: sec.textColor || '#111827' }}>
                       {sec.title}
@@ -618,15 +624,15 @@ const Home = () => {
                       {sec.buttonText} <FiArrowRight className="w-4 h-4" />
                     </Link>
                   )}
-                </motion.div>
+                </div>
               )}
 
               {/* Products Grid */}
-              <motion.div {...stagger} className={`grid ${gridCols} gap-3 sm:gap-4 lg:gap-6`}>
+              <div className={`grid ${gridCols} gap-3 sm:gap-4 lg:gap-6`}>
                 {sec.products.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
-              </motion.div>
+              </div>
             </div>
           </section>
         );
@@ -653,14 +659,14 @@ const Home = () => {
       <section className="py-14 lg:py-20 bg-[#0c0c10] border-t border-white/5 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.06)_0%,transparent_70%)] pointer-events-none" />
         <div className="max-w-2xl mx-auto px-4 text-center relative z-10">
-          <motion.div {...fadeInUp}>
+          <div>
             <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-amber-400 font-serif mb-2 inline-block">Exclusive Access</span>
             <h2 className="text-2xl lg:text-4xl font-serif font-bold text-white mb-3 tracking-tight">Stay in Style</h2>
             <p className="text-gray-400 text-xs sm:text-sm mb-7 max-w-md mx-auto leading-relaxed">
               Subscribe to receive instant alerts when new collections drop, private festive sale access, and curated style recommendations.
             </p>
             <NewsletterSubscribe variant="section" />
-          </motion.div>
+          </div>
         </div>
       </section>
     </div>

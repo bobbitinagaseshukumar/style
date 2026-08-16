@@ -1,29 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useSelector } from 'react-redux';
 import { FiClock, FiTrash2, FiArrowLeft, FiShoppingBag, FiArrowRight } from 'react-icons/fi';
 import api from '../../config/api';
 import ProductCard from '../../components/common/ProductCard';
 import { toast } from 'react-toastify';
-import { getLocalRecentlyViewed, clearLocalRecentlyViewed } from '../../utils/recentlyViewed';
 
+/**
+ * RecentlyViewed Page — Account-based (database per user).
+ * Different accounts see different recently viewed products.
+ */
 const RecentlyViewed = () => {
-  const [products, setProducts] = useState(() => getLocalRecentlyViewed());
-  const [loading, setLoading] = useState(() => products.length === 0);
+  const user = useSelector(state => state.auth?.user);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const fetchRecentlyViewed = async () => {
-    const local = getLocalRecentlyViewed();
-    setProducts(local);
+    if (!user) {
+      setProducts([]);
+      setLoading(false);
+      return;
+    }
     try {
       const res = await api.get('/recently-viewed');
       if (res.data?.success && Array.isArray(res.data?.data)) {
-        const serverItems = res.data.data;
-        const mergedMap = new Map();
-        local.forEach(p => mergedMap.set(p.id || p._id, p));
-        serverItems.forEach(p => {
-          if (!mergedMap.has(p.id || p._id)) mergedMap.set(p.id || p._id, p);
-        });
-        setProducts(Array.from(mergedMap.values()));
+        setProducts(res.data.data);
       }
     } catch (err) {
     } finally {
@@ -34,11 +35,10 @@ const RecentlyViewed = () => {
   useEffect(() => {
     fetchRecentlyViewed();
     window.scrollTo(0, 0);
-  }, []);
+  }, [user]);
 
   const handleClearHistory = async () => {
     try {
-      clearLocalRecentlyViewed();
       await api.delete('/recently-viewed');
       setProducts([]);
       toast.success('Recently viewed history cleared!');
@@ -83,7 +83,23 @@ const RecentlyViewed = () => {
         </div>
 
         {/* Content State */}
-        {loading ? (
+        {!user ? (
+          <div className="text-center py-16 sm:py-24 bg-gray-50/60 rounded-3xl border border-dashed border-gray-200 max-w-xl mx-auto px-6">
+            <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto mb-4">
+              <FiClock size={28} />
+            </div>
+            <h3 className="text-lg font-serif font-bold text-charcoal-900 mb-2">Sign In to View History</h3>
+            <p className="text-xs text-gray-500 max-w-sm mx-auto mb-6">
+              Please sign in to your account to see your recently viewed products.
+            </p>
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-charcoal-900 text-amber-400 font-bold text-xs hover:bg-black transition shadow-lg"
+            >
+              Sign In <FiArrowRight size={14} />
+            </Link>
+          </div>
+        ) : loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
               <div key={n} className="bg-gray-50 rounded-2xl p-3 border border-gray-100 animate-pulse flex flex-col">
@@ -111,15 +127,11 @@ const RecentlyViewed = () => {
             </Link>
           </div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6"
-          >
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
-          </motion.div>
+          </div>
         )}
 
       </div>

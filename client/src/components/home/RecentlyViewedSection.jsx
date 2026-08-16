@@ -1,49 +1,51 @@
-import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useState, useCallback } from 'react';
 import { FiClock, FiTrash2 } from 'react-icons/fi';
+import { useSelector } from 'react-redux';
 import api from '../../config/api';
 import ProductCard from '../common/ProductCard';
-import { getLocalRecentlyViewed, clearLocalRecentlyViewed } from '../../utils/recentlyViewed';
 
+/**
+ * RecentlyViewedSection — Account-based recently viewed products.
+ * - Logged-in users: fetches from server database (per-account, synced across devices)
+ * - Guest users: shows nothing (recently viewed is account-specific)
+ * - Listens for 'kvlr:recently-viewed-updated' event to refresh after viewing a product
+ */
 const RecentlyViewedSection = ({ currentId }) => {
-  const [products, setProducts] = useState(() => {
-    const local = getLocalRecentlyViewed();
-    return currentId ? local.filter(p => (p.id || p._id) !== currentId) : local;
-  });
+  const user = useSelector(state => state.auth?.user);
+  const [products, setProducts] = useState([]);
+  const [loaded, setLoaded] = useState(false);
 
-  const loadData = async () => {
-    // 1. Instant local state
-    const local = getLocalRecentlyViewed();
-    let items = currentId ? local.filter(p => (p.id || p._id) !== currentId) : local;
-    setProducts(items);
-
-    // 2. Background server sync
+  const fetchFromServer = useCallback(async () => {
+    if (!user) {
+      setProducts([]);
+      setLoaded(true);
+      return;
+    }
     try {
       const res = await api.get('/recently-viewed');
       if (res.data?.success && Array.isArray(res.data?.data)) {
-        const serverItems = res.data.data;
-        const mergedMap = new Map();
-        items.forEach(p => mergedMap.set(p.id || p._id, p));
-        serverItems.forEach(p => {
-          if (!mergedMap.has(p.id || p._id)) mergedMap.set(p.id || p._id, p);
-        });
-        let finalItems = Array.from(mergedMap.values());
-        if (currentId) finalItems = finalItems.filter(p => (p.id || p._id) !== currentId);
-        setProducts(finalItems);
+        let items = res.data.data;
+        if (currentId) items = items.filter(p => p.id !== currentId);
+        setProducts(items);
       }
     } catch (e) {}
-  };
+    setLoaded(true);
+  }, [user, currentId]);
 
   useEffect(() => {
-    loadData();
-    const handleUpdate = () => loadData();
+    fetchFromServer();
+
+    // Listen for product view events to refresh the list
+    const handleUpdate = () => {
+      // Small delay to allow server to save the record first
+      setTimeout(fetchFromServer, 800);
+    };
     window.addEventListener('kvlr:recently-viewed-updated', handleUpdate);
     return () => window.removeEventListener('kvlr:recently-viewed-updated', handleUpdate);
-  }, [currentId]);
+  }, [fetchFromServer]);
 
   const handleClearHistory = async () => {
     try {
-      clearLocalRecentlyViewed();
       await api.delete('/recently-viewed');
       setProducts([]);
     } catch (err) {
@@ -51,7 +53,8 @@ const RecentlyViewedSection = ({ currentId }) => {
     }
   };
 
-  if (products.length === 0) return null;
+  // Don't show section if not logged in, not loaded yet, or no products
+  if (!user || !loaded || products.length === 0) return null;
 
   return (
     <section className="my-12 py-8 bg-gray-50/80 rounded-3xl border border-gray-100 p-4 sm:p-6">
@@ -73,7 +76,7 @@ const RecentlyViewedSection = ({ currentId }) => {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
         {products.slice(0, 8).map((product) => (
-          <ProductCard key={product.id || product._id} product={product} />
+          <ProductCard key={product.id} product={product} />
         ))}
       </div>
     </section>
