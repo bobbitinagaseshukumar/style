@@ -443,6 +443,33 @@ const Home = () => {
         <PersonalizedSections />
       </div>
 
+      {/* 6. MAIN PUBLISHED PRODUCTS CATALOG — Renders immediately below Categories */}
+      {(() => {
+        const allList = products.allPublished || [];
+        if (allList.length === 0) return null;
+
+        return (
+          <section className="py-12 lg:py-16 bg-white border-t border-gray-100">
+            <div className="max-w-7xl mx-auto px-3 sm:px-4">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">Explore Our Catalog 🛍️</h2>
+                  <p className="text-gray-500 mt-1">Discover all our published luxury creations</p>
+                </div>
+                <Link to="/categories" className="hidden sm:inline-flex items-center gap-1 text-amber-600 hover:text-amber-700 font-bold text-sm">
+                  View All <FiArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+                {allList.slice(0, 16).map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
       {/* 6. FLASH SALE */}
       <FlashSaleSection />
 
@@ -466,7 +493,7 @@ const Home = () => {
       ) : products.featured.length > 0 ? (
         <section className="py-12 lg:py-16">
           <div className="max-w-7xl mx-auto px-3 sm:px-4">
-            <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">Featured Collection</h2>
                 <p className="text-gray-500 mt-1">Handpicked luxury creations curated for you</p>
@@ -474,12 +501,12 @@ const Home = () => {
               <Link to="/categories" className="hidden sm:inline-flex items-center gap-1 text-amber-600 hover:text-amber-700 font-bold text-sm">
                 View All <FiArrowRight className="w-4 h-4" />
               </Link>
-            </motion.div>
-            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
               {products.featured.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
-            </motion.div>
+            </div>
           </div>
         </section>
       ) : null}
@@ -505,17 +532,17 @@ const Home = () => {
       {enableTrending && trendingData && trendingData.products?.length > 0 && (
         <section className="py-12 lg:py-16 bg-gray-50 border-t border-gray-100">
           <div className="max-w-7xl mx-auto px-3 sm:px-4">
-            <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">{trendingData.title || 'Trending Styles'} 🔥</h2>
                 <p className="text-gray-500 mt-1">Handpicked trending styles curated by our fashion editors</p>
               </div>
-            </motion.div>
-            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
               {trendingData.products.slice(0, trendingData.limit || 8).map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
-            </motion.div>
+            </div>
           </div>
         </section>
       )}
@@ -524,7 +551,7 @@ const Home = () => {
       {products.newArrivals.length > 0 && (
         <section className="py-12 lg:py-16">
           <div className="max-w-7xl mx-auto px-3 sm:px-4">
-            <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">New Arrivals ✨</h2>
                 <p className="text-gray-500 mt-1">Freshly published additions to our catalog</p>
@@ -532,51 +559,15 @@ const Home = () => {
               <Link to="/categories" className="hidden sm:inline-flex items-center gap-1 text-amber-600 hover:text-amber-700 font-bold text-sm">
                 Explore All <FiArrowRight className="w-4 h-4" />
               </Link>
-            </motion.div>
-            <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
               {products.newArrivals.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
-            </motion.div>
+            </div>
           </div>
         </section>
       )}
-
-      {/* 10. PUBLISHED PRODUCTS SHOWCASE — Guarantees all published admin products are displayed */}
-      {(() => {
-        const allList = products.allPublished || [];
-        if (allList.length === 0) return null;
-
-        const displayedIds = new Set([
-          ...(products.featured || []).map(p => p.id),
-          ...(products.newArrivals || []).map(p => p.id),
-          ...(products.todaysDeals || []).map(p => p.id),
-        ]);
-
-        const remainingPublished = allList.filter(p => !displayedIds.has(p.id));
-        const listToDisplay = remainingPublished.length > 0 ? remainingPublished : allList;
-
-        return (
-          <section className="py-12 lg:py-16 bg-white border-t border-gray-100">
-            <div className="max-w-7xl mx-auto px-3 sm:px-4">
-              <motion.div {...fadeInUp} className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">Explore Our Catalog 🛍️</h2>
-                  <p className="text-gray-500 mt-1">Discover all our published luxury creations</p>
-                </div>
-                <Link to="/categories" className="hidden sm:inline-flex items-center gap-1 text-amber-600 hover:text-amber-700 font-bold text-sm">
-                  View All <FiArrowRight className="w-4 h-4" />
-                </Link>
-              </motion.div>
-              <motion.div {...stagger} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                {listToDisplay.slice(0, 16).map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </motion.div>
-            </div>
-          </section>
-        );
-      })()}
 
       {/* DYNAMIC DATABASE-DRIVEN HOMEPAGE SECTIONS */}
       {dynamicSections.map((sec) => {
