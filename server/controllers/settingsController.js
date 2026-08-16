@@ -47,16 +47,56 @@ exports.getSettings = asyncHandler(async (req, res) => {
 exports.updateSettings = asyncHandler(async (req, res) => {
   try {
     await ensureStoreSettingsSchema();
+
+    const raw = req.body || {};
+    const sanitizedData = {};
+
+    // Only allow known string fields through
+    const stringFields = [
+      'storeName', 'storeTagline', 'logoUrl', 'faviconUrl', 'contactEmail', 'contactPhone',
+      'alternatePhone', 'supportEmail', 'address', 'googleMapsLink', 'businessHours',
+      'currencySymbol', 'language', 'timeZone', 'primaryColor', 'secondaryColor',
+      'estimatedDeliveryDays', 'whatsappNumber', 'whatsappBusinessName', 'whatsappWorkingHours',
+      'whatsappAutoReply', 'whatsappCountryCode', 'whatsappDefaultMessage', 'whatsappGreeting',
+      'whatsappThankYou', 'instagramUrl', 'facebookUrl', 'youtubeUrl', 'twitterUrl',
+      'telegramUrl', 'pinterestUrl', 'linkedinUrl', 'footerDescription', 'copyrightText',
+      'footerQuickLinks', 'metaTitle', 'metaDescription', 'metaKeywords', 'ogImageUrl', 'robotsTxt'
+    ];
+    stringFields.forEach(f => {
+      if (raw[f] !== undefined) {
+        sanitizedData[f] = typeof raw[f] === 'string' ? raw[f].trim() : String(raw[f] || '');
+      }
+    });
+
+    // Boolean fields
+    const boolFields = ['maintenanceMode', 'whatsappEnabled', 'showPaymentIcons', 'showTrustBadges',
+      'isCODEnabled', 'isRazorpayEnabled', 'isStripeEnabled', 'isCashfreeEnabled'];
+    boolFields.forEach(f => {
+      if (raw[f] !== undefined) {
+        sanitizedData[f] = raw[f] === true || raw[f] === 'true' || raw[f] === 1 || raw[f] === '1';
+      }
+    });
+
+    // Number fields
+    if (raw.shippingFee !== undefined || raw.shippingCharge !== undefined) {
+      const val = parseFloat(raw.shippingFee !== undefined ? raw.shippingFee : raw.shippingCharge) || 0;
+      sanitizedData.shippingFee = val;
+      sanitizedData.shippingCharge = val;
+    }
+    if (raw.freeShippingThreshold !== undefined) {
+      sanitizedData.freeShippingThreshold = parseFloat(raw.freeShippingThreshold) || 0;
+    }
+
     let existing = await prisma.storeSettings.findFirst();
     let settings;
     if (existing) {
       settings = await prisma.storeSettings.update({
         where: { id: existing.id },
-        data: req.body,
+        data: sanitizedData,
       });
     } else {
       settings = await prisma.storeSettings.create({
-        data: { id: 'default', ...req.body },
+        data: { id: 'default', ...sanitizedData },
       });
     }
 

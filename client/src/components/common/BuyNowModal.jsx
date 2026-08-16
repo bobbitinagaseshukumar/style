@@ -64,8 +64,8 @@ const BuyNowModal = ({ isOpen, onClose, product = null, cartMode = false }) => {
   const shipping = subtotal > 999 ? 0 : 99;
   const total = subtotal + shipping;
 
-  const currentSettings = settings || reduxSettings || {};
-  const isWhatsAppEnabled = (currentSettings.whatsappEnabled !== false) || Boolean(currentSettings.whatsappNumber);
+  const currentSettings = { ...(reduxSettings || {}), ...(settings || {}) };
+  const isWhatsAppEnabled = currentSettings.whatsappEnabled !== false && Boolean(currentSettings.whatsappNumber || reduxSettings?.whatsappNumber);
 
   useEffect(() => {
     if (!isOpen) { setMode(null); setStep(1); return; }

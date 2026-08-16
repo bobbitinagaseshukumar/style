@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+
 import { FaWhatsapp } from 'react-icons/fa';
 import {
   FiSave, FiPhone, FiClock, FiToggleLeft, FiToggleRight,
-  FiCheckCircle, FiAlertCircle, FiInfo
+  FiCheckCircle, FiInfo
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { useDispatch } from 'react-redux';
@@ -70,7 +70,9 @@ const AdminWhatsApp = () => {
             whatsappBusinessName: d.whatsappBusinessName || 'KVLR Styles',
             whatsappWorkingHours: d.whatsappWorkingHours || 'Mon-Sat 9AM-7PM',
             whatsappAutoReply: d.whatsappAutoReply || prev.whatsappAutoReply,
+            whatsappDefaultMessage: d.whatsappDefaultMessage || d.defaultOrderMessage || prev.whatsappDefaultMessage,
           }));
+          dispatch(setStoreSettings(d));
         }).catch(() => {});
       })
       .finally(() => setFetching(false));
