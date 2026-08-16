@@ -5,6 +5,7 @@ import { FiShoppingBag, FiTrash2, FiMinus, FiPlus, FiTag, FiArrowRight, FiShield
 import { useSelector, useDispatch } from 'react-redux';
 import { updateQuantity, removeFromCart, applyCoupon, removeCoupon } from '../../redux/cart/cartSlice';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { formatImageUrl } from '../../utils/formatImageUrl';
 import { toast } from 'react-toastify';
 
 import api from '../../config/api';

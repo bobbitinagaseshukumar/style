@@ -6,6 +6,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import api from '../../config/api';
 import { clearCart } from '../../redux/cart/cartSlice';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { formatImageUrl } from '../../utils/formatImageUrl';
 import Modal from '../../components/common/Modal';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
@@ -233,7 +234,7 @@ const Checkout = () => {
             <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
               {items.map((item, idx) => (
                 <div key={idx} className="flex gap-3 text-xs">
-                  <img src={item.image} alt="" className="w-12 h-16 object-cover rounded-xl shrink-0 bg-gray-50" />
+                  <img src={formatImageUrl(item.image, item.name)} alt={item.name || ''} className="w-12 h-16 object-cover rounded-xl shrink-0 bg-gray-50 border border-gray-100" />
                   <div className="flex-1 min-w-0">
                     <span className="font-semibold text-charcoal-900 block truncate">{item.name}</span>
                     <span className="text-gray-400">Qty: {item.quantity}</span>
