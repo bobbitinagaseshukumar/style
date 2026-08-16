@@ -33,23 +33,16 @@ async function getStoreMetadata() {
 // Helper: Ensure full absolute HTTPS image URLs for email clients with smart fallbacks
 function formatEmailImageUrl(url, productName = '') {
   if (!url || typeof url !== 'string' || url.trim() === '') {
-    const lower = (productName || '').toLowerCase();
-    if (lower.includes('saree') || lower.includes('women') || lower.includes('silk') || lower.includes('lehenga')) {
-      return 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.includes('men') || lower.includes('kurta') || lower.includes('shirt') || lower.includes('suit')) {
-      return 'https://images.unsplash.com/photo-1597983073493-88cd35cf03b0?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.includes('jewel') || lower.includes('gold') || lower.includes('necklace') || lower.includes('ring')) {
-      return 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.includes('kid') || lower.includes('child') || lower.includes('baby')) {
-      return 'https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=800&auto=format&fit=crop&q=80';
-    }
-    return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80';
+    return getFallbackImageUrl(productName);
   }
 
   const clean = url.trim();
+
+  // Filter out Base64 Data URIs — Email clients (Gmail, Outlook) block base64 URIs or render raw text
+  if (clean.startsWith('data:image/')) {
+    return getFallbackImageUrl(productName);
+  }
+
   if (clean.startsWith('http://') || clean.startsWith('https://')) {
     return clean;
   }
@@ -57,6 +50,23 @@ function formatEmailImageUrl(url, productName = '') {
   const serverBase = process.env.RENDER_EXTERNAL_URL || 'https://style-q21b.onrender.com';
   const cleanPath = clean.startsWith('/') ? clean : `/${clean}`;
   return `${serverBase}${cleanPath}`;
+}
+
+function getFallbackImageUrl(productName = '') {
+  const lower = (productName || '').toLowerCase();
+  if (lower.includes('saree') || lower.includes('women') || lower.includes('silk') || lower.includes('lehenga') || lower.includes('dress')) {
+    return 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80';
+  }
+  if (lower.includes('men') || lower.includes('kurta') || lower.includes('shirt') || lower.includes('suit') || lower.includes('pant')) {
+    return 'https://images.unsplash.com/photo-1597983073493-88cd35cf03b0?w=800&auto=format&fit=crop&q=80';
+  }
+  if (lower.includes('jewel') || lower.includes('gold') || lower.includes('necklace') || lower.includes('ring') || lower.includes('earring')) {
+    return 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&auto=format&fit=crop&q=80';
+  }
+  if (lower.includes('kid') || lower.includes('child') || lower.includes('baby') || lower.includes('boy') || lower.includes('girl')) {
+    return 'https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=800&auto=format&fit=crop&q=80';
+  }
+  return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80';
 }
 
 /**
@@ -86,7 +96,7 @@ function wrapTemplate({
           : (p.image || p.imageUrl || '');
         const prodImg = formatEmailImageUrl(rawImg, p.name);
         const pSlug = p.slug || p.id;
-        const pUrl = `${clientUrl}/products/${pSlug}`;
+        const pUrl = `${clientUrl}/product/${pSlug}`;
 
         return `
           <div style="background-color: #181818; border: 1px solid rgba(212,175,55,0.35); border-radius: 14px; padding: 18px; margin-bottom: 20px; text-align: center;">
@@ -313,25 +323,82 @@ class EmailService {
     });
   }
 
-  // ==================== 5. ORDER PLACED EMAIL ====================
+  // ==================== 5. ORDER PLACED EMAIL (CUSTOMER) ====================
   async sendOrderPlacedEmail(email, fullName, orderData) {
     const { storeName, storeTagline, primaryColor, clientUrl } = await getStoreMetadata();
+    const goldAccent = primaryColor || '#D4AF37';
+
+    const itemsListHtml = (orderData.items || []).map((item) => {
+      const prodImg = formatEmailImageUrl(item.image || item.imageUrl, item.name);
+      const pSlug = item.slug || item.productId || item.id;
+      const pUrl = `${clientUrl}/product/${pSlug}`;
+
+      return `
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.08);">
+          <td style="padding: 12px; width: 70px;">
+            <a href="${pUrl}" target="_blank">
+              <img src="${prodImg}" alt="${item.name || 'Product'}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(212,175,55,0.3); display: block;" />
+            </a>
+          </td>
+          <td style="padding: 12px; color: #FFFFFF; font-size: 13px; font-weight: 600;">
+            <a href="${pUrl}" target="_blank" style="color: #FFFFFF; text-decoration: none; font-weight: 700;">
+              ${item.name || 'Product Item'}
+            </a>
+            ${(item.size || item.color) ? `
+              <div style="font-size: 11px; color: #AAAAAA; margin-top: 4px;">
+                ${item.color ? `Color: ${item.color}` : ''} ${item.size ? `| Size: ${item.size}` : ''}
+              </div>
+            ` : ''}
+            <div style="margin-top: 6px;">
+              <a href="${pUrl}" target="_blank" style="color: ${goldAccent}; font-size: 11px; text-decoration: underline; font-weight: 700;">
+                View Product Page →
+              </a>
+            </div>
+          </td>
+          <td style="padding: 12px; color: #DDDDDD; font-size: 13px; text-align: center;">
+            x${item.quantity || 1}
+          </td>
+          <td style="padding: 12px; color: ${goldAccent}; font-size: 14px; font-weight: 800; text-align: right;">
+            ₹${((item.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}
+          </td>
+        </tr>
+      `;
+    }).join('');
 
     const description = `
-      <p style="margin-bottom: 12px;">Thank you for your order, <strong>${fullName}</strong>!</p>
-      <p style="margin-bottom: 20px;">We have received your order <strong>#${orderData.orderNumber}</strong> at <strong>${storeName}</strong> and our team is preparing it for shipment.</p>
-      <div style="background: #181818; padding: 16px; border-radius: 10px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1);">
-        <p style="margin: 4px 0; font-size: 13px; color: #fff;"><strong>Order Number:</strong> #${orderData.orderNumber}</p>
-        <p style="margin: 4px 0; font-size: 13px; color: ${primaryColor || '#D4AF37'};"><strong>Total Amount:</strong> ₹${(orderData.total || 0).toLocaleString('en-IN')}</p>
-        <p style="margin: 4px 0; font-size: 13px; color: #aaa;"><strong>Estimated Delivery:</strong> ${orderData.estimatedDelivery || '3-5 Business Days'}</p>
+      <p style="margin-bottom: 12px; font-size: 15px; color: #FFFFFF;">Thank you for your order, <strong>${fullName}</strong>!</p>
+      <p style="margin-bottom: 20px; color: #CCCCCC; font-size: 13px;">We have received your order <strong>#${orderData.orderNumber}</strong> at <strong>${storeName}</strong>. Our team is preparing it for shipment.</p>
+      
+      <!-- ORDER SUMMARY BOX -->
+      <div style="background: #161616; padding: 18px; border-radius: 12px; margin-bottom: 24px; border: 1px solid rgba(212,175,55,0.25);">
+        <p style="margin: 4px 0; font-size: 13px; color: #FFFFFF;"><strong>Order Number:</strong> #${orderData.orderNumber}</p>
+        <p style="margin: 4px 0; font-size: 13px; color: ${goldAccent};"><strong>Total Amount:</strong> ₹${(orderData.total || 0).toLocaleString('en-IN')}</p>
+        <p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Payment Method:</strong> ${orderData.paymentMethod || 'Online Payment'}</p>
+        <p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Estimated Delivery:</strong> ${orderData.estimatedDelivery || '3-5 Business Days'}</p>
+        ${orderData.shippingAddress ? `<p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Delivery Address:</strong> ${orderData.shippingAddress}</p>` : ''}
       </div>
+
+      <!-- ORDERED ITEMS TABLE -->
+      <h3 style="color: #FFFFFF; font-size: 14px; font-weight: 700; margin-bottom: 12px;">Order Items Breakdown:</h3>
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; background: #121212; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
+        <thead>
+          <tr style="background: #1F1F1F; color: ${goldAccent}; font-size: 11px; text-transform: uppercase;">
+            <th style="padding: 10px 12px; text-align: left;">Product</th>
+            <th style="padding: 10px 12px; text-align: left;">Details</th>
+            <th style="padding: 10px 12px; text-align: center;">Qty</th>
+            <th style="padding: 10px 12px; text-align: right;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsListHtml}
+        </tbody>
+      </table>
     `;
 
     const htmlContent = wrapTemplate({
       headline: `🛍️ Order Confirmed! (#${orderData.orderNumber})`,
       description,
-      products: orderData.items || [],
-      buttonText: 'View Order Details →',
+      buttonText: 'Track Order Status →',
       buttonUrl: `${clientUrl}/orders`,
       storeName,
       storeTagline,
@@ -342,6 +409,103 @@ class EmailService {
     return sendEmailViaBrevo({
       to: email,
       subject: `Order Confirmed #${orderData.orderNumber} - ${storeName}`,
+      htmlContent,
+      senderName: storeName,
+    });
+  }
+
+  // ==================== SUPER ADMIN NEW ORDER ALERT EMAIL ====================
+  async sendAdminOrderAlertEmail(adminEmail, orderData) {
+    const { storeName, storeTagline, primaryColor, clientUrl } = await getStoreMetadata();
+    const goldAccent = primaryColor || '#D4AF37';
+
+    const itemsListHtml = (orderData.items || []).map((item) => {
+      const prodImg = formatEmailImageUrl(item.image || item.imageUrl, item.name);
+      const pSlug = item.slug || item.productId || item.id;
+      const pUrl = `${clientUrl}/product/${pSlug}`;
+
+      return `
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.08);">
+          <td style="padding: 12px; width: 70px;">
+            <a href="${pUrl}" target="_blank">
+              <img src="${prodImg}" alt="${item.name || 'Product'}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(212,175,55,0.3); display: block;" />
+            </a>
+          </td>
+          <td style="padding: 12px; color: #FFFFFF; font-size: 13px; font-weight: 600;">
+            <a href="${pUrl}" target="_blank" style="color: #FFFFFF; text-decoration: none; font-weight: 700;">
+              ${item.name || 'Product Item'}
+            </a>
+            ${(item.size || item.color) ? `
+              <div style="font-size: 11px; color: #AAAAAA; margin-top: 4px;">
+                ${item.color ? `Color: ${item.color}` : ''} ${item.size ? `| Size: ${item.size}` : ''}
+              </div>
+            ` : ''}
+            <div style="margin-top: 6px;">
+              <a href="${pUrl}" target="_blank" style="color: ${goldAccent}; font-size: 11px; text-decoration: underline; font-weight: 700;">
+                View Product on Store →
+              </a>
+            </div>
+          </td>
+          <td style="padding: 12px; color: #DDDDDD; font-size: 13px; text-align: center;">
+            x${item.quantity || 1}
+          </td>
+          <td style="padding: 12px; color: ${goldAccent}; font-size: 14px; font-weight: 800; text-align: right;">
+            ₹${((item.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    const description = `
+      <p style="margin-bottom: 12px; font-size: 15px; color: #FFFFFF;">🚨 <strong>New Customer Order Received!</strong></p>
+      <p style="margin-bottom: 20px; color: #CCCCCC; font-size: 13px;">Order <strong>#${orderData.orderNumber}</strong> was placed on <strong>${storeName}</strong>.</p>
+      
+      <!-- CUSTOMER DETAILS BOX -->
+      <div style="background: #161616; padding: 18px; border-radius: 12px; margin-bottom: 24px; border: 1px solid rgba(212,175,55,0.25);">
+        <h4 style="color: ${goldAccent}; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px 0;">👤 Customer Details</h4>
+        <p style="margin: 4px 0; font-size: 13px; color: #FFFFFF;"><strong>Name:</strong> ${orderData.customerName || 'Customer'}</p>
+        <p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Email:</strong> ${orderData.customerEmail || 'N/A'}</p>
+        <p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Phone:</strong> ${orderData.customerPhone || 'N/A'}</p>
+        <p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Payment Method:</strong> ${orderData.paymentMethod || 'COD'}</p>
+        <p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Shipping Address:</strong> ${orderData.shippingAddress || 'N/A'}</p>
+      </div>
+
+      <!-- ORDERED ITEMS TABLE -->
+      <h3 style="color: #FFFFFF; font-size: 14px; font-weight: 700; margin-bottom: 12px;">Ordered Products:</h3>
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; background: #121212; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
+        <thead>
+          <tr style="background: #1F1F1F; color: ${goldAccent}; font-size: 11px; text-transform: uppercase;">
+            <th style="padding: 10px 12px; text-align: left;">Product</th>
+            <th style="padding: 10px 12px; text-align: left;">Details</th>
+            <th style="padding: 10px 12px; text-align: center;">Qty</th>
+            <th style="padding: 10px 12px; text-align: right;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsListHtml}
+        </tbody>
+      </table>
+
+      <!-- GRAND TOTAL SUMMARY -->
+      <div style="text-align: right; margin-bottom: 20px; font-size: 15px; color: #FFFFFF;">
+        <span style="font-size: 16px; font-weight: 800; color: ${goldAccent};">Grand Total: ₹${(orderData.total || 0).toLocaleString('en-IN')}</span>
+      </div>
+    `;
+
+    const htmlContent = wrapTemplate({
+      headline: `🚨 NEW ORDER ALERT — #${orderData.orderNumber}`,
+      description,
+      buttonText: 'Manage Order in Admin Panel →',
+      buttonUrl: `${clientUrl}/admin/orders`,
+      storeName,
+      storeTagline,
+      primaryColor,
+      clientUrl,
+    });
+
+    return sendEmailViaBrevo({
+      to: adminEmail,
+      subject: `🚨 NEW ORDER #${orderData.orderNumber} - ₹${(orderData.total || 0).toLocaleString('en-IN')} (${orderData.customerName})`,
       htmlContent,
       senderName: storeName,
     });
@@ -577,6 +741,7 @@ module.exports.sendWelcomeEmail = emailServiceInstance.sendWelcomeEmail.bind(ema
 module.exports.sendPasswordResetEmail = emailServiceInstance.sendPasswordResetEmail.bind(emailServiceInstance);
 module.exports.sendPasswordChangedEmail = emailServiceInstance.sendPasswordChangedEmail.bind(emailServiceInstance);
 module.exports.sendOrderPlacedEmail = emailServiceInstance.sendOrderPlacedEmail.bind(emailServiceInstance);
+module.exports.sendAdminOrderAlertEmail = emailServiceInstance.sendAdminOrderAlertEmail.bind(emailServiceInstance);
 module.exports.sendOrderShippedEmail = emailServiceInstance.sendOrderShippedEmail.bind(emailServiceInstance);
 module.exports.sendOrderDeliveredEmail = emailServiceInstance.sendOrderDeliveredEmail.bind(emailServiceInstance);
 module.exports.sendOrderCancelledEmail = emailServiceInstance.sendOrderCancelledEmail.bind(emailServiceInstance);

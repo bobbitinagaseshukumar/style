@@ -165,28 +165,61 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
     return created;
   });
 
-  // Send confirmation email (async, non-blocking)
-  setImmediate(() => {
-    emailService.sendOrderPlacedEmail(order.user.email, order.user.fullName, {
-      orderNumber: order.orderNumber,
-      orderId: order.id,
-      items: order.items.map(i => ({
-        name: i.product?.name,
-        price: i.price,
-        quantity: i.quantity,
-        color: i.color,
-        size: i.size,
-        image: i.product?.images?.[0]?.url,
-      })),
-      subtotal: order.subtotal,
-      discount: order.discountAmount,
-      shippingCharge: order.shippingFee,
-      total: order.totalAmount,
-      address: order.address
-        ? `${order.address.street}, ${order.address.city}, ${order.address.state} - ${order.address.postalCode}`
-        : '',
-      estimatedDelivery: '3-5 Business Days',
-    });
+  // Send confirmation email to Customer AND Super Admin (async, non-blocking)
+  setImmediate(async () => {
+    try {
+      const orderPayload = {
+        orderNumber: order.orderNumber,
+        orderId: order.id,
+        customerName: order.user?.fullName || 'Valued Customer',
+        customerEmail: order.user?.email || '',
+        customerPhone: order.user?.phone || order.address?.phone || 'N/A',
+        paymentMethod: order.paymentMethod || 'Online Payment',
+        items: order.items.map(i => ({
+          slug: i.product?.slug || i.productId || i.id,
+          name: i.product?.name || 'Product Item',
+          price: i.price,
+          quantity: i.quantity,
+          color: i.color,
+          size: i.size,
+          image: i.product?.images?.[0]?.url || i.product?.images?.[0],
+        })),
+        subtotal: order.subtotal,
+        discount: order.discountAmount,
+        shippingCharge: order.shippingFee,
+        total: order.totalAmount,
+        shippingAddress: order.address
+          ? `${order.address.fullName || order.user?.fullName || ''}, ${order.address.street}, ${order.address.city}, ${order.address.state} - ${order.address.postalCode} (Phone: ${order.address.phone || 'N/A'})`
+          : 'N/A',
+        estimatedDelivery: '3-5 Business Days',
+      };
+
+      // 1. Send Order Confirmation Email to Customer
+      if (order.user?.email) {
+        emailService.sendOrderPlacedEmail(order.user.email, order.user.fullName, orderPayload);
+      }
+
+      // 2. Send New Order Alert Email to Super Admin(s)
+      try {
+        const admins = await prisma.user.findMany({
+          where: { role: 'ADMIN' },
+          select: { email: true },
+        });
+
+        const adminEmails = admins.map(a => a.email).filter(Boolean);
+        if (adminEmails.length === 0) {
+          adminEmails.push(process.env.SMTP_USER || process.env.ADMIN_EMAIL || 'admin@styleverse.com');
+        }
+
+        for (const adminEmail of adminEmails) {
+          emailService.sendAdminOrderAlertEmail(adminEmail, orderPayload);
+        }
+      } catch (adminErr) {
+        console.error('[ORDER CONTROLLER] Failed to send admin order alert:', adminErr.message);
+      }
+    } catch (err) {
+      console.error('[ORDER CONTROLLER] Order email dispatch error:', err.message);
+    }
   });
 
   res.status(201).json({ success: true, message: 'Order placed successfully!', data: order });
