@@ -117,22 +117,20 @@ const Navbar = () => {
 
 
 
-  /* ── Close user menu on outside click & escape key ─────────── */
+  /* ── Close user menu immediately on item click OR tap/click anywhere on site ─────────── */
   const userBtnRef = useRef(null);
   const userDropdownRef = useRef(null);
 
   useEffect(() => {
     if (!isUserMenuOpen) return;
 
-    const handleOutsideClick = (e) => {
-      // If clicking/tapping the user toggle button, let button handle toggle
+    const handleGlobalClick = (e) => {
+      // If clicking/tapping the user account toggle button itself, let button handle toggle
       if (userBtnRef.current && userBtnRef.current.contains(e.target)) {
         return;
       }
-      // If clicking/tapping outside both the user button and the dropdown menu -> close immediately!
-      if (userDropdownRef.current && !userDropdownRef.current.contains(e.target)) {
-        setIsUserMenuOpen(false);
-      }
+      // Clicked/tapped ANYWHERE else on the website (menu item OR outside on page) -> close dropdown immediately!
+      setIsUserMenuOpen(false);
     };
 
     const handleEscape = (e) => {
@@ -142,13 +140,13 @@ const Navbar = () => {
       }
     };
 
-    document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('touchstart', handleOutsideClick, { passive: true });
+    window.addEventListener('click', handleGlobalClick, true);
+    window.addEventListener('touchstart', handleGlobalClick, { passive: true, capture: true });
     window.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('touchstart', handleOutsideClick);
+      window.removeEventListener('click', handleGlobalClick, true);
+      window.removeEventListener('touchstart', handleGlobalClick, { capture: true });
       window.removeEventListener('keydown', handleEscape);
     };
   }, [isUserMenuOpen]);
