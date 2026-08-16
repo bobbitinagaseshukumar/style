@@ -648,10 +648,10 @@ exports.verifyEmailChangeOTP = asyncHandler(async (req, res, next) => {
 
 // ==================== STEP 1: REQUEST PASSWORD CHANGE OTP ====================
 exports.requestPasswordChangeOTP = asyncHandler(async (req, res, next) => {
-  const { currentPassword, newPassword, confirmNewPassword } = req.body;
+  const { currentPassword, newPassword, confirmNewPassword, isForgotFlow } = req.body;
 
-  if (!currentPassword || !newPassword) {
-    return next(new ApiError(400, 'Current password and new password are required'));
+  if (!newPassword) {
+    return next(new ApiError(400, 'New password is required'));
   }
 
   if (confirmNewPassword && newPassword !== confirmNewPassword) {
@@ -667,10 +667,14 @@ exports.requestPasswordChangeOTP = asyncHandler(async (req, res, next) => {
   const admin = await prisma.user.findUnique({ where: { id: req.user.id } });
   if (!admin) return next(new ApiError(404, 'Admin account not found'));
 
-  // Verify current password
-  const isMatch = await bcrypt.compare(currentPassword, admin.password);
-  if (!isMatch) {
-    return next(new ApiError(400, 'Current password is incorrect'));
+  // Verify current password only if provided and not in forgot password flow
+  if (!isForgotFlow && currentPassword) {
+    const isMatch = await bcrypt.compare(currentPassword, admin.password);
+    if (!isMatch) {
+      return next(new ApiError(400, 'Current password is incorrect. Click "Forgot Password?" if you forgot it.'));
+    }
+  } else if (!isForgotFlow && !currentPassword) {
+    return next(new ApiError(400, 'Current password is required or select Forgot Password'));
   }
 
   // Hash new password temporary

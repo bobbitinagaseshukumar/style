@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiBell, FiShield, FiLock, FiCheck, FiKey, FiSmartphone, FiLogOut } from 'react-icons/fi';
+import { FiBell, FiShield, FiLock, FiCheck, FiKey, FiSmartphone, FiLogOut, FiEye, FiEyeOff } from 'react-icons/fi';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
@@ -45,6 +45,10 @@ const SettingsTab = () => {
 
   // Password Change State
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [isForgotFlow, setIsForgotFlow] = useState(false);
   const [requestingOtp, setRequestingOtp] = useState(false);
   const [otpModal, setOtpModal] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -84,10 +88,11 @@ const SettingsTab = () => {
     }
   };
 
-  const handleRequestPasswordOTP = async (e) => {
-    e.preventDefault();
-    if (!passwords.currentPassword || !passwords.newPassword) {
-      return toast.error('Please enter current and new password');
+  const handleRequestPasswordOTP = async (e, forceForgot = false) => {
+    if (e) e.preventDefault();
+    const forgot = forceForgot || isForgotFlow;
+    if (!passwords.newPassword) {
+      return toast.error('Please enter your new password');
     }
     if (passwords.newPassword !== passwords.confirmPassword) {
       return toast.error('New passwords do not match');
@@ -95,14 +100,20 @@ const SettingsTab = () => {
     if (passwords.newPassword.length < 8) {
       return toast.error('Password must be at least 8 characters long');
     }
+    if (!forgot && !passwords.currentPassword) {
+      return toast.error('Please enter current password or click "Forgot Current Password?"');
+    }
 
     try {
       setRequestingOtp(true);
       const res = await api.post('/users/password-otp/request', {
         currentPassword: passwords.currentPassword,
         newPassword: passwords.newPassword,
+        confirmNewPassword: passwords.confirmPassword,
+        isForgotFlow: forgot
       });
       toast.success(res.data?.message || 'Verification OTP code sent to your registered email!');
+      setIsForgotFlow(forgot);
       setOtpModal(true);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send OTP for password change');
@@ -122,12 +133,15 @@ const SettingsTab = () => {
       const res = await api.post('/users/password-otp/verify', {
         currentPassword: passwords.currentPassword,
         newPassword: passwords.newPassword,
+        confirmNewPassword: passwords.confirmPassword,
         otpCode: otpCode.trim(),
+        isForgotFlow
       });
       toast.success(res.data?.message || 'Password changed successfully!');
       setOtpModal(false);
       setOtpCode('');
       setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setIsForgotFlow(false);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid or expired OTP code');
     } finally {
@@ -154,36 +168,74 @@ const SettingsTab = () => {
 
         <form onSubmit={handleRequestPasswordOTP} className="space-y-4 max-w-md">
           <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Current Password *</label>
-            <input
-              type="password"
-              required
-              value={passwords.currentPassword}
-              onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-yellow-400 transition-all"
-            />
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-[10px] font-bold text-gray-400 uppercase">Current Password *</label>
+              <button
+                type="button"
+                onClick={(e) => {
+                  setIsForgotFlow(true);
+                  handleRequestPasswordOTP(e, true);
+                }}
+                className="text-[11px] text-yellow-400 font-bold hover:underline cursor-pointer"
+              >
+                Forgot Current Password?
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                type={showCurrentPass ? 'text' : 'password'}
+                value={passwords.currentPassword}
+                onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-yellow-400 transition-all pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPass(!showCurrentPass)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white p-1 cursor-pointer"
+              >
+                {showCurrentPass ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+              </button>
+            </div>
           </div>
 
           <div>
             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">New Password *</label>
-            <input
-              type="password"
-              required
-              value={passwords.newPassword}
-              onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-yellow-400 transition-all"
-            />
+            <div className="relative">
+              <input
+                type={showNewPass ? 'text' : 'password'}
+                required
+                value={passwords.newPassword}
+                onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-yellow-400 transition-all pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPass(!showNewPass)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white p-1 cursor-pointer"
+              >
+                {showNewPass ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+              </button>
+            </div>
           </div>
 
           <div>
             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Confirm New Password *</label>
-            <input
-              type="password"
-              required
-              value={passwords.confirmPassword}
-              onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-yellow-400 transition-all"
-            />
+            <div className="relative">
+              <input
+                type={showConfirmPass ? 'text' : 'password'}
+                required
+                value={passwords.confirmPassword}
+                onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-yellow-400 transition-all pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPass(!showConfirmPass)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white p-1 cursor-pointer"
+              >
+                {showConfirmPass ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+              </button>
+            </div>
           </div>
 
           <button

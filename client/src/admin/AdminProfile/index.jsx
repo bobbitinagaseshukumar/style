@@ -176,19 +176,30 @@ export default function AdminProfile() {
   };
 
   /* ── 3. Request Password Change OTP ── */
-  const handleRequestPasswordOTP = async (e) => {
-    e.preventDefault();
-    if (!currentPassword || !newPassword || !confirmPassword) return toast.error('Please fill all password fields');
+  const handleRequestPasswordOTP = async (e, forceForgot = false) => {
+    if (e) e.preventDefault();
+    const forgot = forceForgot || isForgotFlow;
+    if (!newPassword || !confirmPassword) return toast.error('Please fill all new password fields');
     if (newPassword !== confirmPassword) return toast.error('New passwords do not match');
 
     const { score } = checkPasswordStrength(newPassword);
     if (score < 5) return toast.error('Password does not meet all security complexity requirements');
 
+    if (!forgot && !currentPassword) {
+      return toast.error('Current password is required or click "Forgot Current Password?"');
+    }
+
     try {
       setActionLoading(true);
-      const res = await api.post('/admin/auth/change-password/request-otp', { currentPassword, newPassword, confirmNewPassword: confirmPassword });
+      const res = await api.post('/admin/auth/change-password/request-otp', {
+        currentPassword,
+        newPassword,
+        confirmNewPassword: confirmPassword,
+        isForgotFlow: forgot
+      });
       toast.success(res.data.message);
       setPassOTPDemo(res.data.data?.otpCode || '');
+      setIsForgotFlow(forgot);
       setPassStep(2);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to request OTP');
@@ -203,7 +214,13 @@ export default function AdminProfile() {
     if (!passOTP.trim()) return toast.error('Please enter the 6-digit verification code');
     try {
       setActionLoading(true);
-      const res = await api.post('/admin/auth/change-password/verify-otp', { otpCode: passOTP });
+      const res = await api.post('/admin/auth/change-password/verify-otp', {
+        currentPassword,
+        newPassword,
+        confirmNewPassword: confirmPassword,
+        otpCode: passOTP.trim(),
+        isForgotFlow
+      });
       toast.success(res.data.message);
       if (res.data.data?.token) {
         localStorage.setItem('adminToken', res.data.data.token);
@@ -213,6 +230,7 @@ export default function AdminProfile() {
       setNewPassword('');
       setConfirmPassword('');
       setPassOTP('');
+      setIsForgotFlow(false);
       fetchAdminData();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Password update failed');
@@ -434,14 +452,51 @@ export default function AdminProfile() {
           {passStep === 1 ? (
             <form onSubmit={handleRequestPasswordOTP} style={{ maxWidth: 480 }}>
               <div style={{ marginBottom: 16 }}>
-                <label style={S.label}>Current Password</label>
-                <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} style={S.input} required />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={S.label}>Current Password</label>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      setIsForgotFlow(true);
+                      handleRequestPasswordOTP(e, true);
+                    }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: '#D97706', textDecoration: 'underline' }}
+                  >
+                    Forgot Current Password?
+                  </button>
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showCurrentPass ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                    style={{ ...S.input, paddingRight: 36 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPass(s => !s)}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#888' }}
+                  >
+                    {showCurrentPass ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
               </div>
+
               <div style={{ marginBottom: 16 }}>
                 <label style={S.label}>New Password</label>
                 <div style={{ position: 'relative' }}>
-                  <input type={showPass ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} style={S.input} required />
-                  <button type="button" onClick={() => setShowPass(s => !s)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#888' }}>
+                  <input
+                    type={showPass ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    style={{ ...S.input, paddingRight: 36 }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(s => !s)}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#888' }}
+                  >
                     {showPass ? <FiEyeOff /> : <FiEye />}
                   </button>
                 </div>
@@ -463,7 +518,22 @@ export default function AdminProfile() {
 
               <div style={{ marginBottom: 20 }}>
                 <label style={S.label}>Confirm New Password</label>
-                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} style={S.input} required />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showConfirmPass ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    style={{ ...S.input, paddingRight: 36 }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPass(s => !s)}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#888' }}
+                  >
+                    {showConfirmPass ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
               </div>
 
               <button type="submit" disabled={actionLoading} style={S.btnGold}>

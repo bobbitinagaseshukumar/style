@@ -95,18 +95,21 @@ exports.requestPasswordOTP = asyncHandler(async (req, res, next) => {
 });
 
 exports.verifyPasswordOTP = asyncHandler(async (req, res, next) => {
-  const { currentPassword, newPassword, otpCode } = req.body;
+  const { currentPassword, newPassword, otpCode, isForgotFlow } = req.body;
 
-  if (!currentPassword || !newPassword || !otpCode) {
-    return next(new ApiError(400, 'Current password, new password, and OTP code are required'));
+  if (!newPassword || !otpCode) {
+    return next(new ApiError(400, 'New password and OTP verification code are required'));
   }
 
   const user = await prisma.user.findUnique({ where: { id: req.user.id } });
   if (!user) return next(new ApiError(404, 'User not found'));
 
-  const isMatch = await bcrypt.compare(currentPassword, user.password);
-  if (!isMatch) {
-    return next(new ApiError(400, 'Current password is incorrect'));
+  // Verify current password only if provided and not in forgot-password mode
+  if (currentPassword && !isForgotFlow) {
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return next(new ApiError(400, 'Current password is incorrect. Click "Forgot Password?" if you forgot it.'));
+    }
   }
 
   if (!user.otpCode || user.otpCode !== String(otpCode).trim()) {
