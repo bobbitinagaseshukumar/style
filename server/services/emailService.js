@@ -565,6 +565,7 @@ class EmailService {
     }
 
     return { success: true, count, htmlContent };
+  }
 }
 
 const emailServiceInstance = new EmailService();
