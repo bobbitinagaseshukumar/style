@@ -4,6 +4,7 @@ const env = require('./config/env');
 const PORT = env.PORT;
 
 const { bootstrapSuperAdmin } = require('./controllers/adminAuthController');
+const { ensureStoreSettingsSchema } = require('./controllers/cmsController');
 const prisma = require('./config/db');
 
 const autoPublishVisibleProducts = async () => {
@@ -51,6 +52,7 @@ const server = app.listen(PORT, async () => {
   console.log(`  StyleVerse Enterprise Server running on port ${PORT}`);
   console.log(`  Environment: ${env.NODE_ENV}`);
   console.log(`====================================================`);
+  await ensureStoreSettingsSchema();
   await bootstrapSuperAdmin();
   await autoPublishVisibleProducts();
   startKeepAliveEngine();

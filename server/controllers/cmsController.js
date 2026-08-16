@@ -13,10 +13,113 @@ const isValidEmail = (email) => {
     return emailRegex.test(email.trim());
 };
 
+// Ensure StoreSettings table and all columns exist in PostgreSQL
+const ensureStoreSettingsSchema = async () => {
+    try {
+        await prisma.$executeRawUnsafe(`
+            CREATE TABLE IF NOT EXISTS "StoreSettings" (
+                "id" TEXT NOT NULL DEFAULT 'default',
+                "storeName" TEXT NOT NULL DEFAULT 'StyleVerse',
+                "storeTagline" TEXT NOT NULL DEFAULT 'Enterprise Luxury Clothing & Jewellery Platform',
+                "logoUrl" TEXT,
+                "faviconUrl" TEXT,
+                "contactEmail" TEXT NOT NULL DEFAULT 'support@styleverse.com',
+                "contactPhone" TEXT NOT NULL DEFAULT '+91 98765 43210',
+                "alternatePhone" TEXT NOT NULL DEFAULT '',
+                "supportEmail" TEXT NOT NULL DEFAULT '',
+                "address" TEXT NOT NULL DEFAULT '123 Fashion Street, Cyber City, Hyderabad, India',
+                "googleMapsLink" TEXT NOT NULL DEFAULT '',
+                "businessHours" TEXT NOT NULL DEFAULT 'Mon-Sat 9AM-7PM',
+                "currencySymbol" TEXT NOT NULL DEFAULT '₹',
+                "language" TEXT NOT NULL DEFAULT 'English',
+                "timeZone" TEXT NOT NULL DEFAULT 'Asia/Kolkata',
+                "primaryColor" TEXT NOT NULL DEFAULT '#D4AF37',
+                "secondaryColor" TEXT NOT NULL DEFAULT '#1A1A1A',
+                "shippingFee" DOUBLE PRECISION NOT NULL DEFAULT 0,
+                "shippingCharge" DOUBLE PRECISION NOT NULL DEFAULT 0,
+                "freeShippingThreshold" DOUBLE PRECISION NOT NULL DEFAULT 999,
+                "estimatedDeliveryDays" TEXT NOT NULL DEFAULT '3-5 Business Days',
+                "isCODEnabled" BOOLEAN NOT NULL DEFAULT true,
+                "isRazorpayEnabled" BOOLEAN NOT NULL DEFAULT true,
+                "isStripeEnabled" BOOLEAN NOT NULL DEFAULT false,
+                "isCashfreeEnabled" BOOLEAN NOT NULL DEFAULT false,
+                "maintenanceMode" BOOLEAN NOT NULL DEFAULT false,
+                "checkoutFields" TEXT NOT NULL DEFAULT '{}',
+                "customPaymentMethods" TEXT NOT NULL DEFAULT '[]',
+                "customShippingTiers" TEXT NOT NULL DEFAULT '[]',
+                "customSeoTags" TEXT NOT NULL DEFAULT '[]',
+                "whatsappNumber" TEXT NOT NULL DEFAULT '',
+                "whatsappEnabled" BOOLEAN NOT NULL DEFAULT true,
+                "whatsappBusinessName" TEXT NOT NULL DEFAULT 'KVLR Styles',
+                "whatsappWorkingHours" TEXT NOT NULL DEFAULT 'Mon-Sat 9AM-7PM',
+                "whatsappAutoReply" TEXT NOT NULL DEFAULT 'Thank you for contacting us! We will respond within 24 hours.',
+                "whatsappCountryCode" TEXT NOT NULL DEFAULT '+91',
+                "whatsappDefaultMessage" TEXT NOT NULL DEFAULT 'Hi! I''d like to place an order.',
+                "whatsappGreeting" TEXT NOT NULL DEFAULT 'Welcome to KVLR Styles! How can we help you?',
+                "whatsappThankYou" TEXT NOT NULL DEFAULT 'Thank you for your order! We will process it shortly.',
+                "instagramUrl" TEXT NOT NULL DEFAULT '',
+                "facebookUrl" TEXT NOT NULL DEFAULT '',
+                "youtubeUrl" TEXT NOT NULL DEFAULT '',
+                "twitterUrl" TEXT NOT NULL DEFAULT '',
+                "telegramUrl" TEXT NOT NULL DEFAULT '',
+                "pinterestUrl" TEXT NOT NULL DEFAULT '',
+                "linkedinUrl" TEXT NOT NULL DEFAULT '',
+                "footerDescription" TEXT NOT NULL DEFAULT 'Discover the finest handcrafted ethnic fashion and royal jewellery.',
+                "copyrightText" TEXT NOT NULL DEFAULT '© 2026 KVLR Styles. All Rights Reserved.',
+                "footerQuickLinks" TEXT NOT NULL DEFAULT '[]',
+                "showPaymentIcons" BOOLEAN NOT NULL DEFAULT true,
+                "showTrustBadges" BOOLEAN NOT NULL DEFAULT true,
+                "metaTitle" TEXT NOT NULL DEFAULT 'StyleVerse | Premium Luxury Fashion & Royal Jewellery',
+                "metaDescription" TEXT NOT NULL DEFAULT 'Discover handcrafted royal jewellery and luxury designer fashion.',
+                "metaKeywords" TEXT NOT NULL DEFAULT 'luxury fashion, royal jewellery, bridal couture',
+                "ogImageUrl" TEXT,
+                "robotsTxt" TEXT NOT NULL DEFAULT 'User-agent: *\\nAllow: /',
+                "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "StoreSettings_pkey" PRIMARY KEY ("id")
+            );
+        `);
+
+        const alters = [
+            `ALTER TABLE "StoreSettings" ADD COLUMN IF NOT EXISTS "shippingCharge" DOUBLE PRECISION DEFAULT 0;`,
+            `ALTER TABLE "StoreSettings" ADD COLUMN IF NOT EXISTS "shippingFee" DOUBLE PRECISION DEFAULT 0;`,
+            `ALTER TABLE "StoreSettings" ADD COLUMN IF NOT EXISTS "customPaymentMethods" TEXT DEFAULT '[]';`,
+            `ALTER TABLE "StoreSettings" ADD COLUMN IF NOT EXISTS "customShippingTiers" TEXT DEFAULT '[]';`,
+            `ALTER TABLE "StoreSettings" ADD COLUMN IF NOT EXISTS "customSeoTags" TEXT DEFAULT '[]';`,
+            `ALTER TABLE "StoreSettings" ADD COLUMN IF NOT EXISTS "checkoutFields" TEXT DEFAULT '{"fullName":{"enabled":true,"required":true,"label":"Full Name"},"phone":{"enabled":true,"required":true,"label":"Phone Number"},"street":{"enabled":true,"required":true,"label":"Street Address"},"city":{"enabled":true,"required":true,"label":"City"},"state":{"enabled":true,"required":true,"label":"State"},"postalCode":{"enabled":true,"required":true,"label":"Pincode"}}';`,
+            `ALTER TABLE "StoreSettings" ADD COLUMN IF NOT EXISTS "freeShippingThreshold" DOUBLE PRECISION DEFAULT 999;`,
+            `ALTER TABLE "StoreSettings" ADD COLUMN IF NOT EXISTS "estimatedDeliveryDays" TEXT DEFAULT '3-5 Business Days';`,
+            `ALTER TABLE "StoreSettings" ADD COLUMN IF NOT EXISTS "isCODEnabled" BOOLEAN DEFAULT true;`,
+            `ALTER TABLE "StoreSettings" ADD COLUMN IF NOT EXISTS "isRazorpayEnabled" BOOLEAN DEFAULT true;`,
+            `ALTER TABLE "StoreSettings" ADD COLUMN IF NOT EXISTS "isStripeEnabled" BOOLEAN DEFAULT false;`,
+            `ALTER TABLE "StoreSettings" ADD COLUMN IF NOT EXISTS "isCashfreeEnabled" BOOLEAN DEFAULT false;`,
+            `ALTER TABLE "StoreSettings" ADD COLUMN IF NOT EXISTS "maintenanceMode" BOOLEAN DEFAULT false;`,
+        ];
+
+        for (const sql of alters) {
+            try {
+                await prisma.$executeRawUnsafe(sql);
+            } catch (e) {}
+        }
+    } catch (err) {
+        console.warn('[STORE SETTINGS SCHEMA SYNC]:', err.message);
+    }
+};
+
+exports.ensureStoreSettingsSchema = ensureStoreSettingsSchema;
+
 // ==================== Store Settings ====================
 exports.getStoreSettings = asyncHandler(async (req, res) => {
     try {
-        let settings = await prisma.storeSettings.findFirst();
+        let settings;
+        try {
+            settings = await prisma.storeSettings.findFirst();
+        } catch (dbReadErr) {
+            console.warn('[CMS SETTINGS] Auto-healing StoreSettings schema on read:', dbReadErr.message);
+            await ensureStoreSettingsSchema();
+            settings = await prisma.storeSettings.findFirst();
+        }
+
         if (!settings) {
             settings = await prisma.storeSettings.create({
                 data: { id: 'default' }
@@ -38,7 +141,26 @@ exports.getStoreSettings = asyncHandler(async (req, res) => {
                 contactPhone: '+91 98765 43210',
                 address: '123 Fashion Street, Cyber City, Hyderabad, India',
                 language: 'English',
-                timeZone: 'Asia/Kolkata'
+                timeZone: 'Asia/Kolkata',
+                shippingCharge: 0,
+                shippingFee: 0,
+                freeShippingThreshold: 999,
+                estimatedDeliveryDays: '3-5 Business Days',
+                isCODEnabled: true,
+                isRazorpayEnabled: true,
+                isStripeEnabled: false,
+                isCashfreeEnabled: false,
+                checkoutFields: JSON.stringify({
+                    fullName: { enabled: true, required: true, label: 'Full Name' },
+                    phone: { enabled: true, required: true, label: 'Phone Number' },
+                    street: { enabled: true, required: true, label: 'Street Address' },
+                    city: { enabled: true, required: true, label: 'City' },
+                    state: { enabled: true, required: true, label: 'State' },
+                    postalCode: { enabled: true, required: true, label: 'Pincode' }
+                }),
+                customPaymentMethods: '[]',
+                customShippingTiers: '[]',
+                customSeoTags: '[]'
             }
         });
     }
@@ -110,13 +232,35 @@ exports.updateStoreSettings = asyncHandler(async (req, res) => {
     });
 
     try {
-        let settings = await prisma.storeSettings.findFirst();
+        let settings;
+        try {
+            settings = await prisma.storeSettings.findFirst();
+        } catch (initialErr) {
+            console.warn('[CMS SETTINGS] Attempting auto-migration on column mismatch:', initialErr.message);
+            await ensureStoreSettingsSchema();
+            try {
+                settings = await prisma.storeSettings.findFirst();
+            } catch (retryErr) {
+                console.warn('[CMS SETTINGS] Find after migration failed, fallback raw query');
+            }
+        }
+
         if (settings) {
-            settings = await prisma.storeSettings.update({
-                where: { id: settings.id },
-                data: sanitizedData
-            });
+            try {
+                settings = await prisma.storeSettings.update({
+                    where: { id: settings.id },
+                    data: sanitizedData
+                });
+            } catch (updateErr) {
+                console.warn('[CMS SETTINGS] Update failed, running ensure schema and retrying:', updateErr.message);
+                await ensureStoreSettingsSchema();
+                settings = await prisma.storeSettings.update({
+                    where: { id: settings.id },
+                    data: sanitizedData
+                });
+            }
         } else {
+            await ensureStoreSettingsSchema();
             settings = await prisma.storeSettings.create({
                 data: { id: 'default', ...sanitizedData }
             });
