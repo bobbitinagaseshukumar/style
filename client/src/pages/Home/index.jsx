@@ -492,23 +492,30 @@ const Home = () => {
       )}
 
       {/* 8. TRENDING PRODUCTS */}
-      {enableTrending && trendingData && trendingData.products?.length > 0 && (
-        <section className="py-12 lg:py-16 bg-gray-50 border-t border-gray-100">
-          <div className="max-w-7xl mx-auto px-3 sm:px-4">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">{trendingData.title || 'Trending Styles'} 🔥</h2>
-                <p className="text-gray-500 mt-1">Handpicked trending styles curated by our fashion editors</p>
+      {(() => {
+        const trendList = (trendingData?.products && trendingData.products.length > 0)
+          ? trendingData.products
+          : (products.trending || []);
+        if (!enableTrending || trendList.length === 0) return null;
+
+        return (
+          <section className="py-12 lg:py-16 bg-gray-50 border-t border-gray-100">
+            <div className="max-w-7xl mx-auto px-3 sm:px-4">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-2xl lg:text-3xl font-serif font-bold text-charcoal-900">{trendingData?.title || 'Trending Styles'} 🔥</h2>
+                  <p className="text-gray-500 mt-1">Handpicked trending styles curated by our fashion editors</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+                {trendList.slice(0, trendingData?.limit || 8).map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-              {trendingData.products.slice(0, trendingData.limit || 8).map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+          </section>
+        );
+      })()}
 
       {/* 9. NEW ARRIVALS & LATEST PUBLISHED CREATIONS */}
       {products.newArrivals.length > 0 && (

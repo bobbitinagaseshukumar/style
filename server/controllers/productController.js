@@ -207,8 +207,12 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
         trending: true,
         newArrival: true,
         bestSeller: true,
+        flashSale: true,
+        todaysDeal: true,
+        showOnHomepage: true,
         isRecommended: true,
         isPremium: true,
+        isVisible: true,
         shortDesc: true,
         status: true,
         sizes: true,
@@ -446,10 +450,13 @@ exports.updateProduct = asyncHandler(async (req, res, next) => {
   if (updateData.trending !== undefined) updateData.trending = updateData.trending === 'true' || updateData.trending === true;
   if (updateData.newArrival !== undefined) updateData.newArrival = updateData.newArrival === 'true' || updateData.newArrival === true;
   if (updateData.bestSeller !== undefined) updateData.bestSeller = updateData.bestSeller === 'true' || updateData.bestSeller === true;
+  if (updateData.flashSale !== undefined) updateData.flashSale = updateData.flashSale === 'true' || updateData.flashSale === true;
+  if (updateData.todaysDeal !== undefined) updateData.todaysDeal = updateData.todaysDeal === 'true' || updateData.todaysDeal === true;
   if (updateData.isRecommended !== undefined) updateData.isRecommended = updateData.isRecommended === 'true' || updateData.isRecommended === true;
   if (updateData.isPremium !== undefined) updateData.isPremium = updateData.isPremium === 'true' || updateData.isPremium === true;
   if (updateData.isFestival !== undefined) updateData.isFestival = updateData.isFestival === 'true' || updateData.isFestival === true;
   if (updateData.showOnHomepage !== undefined) updateData.showOnHomepage = updateData.showOnHomepage === 'true' || updateData.showOnHomepage === true;
+  if (updateData.isVisible !== undefined) updateData.isVisible = updateData.isVisible === 'true' || updateData.isVisible === true;
 
   if (updateData.status) {
     updateData.status = updateData.status.toUpperCase();

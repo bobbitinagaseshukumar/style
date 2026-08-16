@@ -1534,13 +1534,13 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
                 include: { subcategories: true }
             }).catch(() => []),
             prisma.product.findMany({
-                where: { status: publishedStatusFilter, isVisible: true },
+                where: { status: publishedStatusFilter, isVisible: true, showOnHomepage: true },
                 take: 50,
                 orderBy: { createdAt: 'desc' },
                 include: productInclude
             }).catch(() => []),
             prisma.product.findMany({
-                where: { status: publishedStatusFilter, isVisible: true, featured: true },
+                where: { status: publishedStatusFilter, isVisible: true, showOnHomepage: true, featured: true },
                 take: 12,
                 orderBy: { createdAt: 'desc' },
                 include: productInclude
