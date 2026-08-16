@@ -211,19 +211,64 @@ const Orders = () => {
 
                   {/* BANNERS */}
                   {order.orderStatus === 'PENDING_APPROVAL' && (
-                    <div className="bg-amber-50 text-amber-700 p-3 rounded-xl text-xs font-medium border border-amber-200 flex items-center gap-2">
-                      <span>⏳</span> Your order is awaiting seller approval
+                    <div className="bg-amber-50 text-amber-700 p-3.5 rounded-2xl text-xs font-semibold border border-amber-200 flex items-center gap-2">
+                      <span className="text-base">⏳</span> Your order is awaiting seller approval & delivery scheduling
                     </div>
                   )}
                   {order.orderStatus === 'REJECTED' && (
-                    <div className="bg-red-50 text-red-700 p-3 rounded-xl text-xs font-medium border border-red-200 flex items-center gap-2">
-                      <span>❌</span> Order Rejected by Seller
-                      {order.cancellationReason && <span className="ml-1 opacity-80">- {order.cancellationReason}</span>}
+                    <div className="bg-rose-50 text-rose-700 p-3.5 rounded-2xl text-xs font-semibold border border-rose-200 flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">❌</span> Order Rejected by Seller
+                      </div>
+                      {order.cancellationReason && <p className="text-[11px] opacity-90 pl-6">Reason: {order.cancellationReason}</p>}
+                    </div>
+                  )}
+                  {order.orderStatus === 'CANCELLED' && (
+                    <div className="bg-red-50 text-red-800 p-4 rounded-2xl border border-red-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs flex items-center gap-1.5 text-red-700">
+                          <FiXCircle className="w-4 h-4 text-red-600" /> ORDER CANCELLED
+                        </span>
+                        <span className="text-[11px] text-red-500 font-mono">
+                          {formatDate(order.cancelledAt || order.updatedAt)}
+                        </span>
+                      </div>
+                      {order.cancellationReason && (
+                        <p className="text-xs text-red-700 font-medium">
+                          Reason: <strong>{order.cancellationReason}</strong>
+                        </p>
+                      )}
+                      <div className="text-[11px] text-red-600 font-medium pt-1 border-t border-red-200/60">
+                        💳 Refund Status: {order.paymentStatus === 'PAID' ? 'Refund Initialized / Processed to Original Payment Method' : 'COD Order (No Payment Collected)'}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ADMIN SCHEDULED DELIVERY & TRACKING INFO */}
+                  {(order.deliveryDate || order.expectedDeliveryDate || order.courierName || order.trackingNumber) && (
+                    <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-3.5 space-y-2 text-xs text-charcoal-900">
+                      <p className="font-bold text-[11px] text-amber-800 uppercase tracking-widest flex items-center gap-1.5">
+                        <FiTruck className="w-3.5 h-3.5" /> Delivery & Shipping Schedule (Set by Seller)
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        {(order.deliveryDate || order.expectedDeliveryDate) && (
+                          <div>📅 Expected Delivery Date: <strong>{order.deliveryDate || order.expectedDeliveryDate}</strong></div>
+                        )}
+                        {(order.deliveryTime || order.deliveryTimeSlot) && (
+                          <div>⏰ Time Slot: <strong>{order.deliveryTime || order.deliveryTimeSlot}</strong></div>
+                        )}
+                        {order.courierName && (
+                          <div>🚚 Courier: <strong>{order.courierName}</strong></div>
+                        )}
+                        {order.trackingNumber && (
+                          <div>🔢 Tracking ID: <strong className="font-mono">{order.trackingNumber}</strong></div>
+                        )}
+                      </div>
                     </div>
                   )}
 
                   {/* ORDER TIMELINE PROGRESS BAR */}
-                  {order.orderStatus !== 'CANCELLED' && (
+                  {order.orderStatus !== 'CANCELLED' && order.orderStatus !== 'REJECTED' && (
                     <div className="py-2">
                       <div className="flex justify-between items-center relative max-w-2xl mx-auto">
                         <div className="absolute top-1/2 left-0 right-0 h-1 bg-gray-200 -translate-y-1/2 z-0" />
