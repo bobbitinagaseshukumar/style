@@ -14,6 +14,19 @@ import { formatDate } from '../../utils/formatDate';
 import { toast } from 'react-toastify';
 import { updateUser, getMe, logoutUser } from '../../redux/auth/authSlice';
 
+const checkPasswordStrength = (pass) => {
+  const p = pass || '';
+  const checks = {
+    length: p.length >= 8,
+    upper: /[A-Z]/.test(p),
+    lower: /[a-z]/.test(p),
+    number: /[0-9]/.test(p),
+    special: /[^A-Za-z0-9]/.test(p),
+  };
+  const score = Object.values(checks).filter(Boolean).length;
+  return { checks, score };
+};
+
 const UserProfile = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [user, setUser] = useState(null);
@@ -517,7 +530,7 @@ const UserProfile = () => {
                         {checkPasswordStrength(passForm.newPassword).checks.number ? "✓" : "○"} Number (0-9)
                       </span>
                       <span className={checkPasswordStrength(passForm.newPassword).checks.special ? "text-emerald-600 font-bold flex items-center gap-1" : "text-gray-400 flex items-center gap-1"}>
-                        {checkPasswordStrength(passForm.newPassword).checks.special ? "✓" : "○"} Special character (@$!%*?&)
+                        {checkPasswordStrength(passForm.newPassword).checks.special ? "✓" : "○"} Special character (!@#$%^&*)
                       </span>
                     </div>
                   </div>
