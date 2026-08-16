@@ -12,7 +12,6 @@ import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatImageUrl } from '../../utils/formatImageUrl';
 import ProductCard from '../../components/common/ProductCard';
-import PersonalizedSections from '../../components/common/PersonalizedSections';
 import RecentlyViewedSection from '../../components/home/RecentlyViewedSection';
 import FlashSaleSection from '../../components/home/FlashSaleSection';
 import CollectionShowcase from '../../components/home/CollectionShowcase';
@@ -445,11 +444,6 @@ const Home = () => {
           </div>
         </section>
       )}
-
-      {/* AI PERSONALIZED RECOMMENDATIONS */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-4">
-        <PersonalizedSections />
-      </div>
 
       {/* 6. MAIN PUBLISHED PRODUCTS CATALOG — Renders immediately below Categories */}
       {(() => {
