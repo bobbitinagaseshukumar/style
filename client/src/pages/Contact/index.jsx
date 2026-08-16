@@ -27,6 +27,13 @@ const Contact = () => {
       }
     };
     fetchSettings();
+
+    window.addEventListener('kvlr:content-updated', fetchSettings);
+    window.addEventListener('store_settings_updated', fetchSettings);
+    return () => {
+      window.removeEventListener('kvlr:content-updated', fetchSettings);
+      window.removeEventListener('store_settings_updated', fetchSettings);
+    };
   }, []);
 
   const handleChange = (e) => {

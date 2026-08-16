@@ -128,15 +128,18 @@ const AdminLayout = () => {
     }, 20000);
 
     const handleContentUpdate = () => {
+      fetchSettings();
       fetchAdminNotifications();
       fetchPendingOrdersCount();
     };
 
     window.addEventListener('kvlr:content-updated', handleContentUpdate);
+    window.addEventListener('store_settings_updated', handleContentUpdate);
     window.addEventListener('focus', handleContentUpdate);
     return () => {
       clearInterval(interval);
       window.removeEventListener('kvlr:content-updated', handleContentUpdate);
+      window.removeEventListener('store_settings_updated', handleContentUpdate);
       window.removeEventListener('focus', handleContentUpdate);
     };
   }, []);

@@ -17,14 +17,27 @@ const WhatsAppFloat = () => {
   const [message, setMessage] = useState('');
   const [pulse, setPulse] = useState(true);
 
-  useEffect(() => {
-    api.get('/settings')
+  const fetchSettings = () => {
+    api.get('/cms/settings')
       .then(r => setSettings(r.data?.data))
-      .catch(() => {});
+      .catch(() => {
+        api.get('/settings').then(r => setSettings(r.data?.data)).catch(() => {});
+      });
+  };
+
+  useEffect(() => {
+    fetchSettings();
+
+    window.addEventListener('kvlr:content-updated', fetchSettings);
+    window.addEventListener('store_settings_updated', fetchSettings);
 
     // Stop pulsing after 6 seconds
     const t = setTimeout(() => setPulse(false), 6000);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('kvlr:content-updated', fetchSettings);
+      window.removeEventListener('store_settings_updated', fetchSettings);
+    };
   }, []);
 
   if (!settings?.whatsappEnabled || !settings?.whatsappNumber) return null;
