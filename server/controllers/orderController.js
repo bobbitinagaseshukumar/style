@@ -913,6 +913,12 @@ exports.deleteOrder = asyncHandler(async (req, res, next) => {
     },
   });
 
+  res.status(200).json({
+    success: true,
+    message: `Order #${order.orderNumber || id} removed from Admin Panel (preserved in customer account & database)`,
+  });
+});
+
 // ==================== ADMIN: GET PENDING ORDERS COUNT FOR SIDEBAR BADGE ====================
 exports.adminGetPendingCount = asyncHandler(async (req, res) => {
   const pendingCount = await prisma.order.count({

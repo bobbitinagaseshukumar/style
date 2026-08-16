@@ -65,8 +65,13 @@ exports.getPersonalizedRecommendations = asyncHandler(async (req, res) => {
   let frequentlyBoughtTogether = [];
   let becauseYouPurchased = [];
 
+  const publishedFilter = {
+    status: { notIn: ['DELETED', 'ARCHIVED', 'DRAFT', 'deleted', 'archived', 'draft'] },
+    isVisible: true,
+  };
+
   const allProducts = await prisma.product.findMany({
-    where: { isPublished: true, stock: { gt: 0 } },
+    where: { ...publishedFilter, stock: { gt: 0 } },
     include: { images: true, category: true },
     take: 20,
     orderBy: { createdAt: 'desc' },
@@ -84,7 +89,7 @@ exports.getPersonalizedRecommendations = asyncHandler(async (req, res) => {
 
     if (scoredProductIds.length > 0) {
       recommendedForYou = await prisma.product.findMany({
-        where: { id: { in: scoredProductIds }, isPublished: true },
+        where: { id: { in: scoredProductIds }, ...publishedFilter },
         include: { images: true, category: true },
         take: 8,
       });
@@ -103,7 +108,7 @@ exports.getPersonalizedRecommendations = asyncHandler(async (req, res) => {
 
     if (categoryIds.length > 0) {
       inspiredByBrowsing = await prisma.product.findMany({
-        where: { categoryId: { in: categoryIds }, isPublished: true },
+        where: { categoryId: { in: categoryIds }, ...publishedFilter },
         include: { images: true, category: true },
         take: 8,
       });
