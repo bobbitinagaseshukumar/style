@@ -157,13 +157,12 @@ const Home = () => {
             if (bundle.categories?.length > 0) setCategories(bundle.categories);
             if (bundle.products) {
               const bProds = bundle.products;
-              const allPub = bProds.allPublished || [];
               setProducts({
-                featured: (bProds.featured && bProds.featured.length > 0) ? bProds.featured : allPub.slice(0, 12),
-                trending: (bProds.trending && bProds.trending.length > 0) ? bProds.trending : allPub.slice(0, 12),
-                newArrivals: (bProds.newArrivals && bProds.newArrivals.length > 0) ? bProds.newArrivals : allPub.slice(0, 12),
-                todaysDeals: (bProds.todaysDeals && bProds.todaysDeals.length > 0) ? bProds.todaysDeals : allPub.slice(0, 12),
-                allPublished: allPub
+                featured: bProds.featured || [],
+                trending: bProds.trending || [],
+                newArrivals: bProds.newArrivals || [],
+                todaysDeals: bProds.todaysDeals || [],
+                allPublished: bProds.allPublished || []
               });
             }
             if (bundle.trendingData !== undefined) setTrendingData(bundle.trendingData);
@@ -183,17 +182,16 @@ const Home = () => {
           const liveProds = directProdsRes.data?.data?.products || directProdsRes.data?.data || [];
           if (Array.isArray(liveProds) && liveProds.length > 0 && isMounted) {
             setProducts(prev => {
-              const allPub = liveProds;
-              const feat = (prev.featured && prev.featured.length > 0) ? prev.featured : allPub.slice(0, 12);
-              const newArr = (prev.newArrivals && prev.newArrivals.length > 0) ? prev.newArrivals : allPub.slice(0, 12);
-              const trend = (prev.trending && prev.trending.length > 0) ? prev.trending : allPub.slice(0, 12);
-              const deals = (prev.todaysDeals && prev.todaysDeals.length > 0) ? prev.todaysDeals : allPub.slice(0, 12);
+              const feat = liveProds.filter(p => p.featured);
+              const newArr = liveProds.filter(p => p.newArrival || p.isNew);
+              const trend = liveProds.filter(p => p.trending);
+              const deals = liveProds.filter(p => p.todaysDeal || p.bestSeller);
               return {
-                featured: feat,
-                trending: trend,
-                newArrivals: newArr,
-                todaysDeals: deals,
-                allPublished: allPub
+                featured: feat.length > 0 ? feat : prev.featured || [],
+                trending: trend.length > 0 ? trend : prev.trending || [],
+                newArrivals: newArr.length > 0 ? newArr : prev.newArrivals || [],
+                todaysDeals: deals.length > 0 ? deals : prev.todaysDeals || [],
+                allPublished: liveProds
               };
             });
             setIsLoading(false);
@@ -265,10 +263,10 @@ const Home = () => {
         let bestSellerList = extractProducts(bestSellerRes);
 
         const resolvedProducts = {
-          featured: featuredList.length > 0 ? featuredList.slice(0, 12) : allProductsList.slice(0, 12),
-          trending: trendingList.length > 0 ? trendingList.slice(0, 12) : allProductsList.slice(0, 12),
-          newArrivals: newArrivalsList.length > 0 ? newArrivalsList.slice(0, 12) : allProductsList.slice(0, 12),
-          todaysDeals: bestSellerList.length > 0 ? bestSellerList.slice(0, 12) : allProductsList.slice(0, 12),
+          featured: featuredList,
+          trending: trendingList,
+          newArrivals: newArrivalsList,
+          todaysDeals: bestSellerList,
           allPublished: allProductsList
         };
 

@@ -1568,10 +1568,10 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
             categories: categories || [],
             products: {
                 allPublished: allProducts || [],
-                featured: (featuredProducts && featuredProducts.length > 0) ? featuredProducts : (allProducts || []).slice(0, 12),
-                trending: (trendingProducts && trendingProducts.length > 0) ? trendingProducts : (allProducts || []).slice(0, 12),
-                newArrivals: (newArrivalProducts && newArrivalProducts.length > 0) ? newArrivalProducts : (allProducts || []).slice(0, 12),
-                todaysDeals: (bestSellerProducts && bestSellerProducts.length > 0) ? bestSellerProducts : (allProducts || []).slice(0, 12)
+                featured: featuredProducts || [],
+                trending: trendingProducts || [],
+                newArrivals: newArrivalProducts || [],
+                todaysDeals: bestSellerProducts || []
             },
             trendingData: enrichedTrending,
             settings: storeSettings,
