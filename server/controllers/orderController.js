@@ -140,12 +140,12 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
       });
     }
 
-    // Customer notification
+    // Customer notification (Before Admin Approval)
     await tx.notification.create({
       data: {
         userId: req.user.id,
-        title: `Order Placed! (#${orderNumber})`,
-        message: `Your order for ₹${totalAmount.toLocaleString('en-IN')} is being processed.`,
+        title: `⏳ Order Received — Sent for Admin Approval (#${orderNumber})`,
+        message: `Your order #${orderNumber} for ₹${totalAmount.toLocaleString('en-IN')} has been received and sent to admin for approval. We will notify you once approved!`,
         type: 'ORDER',
         link: '/orders',
       },
@@ -578,7 +578,16 @@ exports.adminUpdateOrderStatus = asyncHandler(async (req, res, next) => {
   setImmediate(() => {
     switch (orderStatus) {
       case 'CONFIRMED':
-        emailService.sendOrderPlacedEmail(order.user.email, order.user.fullName, orderData);
+        emailService.sendOrderApprovedEmail(order.user.email, order.user.fullName, orderData);
+        prisma.notification.create({
+          data: {
+            userId: order.userId,
+            title: `✅ Order Approved & Confirmed (#${order.orderNumber})`,
+            message: `Your order #${order.orderNumber} has been approved by admin! Expected Delivery: 3-5 Business Days.`,
+            type: 'ORDER',
+            link: '/orders',
+          },
+        }).catch(() => {});
         break;
       case 'SHIPPED':
         emailService.sendOrderShippedEmail(order.user.email, order.user.fullName, orderData);
@@ -714,7 +723,7 @@ exports.adminApproveOrder = asyncHandler(async (req, res, next) => {
         deliveryTime: deliveryTime || null,
       };
       if (order.user?.email) {
-        await emailService.sendOrderPlacedEmail(order.user.email, order.user.fullName || 'Valued Customer', orderPayload);
+        await emailService.sendOrderApprovedEmail(order.user.email, order.user.fullName || 'Valued Customer', orderPayload);
       }
     } catch (mailErr) {
       console.error('[APPROVAL EMAIL ERROR]', mailErr.message);

@@ -334,7 +334,7 @@ class EmailService {
     });
   }
 
-  // ==================== 5. ORDER PLACED EMAIL (CUSTOMER) ====================
+  // ==================== 5. ORDER PLACED (SENT TO ADMIN FOR APPROVAL) ====================
   async sendOrderPlacedEmail(email, fullName, orderData) {
     const { storeName, storeTagline, primaryColor, clientUrl } = await getStoreMetadata();
     const goldAccent = primaryColor || '#D4AF37';
@@ -378,8 +378,13 @@ class EmailService {
 
     const description = `
       <p style="margin-bottom: 12px; font-size: 15px; color: #FFFFFF;">Thank you for your order, <strong>${fullName}</strong>!</p>
-      <p style="margin-bottom: 20px; color: #CCCCCC; font-size: 13px;">We have received your order <strong>#${orderData.orderNumber}</strong> at <strong>${storeName}</strong>. Our team is preparing it for shipment.</p>
+      <p style="margin-bottom: 16px; color: #CCCCCC; font-size: 13px;">We have received your order <strong>#${orderData.orderNumber}</strong> at <strong>${storeName}</strong>. It has been sent to our administrator for verification and approval.</p>
       
+      <!-- APPROVAL NOTICE BOX -->
+      <div style="background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.3); padding: 14px 18px; border-radius: 10px; margin-bottom: 20px; font-size: 13px; color: ${goldAccent};">
+        ⏳ <strong>Status:</strong> Sent to Admin for Approval. You will receive a separate confirmation email as soon as Admin reviews and approves your order.
+      </div>
+
       <!-- ORDER SUMMARY BOX -->
       <div style="background: #161616; padding: 18px; border-radius: 12px; margin-bottom: 24px; border: 1px solid rgba(212,175,55,0.25);">
         <p style="margin: 4px 0; font-size: 13px; color: #FFFFFF;"><strong>Order Number:</strong> #${orderData.orderNumber}</p>
@@ -407,9 +412,9 @@ class EmailService {
     `;
 
     const htmlContent = wrapTemplate({
-      headline: `🛍️ Order Confirmed! (#${orderData.orderNumber})`,
+      headline: `⏳ Order Received — Sent for Admin Approval (#${orderData.orderNumber})`,
       description,
-      buttonText: 'Track Order Status →',
+      buttonText: 'View Order Status →',
       buttonUrl: `${clientUrl}/orders`,
       storeName,
       storeTagline,
@@ -419,7 +424,104 @@ class EmailService {
 
     return sendEmailViaBrevo({
       to: email,
-      subject: `Order Confirmed #${orderData.orderNumber} - ${storeName}`,
+      subject: `Order Received #${orderData.orderNumber} (Pending Admin Approval) - ${storeName}`,
+      htmlContent,
+      senderName: storeName,
+    });
+  }
+
+  // ==================== 5B. ORDER APPROVED & CONFIRMED EMAIL (AFTER ADMIN APPROVAL) ====================
+  async sendOrderApprovedEmail(email, fullName, orderData) {
+    const { storeName, storeTagline, primaryColor, clientUrl } = await getStoreMetadata();
+    const goldAccent = primaryColor || '#D4AF37';
+
+    const itemsListHtml = (orderData.items || []).map((item) => {
+      const prodImg = formatEmailImageUrl(item.image || item.imageUrl, item.name, item.imgId, item.productId);
+      const pSlug = item.slug || item.productId || item.id;
+      const pUrl = `${clientUrl}/product/${pSlug}`;
+
+      return `
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.08);">
+          <td style="padding: 12px; width: 70px;">
+            <a href="${pUrl}" target="_blank">
+              <img src="${prodImg}" alt="${item.name || 'Product'}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(212,175,55,0.3); display: block;" />
+            </a>
+          </td>
+          <td style="padding: 12px; color: #FFFFFF; font-size: 13px; font-weight: 600;">
+            <a href="${pUrl}" target="_blank" style="color: #FFFFFF; text-decoration: none; font-weight: 700;">
+              ${item.name || 'Product Item'}
+            </a>
+            ${(item.size || item.color) ? `
+              <div style="font-size: 11px; color: #AAAAAA; margin-top: 4px;">
+                ${item.color ? `Color: ${item.color}` : ''} ${item.size ? `| Size: ${item.size}` : ''}
+              </div>
+            ` : ''}
+            <div style="margin-top: 6px;">
+              <a href="${pUrl}" target="_blank" style="color: ${goldAccent}; font-size: 11px; text-decoration: underline; font-weight: 700;">
+                View Product Page →
+              </a>
+            </div>
+          </td>
+          <td style="padding: 12px; color: #DDDDDD; font-size: 13px; text-align: center;">
+            x${item.quantity || 1}
+          </td>
+          <td style="padding: 12px; color: ${goldAccent}; font-size: 14px; font-weight: 800; text-align: right;">
+            ₹${((item.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    const description = `
+      <p style="margin-bottom: 12px; font-size: 15px; color: #FFFFFF;">Great news, <strong>${fullName}</strong>!</p>
+      <p style="margin-bottom: 16px; color: #CCCCCC; font-size: 13px;">Your order <strong>#${orderData.orderNumber}</strong> has been reviewed and <strong>officially approved</strong> by our admin team at <strong>${storeName}</strong>. Your items are now confirmed and being packed for delivery.</p>
+      
+      <!-- APPROVED BANNER -->
+      <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); padding: 14px 18px; border-radius: 10px; margin-bottom: 20px; font-size: 13px; color: #10B981;">
+        ✅ <strong>Order Approved & Confirmed!</strong> Expected Delivery: <strong>${orderData.estimatedDelivery || '3-5 Business Days'}</strong>.
+      </div>
+
+      <!-- ORDER SUMMARY BOX -->
+      <div style="background: #161616; padding: 18px; border-radius: 12px; margin-bottom: 24px; border: 1px solid rgba(212,175,55,0.25);">
+        <p style="margin: 4px 0; font-size: 13px; color: #FFFFFF;"><strong>Order Number:</strong> #${orderData.orderNumber}</p>
+        <p style="margin: 4px 0; font-size: 13px; color: ${goldAccent};"><strong>Total Amount:</strong> ₹${(orderData.total || 0).toLocaleString('en-IN')}</p>
+        <p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Payment Method:</strong> ${orderData.paymentMethod || 'Online Payment'}</p>
+        <p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Expected Delivery:</strong> ${orderData.estimatedDelivery || '3-5 Business Days'}</p>
+        ${orderData.deliveryNotes ? `<p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Delivery Notes:</strong> ${orderData.deliveryNotes}</p>` : ''}
+        ${orderData.shippingAddress ? `<p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Delivery Address:</strong> ${orderData.shippingAddress}</p>` : ''}
+      </div>
+
+      <!-- ORDERED ITEMS TABLE -->
+      <h3 style="color: #FFFFFF; font-size: 14px; font-weight: 700; margin-bottom: 12px;">Confirmed Items Breakdown:</h3>
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; background: #121212; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
+        <thead>
+          <tr style="background: #1F1F1F; color: ${goldAccent}; font-size: 11px; text-transform: uppercase;">
+            <th style="padding: 10px 12px; text-align: left;">Product</th>
+            <th style="padding: 10px 12px; text-align: left;">Details</th>
+            <th style="padding: 10px 12px; text-align: center;">Qty</th>
+            <th style="padding: 10px 12px; text-align: right;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsListHtml}
+        </tbody>
+      </table>
+    `;
+
+    const htmlContent = wrapTemplate({
+      headline: `✅ Order Approved & Confirmed! (#${orderData.orderNumber})`,
+      description,
+      buttonText: 'Track Order & Shipment →',
+      buttonUrl: `${clientUrl}/orders`,
+      storeName,
+      storeTagline,
+      primaryColor,
+      clientUrl,
+    });
+
+    return sendEmailViaBrevo({
+      to: email,
+      subject: `✅ Order Approved & Confirmed #${orderData.orderNumber} - ${storeName}`,
       htmlContent,
       senderName: storeName,
     });
@@ -769,6 +871,7 @@ module.exports.sendWelcomeEmail = emailServiceInstance.sendWelcomeEmail.bind(ema
 module.exports.sendPasswordResetEmail = emailServiceInstance.sendPasswordResetEmail.bind(emailServiceInstance);
 module.exports.sendPasswordChangedEmail = emailServiceInstance.sendPasswordChangedEmail.bind(emailServiceInstance);
 module.exports.sendOrderPlacedEmail = emailServiceInstance.sendOrderPlacedEmail.bind(emailServiceInstance);
+module.exports.sendOrderApprovedEmail = emailServiceInstance.sendOrderApprovedEmail.bind(emailServiceInstance);
 module.exports.sendAdminOrderAlertEmail = emailServiceInstance.sendAdminOrderAlertEmail.bind(emailServiceInstance);
 module.exports.sendOrderShippedEmail = emailServiceInstance.sendOrderShippedEmail.bind(emailServiceInstance);
 module.exports.sendOrderDeliveredEmail = emailServiceInstance.sendOrderDeliveredEmail.bind(emailServiceInstance);
