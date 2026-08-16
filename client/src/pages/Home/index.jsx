@@ -10,6 +10,7 @@ import 'swiper/css/effect-fade';
 import { FiArrowRight, FiTruck, FiShield, FiRefreshCw, FiHeadphones, FiZap } from 'react-icons/fi';
 import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { formatImageUrl } from '../../utils/formatImageUrl';
 import ProductCard from '../../components/common/ProductCard';
 import PersonalizedSections from '../../components/common/PersonalizedSections';
 import RecentlyViewedSection from '../../components/home/RecentlyViewedSection';
