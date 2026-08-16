@@ -796,16 +796,13 @@ exports.deleteCustomer = asyncHandler(async (req, res, next) => {
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return next(new ApiError(404, 'Customer not found'));
 
-  // Prevent deleting currently logged-in Super Admin self
-  if (req.user?.id === id) {
-    return next(new ApiError(400, 'You cannot delete your own active admin account.'));
+  // Protect ONLY the primary Super Admin account (nagaseshukumarbobbiti@gmail.com) and current logged-in user self
+  const primarySuperAdminEmail = 'nagaseshukumarbobbiti@gmail.com';
+  if (user.email?.toLowerCase() === primarySuperAdminEmail) {
+    return next(new ApiError(403, 'System Protected: Primary Super Admin account (nagaseshukumarbobbiti@gmail.com) cannot be deleted.'));
   }
-
-  if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
-    // Only allow deletion if explicitly requested
-    if (user.role === 'SUPER_ADMIN') {
-      return next(new ApiError(403, 'Super Admin accounts cannot be deleted from Customer Management.'));
-    }
+  if (req.user?.id === id) {
+    return next(new ApiError(400, 'You cannot delete your own logged-in account.'));
   }
 
   try {
