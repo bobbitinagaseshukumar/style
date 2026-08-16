@@ -158,26 +158,17 @@ const Home = () => {
           const bundle = bundleRes.data.data;
           if (!isMounted) return;
 
-          const newDataKey = JSON.stringify({
-            b: (bundle.banners || []).map(b => b.id),
-            c: (bundle.categories || []).map(c => c.id),
-            p: (bundle.products?.allPublished || []).map(p => p.id)
-          });
-
-          if (newDataKey !== prevDataRef.current) {
-            prevDataRef.current = newDataKey;
-            if (bundle.banners?.length > 0) setBanners(bundle.banners);
-            if (Array.isArray(bundle.categories) && bundle.categories.length > 0) setCategories(bundle.categories);
-            if (bundle.products) {
-              const bProds = bundle.products;
-              setProducts({
-                featured: bProds.featured || [],
-                trending: bProds.trending || [],
-                newArrivals: bProds.newArrivals || [],
-                todaysDeals: bProds.todaysDeals || [],
-                allPublished: bProds.allPublished || []
-              });
-            }
+          if (bundle.banners?.length > 0) setBanners(bundle.banners);
+          if (Array.isArray(bundle.categories) && bundle.categories.length > 0) setCategories(bundle.categories);
+          if (bundle.products) {
+            const bProds = bundle.products;
+            setProducts({
+              featured: bProds.featured || [],
+              trending: bProds.trending || [],
+              newArrivals: bProds.newArrivals || [],
+              todaysDeals: bProds.todaysDeals || [],
+              allPublished: bProds.allPublished || []
+            });
           }
 
           if (bundle.trendingData !== undefined) setTrendingData(bundle.trendingData);
@@ -214,37 +205,41 @@ const Home = () => {
             localStorage.setItem(CACHE_KEY, cachePayload);
             sessionStorage.setItem(CACHE_KEY, cachePayload);
           } catch (e) {}
-          return;
         }
       } catch (bundleErr) {
         console.warn('Fast bundle fallback:', bundleErr.message);
       }
 
-      // Fallback only if bundle endpoint failed
+      // Always fetch live products as guarantee
       try {
         const [bannersRes, categoriesRes, allProductsRes] = await Promise.allSettled([
           api.get('/cms/banners?activeOnly=true'),
-          api.get('/categories?showOnHomepage=true&limit=12'),
-          api.get('/products?limit=50&sort=newest'),
+          api.get('/categories?includeAll=true'),
+          api.get('/products?limit=100&sort=newest'),
         ]);
 
         if (!isMounted) return;
 
-        if (bannersRes.status === 'fulfilled' && bannersRes.value.data?.data) {
-          setBanners(bannersRes.value.data.data);
-        }
-        if (categoriesRes.status === 'fulfilled' && categoriesRes.value.data?.data) {
+        if (categoriesRes.status === 'fulfilled' && categoriesRes.value.data?.data?.length > 0) {
           setCategories(categoriesRes.value.data.data);
         }
         if (allProductsRes.status === 'fulfilled' && allProductsRes.value.data?.data) {
           const prods = allProductsRes.value.data.data.products || allProductsRes.value.data.data || [];
-          setProducts({
-            featured: prods.filter(p => p.featured),
-            trending: prods.filter(p => p.trending),
-            newArrivals: prods.filter(p => p.newArrival || p.isNew),
-            todaysDeals: prods.filter(p => p.todaysDeal || p.bestSeller),
-            allPublished: prods
-          });
+          if (Array.isArray(prods) && prods.length > 0) {
+            setProducts(prev => {
+              const feat = prods.filter(p => p.featured);
+              const newArr = prods.filter(p => p.newArrival || p.isNew);
+              const trend = prods.filter(p => p.trending);
+              const deals = prods.filter(p => p.todaysDeal || p.bestSeller);
+              return {
+                featured: feat.length > 0 ? feat : prods.slice(0, 12),
+                trending: trend.length > 0 ? trend : prods.slice(0, 12),
+                newArrivals: newArr.length > 0 ? newArr : prods.slice(0, 16),
+                todaysDeals: deals.length > 0 ? deals : prods.slice(0, 12),
+                allPublished: prods
+              };
+            });
+          }
         }
         setIsLoading(false);
       } catch (err) {

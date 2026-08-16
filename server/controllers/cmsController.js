@@ -1610,11 +1610,16 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
             }).catch(() => [])
         ]);
 
-        // In-memory instant filtering (Eliminates 4 heavy database roundtrips & table scans!)
-        const featuredProducts = allProducts.filter(p => p.featured).slice(0, 12);
-        const trendingProducts = allProducts.filter(p => p.trending).slice(0, 12);
-        const newArrivalProducts = allProducts.slice(0, 16);
-        const bestSellerProducts = allProducts.filter(p => p.bestSeller || p.todaysDeal).slice(0, 12);
+        // In-memory instant filtering (Eliminates heavy database roundtrips!)
+        const featList = allProducts.filter(p => p.featured);
+        const trendList = allProducts.filter(p => p.trending);
+        const newArrList = allProducts.filter(p => p.newArrival || p.isNew);
+        const dealList = allProducts.filter(p => p.bestSeller || p.todaysDeal);
+
+        const featuredProducts = (featList.length > 0 ? featList : allProducts).slice(0, 12);
+        const trendingProducts = (trendList.length > 0 ? trendList : allProducts).slice(0, 12);
+        const newArrivalProducts = (newArrList.length > 0 ? newArrList : allProducts).slice(0, 16);
+        const bestSellerProducts = (dealList.length > 0 ? dealList : allProducts).slice(0, 12);
 
         // Enrich trendingSelection products if set
         let enrichedTrending = null;
