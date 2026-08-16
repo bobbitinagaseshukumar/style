@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   FiUser, FiShoppingBag, FiMapPin, FiHeart, FiShield,
-  FiEdit, FiPlus, FiTrash2, FiSave, FiLock, FiCheckCircle, FiPrinter, FiLogOut, FiKey, FiSmartphone
+  FiEdit, FiPlus, FiTrash2, FiSave, FiLock, FiCheckCircle, FiCheck, FiPrinter, FiLogOut, FiKey, FiSmartphone
 } from 'react-icons/fi';
 import { useDispatch, useSelector } from 'react-redux';
 import api from '../../config/api';
