@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const compression = require('compression');
 const errorHandler = require('./middleware/errorHandler');
 
 // Route imports
@@ -32,6 +33,16 @@ const uploadRoutes = require('./routes/uploadRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
+
+// Enable high-performance response compression (gzip/deflate)
+app.use(compression({
+  level: 6,
+  threshold: 1024, // only compress responses > 1KB
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) return false;
+    return compression.filter(req, res);
+  }
+}));
 
 // Security & Core Middlewares
 app.use(helmet({
@@ -69,9 +80,16 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 const path = require('path');
 
-// Serve uploaded product images statically from /uploads folder
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/public/uploads', express.static(path.join(__dirname, 'public/uploads')));
+// Serve uploaded product images statically with 30-day browser caching
+const staticCacheOptions = {
+  maxAge: '30d',
+  immutable: true,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+  }
+};
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), staticCacheOptions));
+app.use('/public/uploads', express.static(path.join(__dirname, 'public/uploads'), staticCacheOptions));
 
 // Base Health Route
 app.get('/api/v1/health', healthController.getHealthStatus);

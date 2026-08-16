@@ -9,11 +9,15 @@ const DEFAULT_TESTIMONIALS = [
   { id: 't3', name: 'Rajesh Verma', location: 'Bangalore', rating: 5, comment: 'Exceptional quality kurta shirt! Fits perfectly and fabric feels extremely premium.' },
 ];
 
-const TestimonialsSection = () => {
-  const [reviews, setReviews] = useState([]);
+const TestimonialsSection = ({ initialReviews }) => {
+  const [reviews, setReviews] = useState(initialReviews?.length > 0 ? initialReviews : []);
   const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
+    if (initialReviews && initialReviews.length > 0) {
+      setReviews(initialReviews);
+      return;
+    }
     const fetchData = async () => {
       try {
         const [revRes, setRes] = await Promise.allSettled([
@@ -37,7 +41,7 @@ const TestimonialsSection = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [initialReviews]);
 
   if (!enabled || reviews.length === 0) return null;
 

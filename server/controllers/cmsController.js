@@ -1495,17 +1495,47 @@ exports.invalidateHomepageBundleCache = () => {
 
 exports.getHomepageBundle = asyncHandler(async (req, res) => {
     const now = Date.now();
+    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
+
     if (homepageBundleCache && (now - homepageBundleCacheTime < BUNDLE_CACHE_TTL_MS)) {
         return res.status(200).json({ success: true, cached: true, data: homepageBundleCache });
     }
 
     try {
-        const productInclude = {
+        const productSelect = {
+            id: true,
+            name: true,
+            slug: true,
+            sku: true,
+            price: true,
+            discountPercent: true,
+            discountPrice: true,
+            stock: true,
+            featured: true,
+            trending: true,
+            newArrival: true,
+            bestSeller: true,
+            todaysDeal: true,
+            isNew: true,
+            isRecommended: true,
+            isPremium: true,
+            shortDesc: true,
+            status: true,
+            sizes: true,
+            colors: true,
+            createdAt: true,
             images: {
-                orderBy: { displayOrder: 'asc' }
+                orderBy: { displayOrder: 'asc' },
+                select: { id: true, url: true, isPrimary: true }
             },
             category: {
                 select: { id: true, name: true, slug: true }
+            },
+            subCategory: {
+                select: { id: true, name: true, slug: true }
+            },
+            brand: {
+                select: { id: true, name: true }
             }
         };
 
@@ -1515,62 +1545,76 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
             banners,
             categories,
             allProducts,
-            featuredProducts,
-            trendingProducts,
-            newArrivalProducts,
-            bestSellerProducts,
             trendingSelection,
             storeSettings,
-            rawDynamicSections
+            rawDynamicSections,
+            rawFlashSale,
+            rawCollections,
+            rawHeritageBrands,
+            rawReviews,
+            rawSocialFeed,
+            rawFaqs
         ] = await Promise.all([
             prisma.banner.findMany({
                 where: { isActive: true },
-                orderBy: { order: 'asc' }
+                orderBy: { order: 'asc' },
+                take: 10
             }).catch(() => []),
             prisma.category.findMany({
                 where: { showOnHomepage: true, isVisible: true },
                 take: 12,
                 orderBy: { sortOrder: 'asc' },
-                include: { subcategories: true }
+                include: { subcategories: { select: { id: true, name: true, slug: true } } }
             }).catch(() => []),
             prisma.product.findMany({
                 where: { status: publishedStatusFilter, isVisible: true },
-                take: 50,
+                take: 60,
                 orderBy: { createdAt: 'desc' },
-                include: productInclude
-            }).catch(() => []),
-            prisma.product.findMany({
-                where: { status: publishedStatusFilter, isVisible: true, featured: true },
-                take: 12,
-                orderBy: { createdAt: 'desc' },
-                include: productInclude
-            }).catch(() => []),
-            prisma.product.findMany({
-                where: { status: publishedStatusFilter, isVisible: true, trending: true },
-                take: 12,
-                orderBy: { createdAt: 'desc' },
-                include: productInclude
-            }).catch(() => []),
-            prisma.product.findMany({
-                where: { status: publishedStatusFilter, isVisible: true, newArrival: true },
-                take: 12,
-                orderBy: { createdAt: 'desc' },
-                include: productInclude
-            }).catch(() => []),
-            prisma.product.findMany({
-                where: { status: publishedStatusFilter, isVisible: true, bestSeller: true },
-                take: 12,
-                orderBy: { createdAt: 'desc' },
-                include: productInclude
+                select: productSelect
             }).catch(() => []),
             prisma.trendingSelection.findFirst({
                 where: { isActive: true }
             }).catch(() => null),
             prisma.storeSettings.findFirst().catch(() => null),
             prisma.homepageSection.findMany({
+                where: { isActive: true },
+                orderBy: { order: 'asc' }
+            }).catch(() => []),
+            prisma.flashSale.findFirst({
                 where: { isActive: true }
+            }).catch(() => null),
+            prisma.productCollection.findMany({
+                where: { isActive: true },
+                orderBy: { order: 'asc' },
+                take: 8
+            }).catch(() => []),
+            prisma.heritageBrand.findMany({
+                where: { isActive: true },
+                orderBy: { sortOrder: 'asc' },
+                take: 8
+            }).catch(() => []),
+            prisma.customerReview.findMany({
+                where: { isFeatured: true, isApproved: true },
+                take: 8,
+                orderBy: { createdAt: 'desc' }
+            }).catch(() => []),
+            prisma.socialFollowButton.findMany({
+                where: { isActive: true },
+                orderBy: { sortOrder: 'asc' },
+                take: 8
+            }).catch(() => []),
+            prisma.fAQ.findMany({
+                where: { isFeatured: true },
+                take: 8,
+                orderBy: { order: 'asc' }
             }).catch(() => [])
         ]);
+
+        // In-memory instant filtering (Eliminates 4 heavy database roundtrips & table scans!)
+        const featuredProducts = allProducts.filter(p => p.featured).slice(0, 12);
+        const trendingProducts = allProducts.filter(p => p.trending).slice(0, 12);
+        const newArrivalProducts = allProducts.filter(p => p.newArrival || p.isNew).slice(0, 12);
+        const bestSellerProducts = allProducts.filter(p => p.bestSeller || p.todaysDeal).slice(0, 12);
 
         // Enrich trendingSelection products if set
         let enrichedTrending = null;
@@ -1579,45 +1623,48 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
             try { pIds = JSON.parse(trendingSelection.productIds || '[]'); } catch (e) { pIds = []; }
             let tProducts = [];
             if (pIds.length > 0) {
-                tProducts = await prisma.product.findMany({
-                    where: { id: { in: pIds }, status: 'PUBLISHED', isVisible: true },
-                    include: productInclude
-                }).catch(() => []);
+                const prodMap = new Map(allProducts.map(p => [p.id, p]));
+                const missingIds = pIds.filter(id => !prodMap.has(id));
+                if (missingIds.length > 0) {
+                    const extraProds = await prisma.product.findMany({
+                        where: { id: { in: missingIds }, status: publishedStatusFilter, isVisible: true },
+                        select: productSelect
+                    }).catch(() => []);
+                    extraProds.forEach(p => prodMap.set(p.id, p));
+                }
+                tProducts = pIds.map(id => prodMap.get(id)).filter(Boolean);
             }
             enrichedTrending = { ...trendingSelection, products: tProducts };
         }
 
         // Enrich dynamicSections products
-        const enrichedDynamicSections = await Promise.all(
-            (rawDynamicSections || []).map(async (sec) => {
-                let pIds = [];
-                try { pIds = JSON.parse(sec.productIds || '[]'); } catch (e) { pIds = []; }
-                let sProducts = [];
-                if (pIds.length > 0) {
-                    const rawProds = await prisma.product.findMany({
-                        where: { id: { in: pIds }, status: 'PUBLISHED', isVisible: true },
-                        include: productInclude
-                    }).catch(() => []);
-                    const prodMap = new Map(rawProds.map((p) => [p.id, p]));
-                    sProducts = pIds.map((id) => prodMap.get(id)).filter(Boolean);
-                }
-                return { ...sec, products: sProducts };
-            })
-        );
+        const enrichedDynamicSections = (rawDynamicSections || []).map((sec) => {
+            let pIds = [];
+            try { pIds = JSON.parse(sec.productIds || '[]'); } catch (e) { pIds = []; }
+            const prodMap = new Map(allProducts.map((p) => [p.id, p]));
+            const sProducts = pIds.map((id) => prodMap.get(id)).filter(Boolean);
+            return { ...sec, products: sProducts };
+        });
 
         const bundleData = {
             banners: banners || [],
             categories: categories || [],
             products: {
                 allPublished: allProducts || [],
-                featured: featuredProducts || [],
-                trending: trendingProducts || [],
-                newArrivals: newArrivalProducts || [],
-                todaysDeals: bestSellerProducts || []
+                featured: featuredProducts.length > 0 ? featuredProducts : allProducts.slice(0, 8),
+                trending: trendingProducts.length > 0 ? trendingProducts : allProducts.slice(0, 8),
+                newArrivals: newArrivalProducts.length > 0 ? newArrivalProducts : allProducts.slice(0, 8),
+                todaysDeals: bestSellerProducts.length > 0 ? bestSellerProducts : allProducts.slice(0, 8)
             },
             trendingData: enrichedTrending,
             settings: storeSettings,
-            dynamicSections: enrichedDynamicSections
+            dynamicSections: enrichedDynamicSections,
+            flashSale: rawFlashSale,
+            collections: rawCollections,
+            heritageBrands: rawHeritageBrands,
+            testimonials: rawReviews,
+            socialFeed: rawSocialFeed,
+            faqList: rawFaqs
         };
 
         homepageBundleCache = bundleData;

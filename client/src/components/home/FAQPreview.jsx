@@ -11,11 +11,15 @@ const DEFAULT_FAQS = [
   { id: 'f4', question: 'What is your return & exchange policy?', answer: 'We offer hassle-free 7-day easy returns and exchanges for un-worn items with original tags intact.' },
 ];
 
-const FAQPreview = () => {
-  const [faqs, setFaqs] = useState(DEFAULT_FAQS);
+const FAQPreview = ({ initialFaqs }) => {
+  const [faqs, setFaqs] = useState(initialFaqs?.length > 0 ? initialFaqs.slice(0, 4) : DEFAULT_FAQS);
   const [openId, setOpenId] = useState(null);
 
   useEffect(() => {
+    if (initialFaqs && initialFaqs.length > 0) {
+      setFaqs(initialFaqs.slice(0, 4));
+      return;
+    }
     const fetchFaqs = async () => {
       try {
         const { data } = await api.get('/cms/faqs');
@@ -25,7 +29,7 @@ const FAQPreview = () => {
       }
     };
     fetchFaqs();
-  }, []);
+  }, [initialFaqs]);
 
   return (
     <section className="py-12 lg:py-16 bg-white">

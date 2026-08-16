@@ -12,12 +12,17 @@ const DEFAULT_FLASH_SALE = {
   discountPercent: 35
 };
 
-const FlashSaleSection = () => {
-  const [flashSale, setFlashSale] = useState(null);
-  const [products, setProducts] = useState([]);
+const FlashSaleSection = ({ initialData }) => {
+  const [flashSale, setFlashSale] = useState(initialData || null);
+  const [products, setProducts] = useState(initialData?.products || []);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
+    if (initialData) {
+      setFlashSale(initialData);
+      if (initialData.products?.length > 0) setProducts(initialData.products);
+      return;
+    }
     const fetchData = async () => {
       try {
         const { data } = await api.get('/cms/flash-sale');
@@ -32,7 +37,7 @@ const FlashSaleSection = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [initialData]);
 
   useEffect(() => {
     if (!flashSale?.endDate) return;
