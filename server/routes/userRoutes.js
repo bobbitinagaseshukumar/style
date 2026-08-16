@@ -18,5 +18,7 @@ router.put('/addresses/:id/default', userController.setDefaultAddress);
 
 // Activity Logs
 router.get('/activity-logs', userController.getActivityLogs);
+router.delete('/activity-logs/:id', userController.deleteActivityLog);
+router.delete('/activity-logs', userController.clearActivityLogs);
 
 module.exports = router;

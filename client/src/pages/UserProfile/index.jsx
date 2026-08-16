@@ -176,6 +176,27 @@ const UserProfile = () => {
     }
   };
 
+  const handleDeleteSingleLog = async (id) => {
+    try {
+      await api.delete(`/users/activity-logs/${id}`);
+      toast.success('Activity log entry permanently deleted');
+      setActivityLogs(prev => prev.filter(log => log.id !== id));
+    } catch (err) {
+      toast.error('Failed to delete activity log entry');
+    }
+  };
+
+  const handleClearAllLogs = async () => {
+    if (!window.confirm('Are you sure you want to permanently clear all activity logs? This cannot be undone.')) return;
+    try {
+      await api.delete('/users/activity-logs');
+      toast.success('All activity logs permanently cleared');
+      setActivityLogs([]);
+    } catch (err) {
+      toast.error('Failed to clear activity logs');
+    }
+  };
+
   if (loading) return <div className="p-12 text-center text-gray-500">Loading user portal...</div>;
 
   return (
@@ -224,7 +245,15 @@ const UserProfile = () => {
                 <Input label="Full Name" value={user?.fullName || ''} onChange={e => setUser({ ...user, fullName: e.target.value })} required />
                 <Input label="Email Address" value={user?.email || ''} disabled readOnly />
                 <Input label="Phone Number" value={user?.phone || ''} onChange={e => setUser({ ...user, phone: e.target.value })} />
-                <Input label="Gender" value={user?.gender || ''} onChange={e => setUser({ ...user, gender: e.target.value })} placeholder="Male / Female / Other" />
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Gender</label>
+                  <select value={user?.gender || ''} onChange={e => setUser({ ...user, gender: e.target.value })} className="w-full px-3 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-amber-500 focus:outline-none text-sm bg-white">
+                    <option value="">Select Gender</option>
+                    <option value="Women">Women</option>
+                    <option value="Men">Men</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
               </div>
               <Button type="submit" icon={FiCheck}>Save Profile Changes</Button>
             </form>
@@ -328,15 +357,38 @@ const UserProfile = () => {
               </form>
 
               <div>
-                <h4 className="font-bold text-charcoal-900 text-sm mb-3">Recent Login Activity</h4>
-                <div className="space-y-2">
-                  {activityLogs.map((log) => (
-                    <div key={log.id} className="text-xs p-3 bg-gray-50 rounded-xl border border-gray-100 flex justify-between">
-                      <span>{log.details || log.action}</span>
-                      <span className="text-gray-400">{formatDate(log.createdAt)}</span>
-                    </div>
-                  ))}
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-bold text-charcoal-900 text-sm">Recent Login Activity</h4>
+                  {activityLogs.length > 0 && (
+                    <button
+                      onClick={handleClearAllLogs}
+                      className="text-xs text-red-600 font-bold hover:underline flex items-center gap-1"
+                    >
+                      <FiTrash2 size={12} /> Clear All History
+                    </button>
+                  )}
                 </div>
+                {activityLogs.length === 0 ? (
+                  <p className="text-xs text-gray-400 py-6 bg-gray-50 rounded-xl text-center border border-gray-100 font-medium">
+                    No activity logs recorded.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {activityLogs.map((log) => (
+                      <div key={log.id} className="text-xs p-3.5 bg-gray-50 hover:bg-gray-100/80 rounded-xl border border-gray-100 flex items-center justify-between gap-4 transition-colors">
+                        <span className="text-gray-800 font-medium flex-1 leading-relaxed">{log.details || log.action}</span>
+                        <span className="text-gray-400 text-[11px] whitespace-nowrap">{formatDate(log.createdAt)}</span>
+                        <button
+                          onClick={() => handleDeleteSingleLog(log.id)}
+                          title="Delete this entry permanently"
+                          className="text-gray-400 hover:text-red-600 transition-colors p-1.5 rounded-lg hover:bg-red-50 ml-2"
+                        >
+                          <FiTrash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

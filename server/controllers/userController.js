@@ -189,7 +189,33 @@ exports.getActivityLogs = asyncHandler(async (req, res) => {
   const logs = await prisma.activityLog.findMany({
     where: { userId: req.user.id },
     orderBy: { createdAt: 'desc' },
-    take: 15,
+    take: 30,
   });
   res.status(200).json({ success: true, data: logs });
+});
+
+exports.deleteActivityLog = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const existing = await prisma.activityLog.findFirst({
+    where: { id, userId: req.user.id },
+  });
+  if (!existing) return next(new ApiError(404, 'Activity log entry not found'));
+
+  await prisma.activityLog.delete({ where: { id } });
+
+  res.status(200).json({
+    success: true,
+    message: 'Activity log entry permanently deleted',
+  });
+});
+
+exports.clearActivityLogs = asyncHandler(async (req, res) => {
+  await prisma.activityLog.deleteMany({
+    where: { userId: req.user.id },
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'All activity logs permanently cleared',
+  });
 });
