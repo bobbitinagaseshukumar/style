@@ -1561,14 +1561,14 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
                 take: 10
             }).catch(() => []),
             prisma.category.findMany({
-                where: { showOnHomepage: true, isVisible: true },
-                take: 12,
+                where: { isVisible: true, status: { notIn: ['DELETED', 'ARCHIVED', 'DRAFT', 'deleted', 'archived', 'draft'] } },
+                take: 24,
                 orderBy: { sortOrder: 'asc' },
-                include: { subcategories: { select: { id: true, name: true, slug: true } } }
+                include: { subcategories: { where: { isVisible: true }, select: { id: true, name: true, slug: true } } }
             }).catch(() => []),
             prisma.product.findMany({
                 where: { status: publishedStatusFilter, isVisible: true },
-                take: 60,
+                take: 200,
                 orderBy: { createdAt: 'desc' },
                 select: productSelect
             }).catch(() => []),
@@ -1613,8 +1613,7 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
         // In-memory instant filtering (Eliminates 4 heavy database roundtrips & table scans!)
         const featuredProducts = allProducts.filter(p => p.featured).slice(0, 12);
         const trendingProducts = allProducts.filter(p => p.trending).slice(0, 12);
-        const explicitNewArrivals = allProducts.filter(p => p.newArrival || p.isNew).slice(0, 12);
-        const newArrivalProducts = explicitNewArrivals.length > 0 ? explicitNewArrivals : allProducts.slice(0, 12);
+        const newArrivalProducts = allProducts.slice(0, 16);
         const bestSellerProducts = allProducts.filter(p => p.bestSeller || p.todaysDeal).slice(0, 12);
 
         // Enrich trendingSelection products if set

@@ -15,8 +15,8 @@ exports.getCategories = asyncHandler(async (req, res, next) => {
       whereClause.status = status.toUpperCase();
     }
   } else {
-    // Customer view: Published categories
-    whereClause.status = 'PUBLISHED';
+    // Customer view: Published & Active categories
+    whereClause.status = { notIn: ['DELETED', 'ARCHIVED', 'DRAFT', 'deleted', 'archived', 'draft'] };
     whereClause.isVisible = true;
 
     if (showOnHomepage === 'true') {

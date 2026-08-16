@@ -84,7 +84,7 @@ const getCategoryThumbnail = (cat) => {
 };
 
 // Persistent Cache Key for instant 0ms loads across browser sessions
-const CACHE_KEY = '__KVLR_HOME_PERSISTENT_CACHE_V5__';
+const CACHE_KEY = '__KVLR_HOME_PERSISTENT_CACHE_V6__';
 
 const getInitialCache = () => {
   try {

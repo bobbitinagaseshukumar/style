@@ -59,6 +59,7 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
   const {
     search,
     category,
+    categoryId,
     subCategory,
     subCategoryId,
     featured,
@@ -88,7 +89,7 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
       whereClause.status = status.toUpperCase();
     }
   } else {
-    // Guest & Customer public storefront view: Show strictly published, active products
+    // Guest & Customer public storefront view: Show strictly active, non-archived products
     whereClause.status = { notIn: ['DELETED', 'ARCHIVED', 'DRAFT', 'deleted', 'archived', 'draft'] };
   }
 
@@ -105,41 +106,59 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // Category Filtering (Supports UUID, slug, and category name)
-  if (category && category !== 'ALL') {
-    const catVal = String(category).trim();
+  // Category Filtering (Supports UUID, categoryId param, slug, and category name)
+  const targetCategory = category || categoryId;
+  if (targetCategory && targetCategory !== 'ALL' && targetCategory !== 'all' && targetCategory !== 'undefined' && targetCategory !== 'null') {
+    const catVal = String(targetCategory).trim();
     if (isUUID(catVal)) {
       andConditions.push({ categoryId: catVal });
     } else {
+      const keywords = catVal.toLowerCase().replace(/-/g, ' ').split(' ').filter(k => k.length > 2);
       andConditions.push({
-        category: {
-          OR: [
-            { slug: { equals: catVal, mode: 'insensitive' } },
-            { slug: { contains: catVal, mode: 'insensitive' } },
-            { name: { contains: catVal, mode: 'insensitive' } },
-          ]
-        }
+        OR: [
+          { categoryId: catVal },
+          {
+            category: {
+              OR: [
+                { id: catVal },
+                { slug: { equals: catVal, mode: 'insensitive' } },
+                { slug: { contains: catVal, mode: 'insensitive' } },
+                { name: { contains: catVal, mode: 'insensitive' } },
+                ...keywords.map(kw => ({ name: { contains: kw, mode: 'insensitive' } })),
+                ...keywords.map(kw => ({ slug: { contains: kw, mode: 'insensitive' } }))
+              ]
+            }
+          }
+        ]
       });
     }
   }
 
-  // SubCategory Filtering (Supports UUID, slug, and subcategory name)
-  if (subCategory || subCategoryId) {
-    const subVal = String(subCategory || subCategoryId).trim();
-    if (subVal !== 'ALL') {
-      if (isUUID(subVal)) {
-        andConditions.push({ subCategoryId: subVal });
-      } else {
-        andConditions.push({
-          subCategory: {
-            OR: [
-              { slug: { equals: subVal, mode: 'insensitive' } },
-              { slug: { contains: subVal, mode: 'insensitive' } },
-              { name: { contains: subVal, mode: 'insensitive' } },
-            ]
+  // SubCategory Filtering (Supports UUID, subCategoryId param, slug, and subcategory name)
+  const targetSubCategory = subCategory || subCategoryId;
+  if (targetSubCategory && targetSubCategory !== 'ALL' && targetSubCategory !== 'all' && targetSubCategory !== 'undefined' && targetSubCategory !== 'null') {
+    const subVal = String(targetSubCategory).trim();
+    if (isUUID(subVal)) {
+      andConditions.push({ subCategoryId: subVal });
+    } else {
+      const subKeywords = subVal.toLowerCase().replace(/-/g, ' ').split(' ').filter(k => k.length > 2);
+      andConditions.push({
+        OR: [
+          { subCategoryId: subVal },
+          {
+            subCategory: {
+              OR: [
+                { id: subVal },
+                { slug: { equals: subVal, mode: 'insensitive' } },
+                { slug: { contains: subVal, mode: 'insensitive' } },
+                { name: { contains: subVal, mode: 'insensitive' } },
+                ...subKeywords.map(kw => ({ name: { contains: kw, mode: 'insensitive' } })),
+                ...subKeywords.map(kw => ({ slug: { contains: kw, mode: 'insensitive' } }))
+              ]
+            }
           }
-        });
-      }
+        ]
+      });
     }
   }
 
