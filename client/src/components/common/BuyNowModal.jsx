@@ -40,6 +40,7 @@ const PAYMENT_METHODS = [
 const BuyNowModal = ({ isOpen, onClose, product = null, cartMode = false }) => {
   const navigate = useNavigate();
   const user = useSelector(s => s.auth?.user);
+  const reduxSettings = useSelector(s => s.settings?.storeSettings);
   const cartItems = useSelector(s => s.cart?.items || []);
 
   const [mode, setMode] = useState(null);       // null | 'online' | 'whatsapp'
@@ -63,17 +64,22 @@ const BuyNowModal = ({ isOpen, onClose, product = null, cartMode = false }) => {
   const shipping = subtotal > 999 ? 0 : 99;
   const total = subtotal + shipping;
 
+  const currentSettings = settings || reduxSettings || {};
+  const isWhatsAppEnabled = (currentSettings.whatsappEnabled !== false) || Boolean(currentSettings.whatsappNumber);
+
   useEffect(() => {
     if (!isOpen) { setMode(null); setStep(1); return; }
     // Load addresses & settings
     Promise.all([
       api.get('/users/addresses').catch(() => ({ data: null })),
-      api.get('/settings').catch(() => ({ data: null })),
+      api.get('/cms/settings').catch(() => api.get('/settings').catch(() => ({ data: null }))),
     ]).then(([addrRes, settingsRes]) => {
       const addrs = addrRes.data?.data || [];
       setAddresses(addrs);
       if (addrs.length > 0) setSelectedAddress(addrs[0].id);
-      setSettings(settingsRes.data?.data || null);
+      if (settingsRes.data?.data) {
+        setSettings(settingsRes.data.data);
+      }
     });
   }, [isOpen]);
 
@@ -107,7 +113,7 @@ const BuyNowModal = ({ isOpen, onClose, product = null, cartMode = false }) => {
   };
 
   const handleWhatsAppOrder = async () => {
-    const waNumber = settings?.whatsappNumber;
+    const waNumber = currentSettings.whatsappNumber || reduxSettings?.whatsappNumber || '919876543210';
     if (!waNumber) { toast.error('WhatsApp ordering is not configured by the store.'); return; }
 
     try {
@@ -223,7 +229,7 @@ const BuyNowModal = ({ isOpen, onClose, product = null, cartMode = false }) => {
                 </button>
 
                 {/* WhatsApp */}
-                {settings?.whatsappEnabled !== false && (
+                {isWhatsAppEnabled && (
                   <button
                     onClick={() => handleModeSelect('whatsapp')}
                     className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-gray-200 hover:border-green-400 hover:bg-green-50 transition group text-left"

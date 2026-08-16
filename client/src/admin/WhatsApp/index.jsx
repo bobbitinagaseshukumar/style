@@ -11,6 +11,8 @@ import {
   FiCheckCircle, FiAlertCircle, FiInfo
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import { useDispatch } from 'react-redux';
+import { setStoreSettings } from '../../redux/settings/settingsSlice';
 import api from '../../config/api';
 
 const Field = ({ label, hint, children }) => (
@@ -30,32 +32,59 @@ const Textarea = (props) => (
 );
 
 const AdminWhatsApp = () => {
+  const dispatch = useDispatch();
   const [form, setForm] = useState({
-    whatsappNumber: '',
+    whatsappNumber: '919876543210',
     whatsappEnabled: true,
     whatsappBusinessName: 'KVLR Styles',
     whatsappWorkingHours: 'Mon-Sat 9AM-7PM',
     whatsappAutoReply: 'Thank you for contacting us! We will respond within 24 hours.',
+    whatsappDefaultMessage: 'Hi! I would like to place an order from KVLR Styles.',
   });
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    api.get('/settings')
+  const loadSettings = () => {
+    api.get('/cms/settings')
       .then(r => {
         const d = r.data?.data || {};
-        setForm(prev => ({
-          ...prev,
+        const updated = {
           whatsappNumber: d.whatsappNumber || '',
           whatsappEnabled: d.whatsappEnabled !== false,
           whatsappBusinessName: d.whatsappBusinessName || 'KVLR Styles',
           whatsappWorkingHours: d.whatsappWorkingHours || 'Mon-Sat 9AM-7PM',
-          whatsappAutoReply: d.whatsappAutoReply || prev.whatsappAutoReply,
-        }));
+          whatsappAutoReply: d.whatsappAutoReply || 'Thank you for contacting us! We will respond within 24 hours.',
+          whatsappDefaultMessage: d.whatsappDefaultMessage || d.defaultOrderMessage || 'Hi! I would like to place an order from KVLR Styles.',
+        };
+        setForm(prev => ({ ...prev, ...updated }));
+        dispatch(setStoreSettings(d));
       })
-      .catch(() => toast.error('Failed to load settings'))
+      .catch(() => {
+        api.get('/settings').then(r => {
+          const d = r.data?.data || {};
+          setForm(prev => ({
+            ...prev,
+            whatsappNumber: d.whatsappNumber || '',
+            whatsappEnabled: d.whatsappEnabled !== false,
+            whatsappBusinessName: d.whatsappBusinessName || 'KVLR Styles',
+            whatsappWorkingHours: d.whatsappWorkingHours || 'Mon-Sat 9AM-7PM',
+            whatsappAutoReply: d.whatsappAutoReply || prev.whatsappAutoReply,
+          }));
+        }).catch(() => {});
+      })
       .finally(() => setFetching(false));
+  };
+
+  useEffect(() => {
+    loadSettings();
+
+    window.addEventListener('kvlr:content-updated', loadSettings);
+    window.addEventListener('store_settings_updated', loadSettings);
+    return () => {
+      window.removeEventListener('kvlr:content-updated', loadSettings);
+      window.removeEventListener('store_settings_updated', loadSettings);
+    };
   }, []);
 
   const handleSave = async () => {
@@ -65,12 +94,25 @@ const AdminWhatsApp = () => {
     }
     try {
       setLoading(true);
-      await api.put('/settings', form);
+      const payload = {
+        ...form,
+        defaultOrderMessage: form.whatsappDefaultMessage,
+        supportTiming: form.whatsappWorkingHours,
+      };
+
+      const res = await api.put('/cms/settings', payload).catch(() => api.put('/settings', payload));
+      const updatedData = res.data?.data || payload;
       setSaved(true);
-      toast.success('WhatsApp settings saved! Changes are live across the website.');
+
+      // Dispatch to Redux & broadcast across all open pages
+      dispatch(setStoreSettings(updatedData));
+      window.dispatchEvent(new CustomEvent('store_settings_updated', { detail: updatedData }));
+      window.dispatchEvent(new CustomEvent('kvlr:content-updated', { detail: { type: 'STORE_SETTINGS', payload: updatedData } }));
+
+      toast.success('✨ WhatsApp settings saved to database & synchronized site-wide!');
       setTimeout(() => setSaved(false), 4000);
-    } catch {
-      toast.error('Failed to save settings');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save settings');
     } finally {
       setLoading(false);
     }
