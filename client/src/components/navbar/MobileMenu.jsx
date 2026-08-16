@@ -142,10 +142,10 @@ const MobileMenu = ({ isOpen, onClose }) => {
                 <>
                   <div className="flex items-center gap-3 px-3 py-2 mb-2">
                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-black text-sm font-bold shrink-0">
-                      {user?.fullName?.[0] || 'U'}
+                      {(user?.fullName?.trim()?.[0] || user?.name?.trim()?.[0] || 'S').toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-white truncate">{user?.fullName || user?.name}</p>
+                      <p className="text-sm font-bold text-white truncate">{user?.fullName || user?.name || 'Customer'}</p>
                       <p className="text-[11px] text-white/40 truncate">{user?.email}</p>
                     </div>
                   </div>

@@ -261,7 +261,7 @@ const UserProfile = () => {
         <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm h-fit space-y-2">
           <div className="text-center pb-6 border-b border-gray-100">
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold text-3xl mx-auto shadow-lg mb-3">
-              {user?.fullName?.[0] || 'U'}
+              {(user?.fullName?.trim()?.[0] || 'S').toUpperCase()}
             </div>
             <h2 className="font-bold text-charcoal-900 text-lg">{user?.fullName}</h2>
             <p className="text-xs text-gray-400">{user?.email}</p>

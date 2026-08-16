@@ -169,7 +169,9 @@ const Navbar = () => {
 
   const userName = (user?.fullName || user?.name || user?.email?.split('@')[0] || 'Customer').trim();
   const firstWord = userName.split(' ')[0] || userName;
-  const userAvatar = user?.avatar || user?.photo;
+  const rawAvatar = user?.avatar || user?.photo;
+  const isDefaultAvatarUrl = rawAvatar && (rawAvatar.includes('googleusercontent.com') || rawAvatar.includes('ui-avatars.com'));
+  const userAvatar = isDefaultAvatarUrl ? null : rawAvatar;
   const userInitial = firstWord.charAt(0).toUpperCase() || 'C';
 
   return (

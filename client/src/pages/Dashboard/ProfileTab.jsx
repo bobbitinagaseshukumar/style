@@ -113,10 +113,10 @@ const ProfileTab = () => {
       <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 bg-white/5 p-6 rounded-2xl border border-white/10">
         <div className="relative group shrink-0">
           <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-charcoal-900 font-bold text-4xl shadow-xl overflow-hidden">
-            {form.avatar ? (
+            {form.avatar && !form.avatar.includes('googleusercontent.com') && !form.avatar.includes('ui-avatars.com') ? (
               <img src={form.avatar} alt="Profile" className="w-full h-full object-cover" />
             ) : (
-              (form.fullName?.[0] || 'U').toUpperCase()
+              (form.fullName?.[0] || user?.fullName?.[0] || 'S').toUpperCase()
             )}
           </div>
 
