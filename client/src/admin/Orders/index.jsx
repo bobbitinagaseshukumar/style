@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiSearch, FiFilter, FiEye, FiEdit2, FiPhone, FiMail,
   FiPackage, FiTruck, FiCheckCircle, FiXCircle, FiRefreshCw,
-  FiDownload, FiPrinter, FiX, FiChevronDown, FiMapPin, FiClock
+  FiDownload, FiPrinter, FiX, FiChevronDown, FiMapPin, FiClock,
+  FiTrash2, FiAlertTriangle
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { toast } from 'react-toastify';
@@ -715,6 +716,8 @@ const AdminOrders = () => {
   const [filterStatus, setFilterStatus] = useState('');
   const [approvalModalOrder, setApprovalModalOrder] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deletingOrder, setDeletingOrder] = useState(false);
 
   const handleRejectOrder = async (orderId) => {
     if (!window.confirm('Are you sure you want to reject this order? Stock will be restored.')) return;
@@ -724,6 +727,21 @@ const AdminOrders = () => {
       fetchOrders();
     } catch (err) {
       toast.error('Failed to reject order');
+    }
+  };
+
+  const handleDeleteOrder = async (hardDelete = false) => {
+    if (!deleteTarget) return;
+    try {
+      setDeletingOrder(true);
+      await api.delete(`/orders/admin/${deleteTarget.id}${hardDelete ? '?hardDelete=true' : ''}`);
+      toast.success(hardDelete ? `Order #${deleteTarget.orderNumber || deleteTarget.id.substring(0,8)} permanently deleted` : `Order removed from admin panel`);
+      setDeleteTarget(null);
+      fetchOrders();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete order');
+    } finally {
+      setDeletingOrder(false);
     }
   };
 
@@ -916,6 +934,13 @@ const AdminOrders = () => {
                           >
                             <FiEye size={12} /> View
                           </button>
+                          <button
+                            onClick={e => { e.stopPropagation(); setDeleteTarget(order); }}
+                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition cursor-pointer"
+                            title="Delete Order"
+                          >
+                            <FiTrash2 size={14} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -942,6 +967,59 @@ const AdminOrders = () => {
             onClose={() => setApprovalModalOrder(null)}
             onApproved={handleStatusUpdate}
           />
+        )}
+      </AnimatePresence>
+
+      {/* DELETE ORDER CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-gray-100"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-2xl bg-red-100 flex items-center justify-center shrink-0">
+                  <FiAlertTriangle className="text-red-600 w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">Delete Order</h3>
+                  <p className="text-xs text-gray-500">#{deleteTarget.orderNumber || deleteTarget.id.substring(0,8)}</p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-700 mb-5 bg-red-50 border border-red-100 rounded-xl p-3 leading-relaxed">
+                Choose how to delete this order ({formatCurrency(deleteTarget.totalAmount)}):
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDeleteOrder(false)}
+                  disabled={deletingOrder}
+                  className="w-full py-2.5 rounded-xl bg-amber-500 text-black text-xs font-bold hover:bg-amber-400 transition cursor-pointer disabled:opacity-50"
+                >
+                  {deletingOrder ? 'Removing...' : 'Hide from Admin Panel (Soft Remove)'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteOrder(true)}
+                  disabled={deletingOrder}
+                  className="w-full py-2.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition cursor-pointer disabled:opacity-50"
+                >
+                  {deletingOrder ? 'Deleting...' : 'Permanent Delete from Database'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deletingOrder}
+                  className="w-full py-2 rounded-xl text-gray-500 text-xs font-semibold hover:bg-gray-100 transition mt-1 cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

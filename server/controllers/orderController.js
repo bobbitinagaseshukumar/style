@@ -881,6 +881,7 @@ exports.getOrderCancellationStatus = asyncHandler(async (req, res, next) => {
 // ==================== ADMIN: DELETE / HIDE ORDER ====================
 exports.deleteOrder = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
+  const hardDelete = req.query.hardDelete === 'true' || req.body.hardDelete === true;
 
   const order = await prisma.order.findUnique({
     where: { id },
@@ -889,6 +890,17 @@ exports.deleteOrder = asyncHandler(async (req, res, next) => {
 
   if (!order) {
     return next(new ApiError(404, 'Order not found'));
+  }
+
+  if (hardDelete) {
+    // PERMANENT DELETE: Remove order items first, then the order itself
+    await prisma.orderItem.deleteMany({ where: { orderId: id } }).catch(() => {});
+    await prisma.order.delete({ where: { id } });
+
+    return res.status(200).json({
+      success: true,
+      message: `Order #${order.orderNumber || id} permanently deleted from database`,
+    });
   }
 
   // Soft delete for Admin view ONLY: set deletedByAdmin = true & hiddenForAdmin = true
