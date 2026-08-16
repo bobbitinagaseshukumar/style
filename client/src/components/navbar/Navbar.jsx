@@ -125,11 +125,15 @@ const Navbar = () => {
     if (!isUserMenuOpen) return;
 
     const handleOutsideClick = (e) => {
-      // If clicking/tapping the user account toggle button or inside the dropdown, let their handlers handle it
-      if (userBtnRef.current?.contains(e.target) || userDropdownRef.current?.contains(e.target)) {
+      // If clicking inside the toggle button, let button handle toggle
+      if (userBtnRef.current && userBtnRef.current.contains(e.target)) {
         return;
       }
-      // Clicked outside -> close immediately!
+      // If clicking inside the dropdown menu itself, let the link/button handle it
+      if (userDropdownRef.current && userDropdownRef.current.contains(e.target)) {
+        return;
+      }
+      // Clicked anywhere outside -> close immediately!
       setIsUserMenuOpen(false);
     };
 
@@ -140,13 +144,11 @@ const Navbar = () => {
       }
     };
 
-    document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('touchstart', handleOutsideClick, { passive: true });
+    document.addEventListener('pointerdown', handleOutsideClick);
     window.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('touchstart', handleOutsideClick);
+      document.removeEventListener('pointerdown', handleOutsideClick);
       window.removeEventListener('keydown', handleEscape);
     };
   }, [isUserMenuOpen]);
@@ -169,28 +171,8 @@ const Navbar = () => {
   const userAvatar = user?.avatar || user?.photo;
   const userInitial = userName.charAt(0).toUpperCase();
 
-  const handleUserMenuNavigate = (path) => {
-    setIsUserMenuOpen(false);
-    setActiveMegaMenu(null);
-    if (path) navigate(path);
-  };
-
   return (
     <>
-      {/* ── FULL-SCREEN INVISIBLE BACKDROP FOR USER PROFILE DROPDOWN ── */}
-      <AnimatePresence>
-        {isAuthenticated && isUserMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[999] bg-black/20 backdrop-blur-[1px] cursor-default"
-            onClick={() => setIsUserMenuOpen(false)}
-            onTouchStart={() => setIsUserMenuOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
       {/* ── STICKY HEADER WRAPPER (Guarantees zero overlap on mobile/desktop) ── */}
       <header className="sticky top-0 z-50 w-full transition-all duration-300">
         {/* Top Announcement Banner (Only rendered if admin published an active announcement) */}
@@ -451,7 +433,7 @@ const Navbar = () => {
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 8, scale: 0.96 }}
                           transition={{ duration: 0.15 }}
-                          className="absolute right-0 mt-2 w-60 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-[1000] text-xs"
+                          className="absolute right-0 mt-2 w-60 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-50 text-xs"
                         >
                           <div className="px-4 py-3 border-b border-white/10 bg-white/5">
                             <p className="text-sm font-bold text-white truncate">{userName}</p>
@@ -471,28 +453,34 @@ const Navbar = () => {
                               { label: 'Profile Settings', icon: FiUser, path: '/profile' },
                               { label: 'Notifications', icon: FiBell, path: '/notifications' },
                             ].map((item) => (
-                              <button
+                              <Link
                                 key={item.label}
-                                type="button"
-                                onClick={() => handleUserMenuNavigate(item.path)}
-                                className="w-full flex items-center gap-3 px-4 py-2.5 text-white/80 hover:text-white hover:bg-white/5 transition-colors cursor-pointer text-left"
+                                to={item.path}
+                                onClick={() => {
+                                  setIsUserMenuOpen(false);
+                                  setActiveMegaMenu(null);
+                                }}
+                                className="flex items-center gap-3 px-4 py-2.5 text-white/80 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                               >
                                 <item.icon size={14} className="text-amber-400/80 shrink-0" />
                                 <span className="font-semibold">{item.label}</span>
-                              </button>
+                              </Link>
                             ))}
                           </div>
 
                           {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.isAdmin) && (
                             <div className="border-t border-white/10 py-1">
-                              <button
-                                type="button"
-                                onClick={() => handleUserMenuNavigate('/admin/dashboard')}
-                                className="w-full flex items-center gap-3 px-4 py-2.5 text-amber-400 hover:bg-amber-400/10 font-bold transition-colors cursor-pointer text-left"
+                              <Link
+                                to="/admin/dashboard"
+                                onClick={() => {
+                                  setIsUserMenuOpen(false);
+                                  setActiveMegaMenu(null);
+                                }}
+                                className="flex items-center gap-3 px-4 py-2.5 text-amber-400 hover:bg-amber-400/10 font-bold transition-colors cursor-pointer"
                               >
                                 <FiSettings size={14} className="shrink-0" />
                                 Super Admin Panel
-                              </button>
+                              </Link>
                             </div>
                           )}
 
