@@ -12,6 +12,7 @@ import Button from '../../components/common/Button';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDate } from '../../utils/formatDate';
 import { toast } from 'react-toastify';
+import { updateUser, getMe } from '../../redux/auth/authSlice';
 
 const UserProfile = () => {
   const [activeTab, setActiveTab] = useState('profile');
@@ -75,13 +76,26 @@ const UserProfile = () => {
     return () => window.removeEventListener('addresses_updated', handleSync);
   }, []);
 
+  const dispatch = useDispatch();
+
   const handleProfileSave = async (e) => {
     e.preventDefault();
     try {
-      await api.put('/users/profile', user);
-      toast.success('Profile details updated!');
+      const res = await api.put('/users/profile', {
+        fullName: user?.fullName || '',
+        phone: user?.phone || '',
+        gender: user?.gender || ''
+      });
+      toast.success('Profile details updated successfully!');
+      if (res.data?.data) {
+        const updated = res.data.data;
+        setUser(updated);
+        dispatch(updateUser(updated));
+        dispatch(getMe());
+        window.dispatchEvent(new CustomEvent('user_updated', { detail: updated }));
+      }
     } catch (err) {
-      toast.error('Failed to update profile');
+      toast.error(err.response?.data?.message || 'Failed to update profile');
     }
   };
 

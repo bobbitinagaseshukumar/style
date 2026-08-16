@@ -5,19 +5,21 @@ const ApiError = require('../utils/ApiError');
 
 // ==================== PROFILE MANAGEMENT ====================
 exports.updateProfile = asyncHandler(async (req, res, next) => {
-  const { fullName, phone, gender, dob, preferredLanguage, emailNotifications, smsNotifications } = req.body;
+  const body = req.body?.user || req.body || {};
+  const { fullName, phone, gender, dob, preferredLanguage, emailNotifications, smsNotifications } = body;
+
+  const updatePayload = {};
+  if (fullName !== undefined) updatePayload.fullName = String(fullName).trim();
+  if (phone !== undefined) updatePayload.phone = String(phone).trim();
+  if (gender !== undefined) updatePayload.gender = String(gender).trim();
+  if (dob !== undefined) updatePayload.dob = dob ? new Date(dob) : null;
+  if (preferredLanguage !== undefined) updatePayload.preferredLanguage = String(preferredLanguage).trim();
+  if (emailNotifications !== undefined) updatePayload.emailNotifications = Boolean(emailNotifications);
+  if (smsNotifications !== undefined) updatePayload.smsNotifications = Boolean(smsNotifications);
 
   const updatedUser = await prisma.user.update({
     where: { id: req.user.id },
-    data: {
-      fullName: fullName || undefined,
-      phone: phone || undefined,
-      gender: gender || undefined,
-      dob: dob ? new Date(dob) : undefined,
-      preferredLanguage: preferredLanguage || undefined,
-      emailNotifications: emailNotifications !== undefined ? emailNotifications : undefined,
-      smsNotifications: smsNotifications !== undefined ? smsNotifications : undefined,
-    },
+    data: updatePayload,
     select: {
       id: true,
       fullName: true,
