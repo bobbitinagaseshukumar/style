@@ -156,7 +156,7 @@ const OrdersTab = () => {
 
   const fetchOrders = () => {
     setLoading(true);
-    api.get('/orders/my')
+    api.get('/orders/my-orders')
       .then(({ data }) => setOrders(data.data || []))
       .catch(() => setOrders([]))
       .finally(() => setLoading(false));
@@ -164,6 +164,9 @@ const OrdersTab = () => {
 
   useEffect(() => {
     fetchOrders();
+    const handleSync = () => fetchOrders();
+    window.addEventListener('orders_updated', handleSync);
+    return () => window.removeEventListener('orders_updated', handleSync);
   }, []);
 
   if (loading) {

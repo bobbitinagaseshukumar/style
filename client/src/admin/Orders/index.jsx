@@ -788,6 +788,7 @@ const AdminOrders = () => {
       fetchOrders();
       try {
         window.dispatchEvent(new Event('kvlr:content-updated'));
+        window.dispatchEvent(new CustomEvent('orders_updated'));
       } catch (e) {}
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete order');

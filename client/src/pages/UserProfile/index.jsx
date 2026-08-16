@@ -71,9 +71,16 @@ const UserProfile = () => {
 
   useEffect(() => {
     fetchUserData();
-    const handleSync = () => fetchAddresses();
+    const handleSync = () => {
+      fetchAddresses();
+      fetchUserData();
+    };
     window.addEventListener('addresses_updated', handleSync);
-    return () => window.removeEventListener('addresses_updated', handleSync);
+    window.addEventListener('orders_updated', handleSync);
+    return () => {
+      window.removeEventListener('addresses_updated', handleSync);
+      window.removeEventListener('orders_updated', handleSync);
+    };
   }, []);
 
   const dispatch = useDispatch();

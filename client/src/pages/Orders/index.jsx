@@ -119,6 +119,9 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
+    const handleSync = () => fetchOrders();
+    window.addEventListener('orders_updated', handleSync);
+    return () => window.removeEventListener('orders_updated', handleSync);
   }, []);
 
   const handleCancelOrder = async (orderId, reason = '') => {
