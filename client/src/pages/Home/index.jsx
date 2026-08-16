@@ -22,8 +22,8 @@ import InstagramGallery from '../../components/home/InstagramGallery';
 import FAQPreview from '../../components/home/FAQPreview';
 import NewsletterSubscribe from '../../components/common/NewsletterSubscribe';
 
-const fadeInUp = { initial: { opacity: 0, y: 30 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true } };
-const stagger = { initial: {}, whileInView: { transition: { staggerChildren: 0.08 } }, viewport: { once: true } };
+const fadeInUp = { initial: { opacity: 1, y: 0 }, animate: { opacity: 1, y: 0 } };
+const stagger = { initial: { opacity: 1 }, animate: { opacity: 1 } };
 
 // Luxury Fallbacks
 const DEFAULT_HERO_SLIDERS = [
@@ -171,6 +171,20 @@ const Home = () => {
 
             setIsLoading(false);
             bundleSuccess = true;
+
+            // Persist for 0ms instant loading on next app boot / back navigation
+            try {
+              const cachePayload = JSON.stringify({
+                banners: bundle.banners || [],
+                categories: bundle.categories || [],
+                products: bundle.products || {},
+                trendingData: bundle.trendingData || null,
+                dynamicSections: bundle.dynamicSections || [],
+                savedAt: Date.now()
+              });
+              localStorage.setItem(PERSISTENT_CACHE_KEY, cachePayload);
+              sessionStorage.setItem('__KVLR_HOME_CACHE__', cachePayload);
+            } catch (e) {}
           }
         } catch (bundleErr) {
           bundleSuccess = false;
@@ -186,13 +200,23 @@ const Home = () => {
               const newArr = liveProds.filter(p => p.newArrival || p.isNew);
               const trend = liveProds.filter(p => p.trending);
               const deals = liveProds.filter(p => p.todaysDeal || p.bestSeller);
-              return {
+              const nextProds = {
                 featured: feat.length > 0 ? feat : prev.featured || [],
                 trending: trend.length > 0 ? trend : prev.trending || [],
                 newArrivals: newArr.length > 0 ? newArr : prev.newArrivals || [],
                 todaysDeals: deals.length > 0 ? deals : prev.todaysDeals || [],
                 allPublished: liveProds
               };
+              // Persist live products to cache
+              try {
+                const currentCache = getCachedHomeData() || {};
+                localStorage.setItem(PERSISTENT_CACHE_KEY, JSON.stringify({
+                  ...currentCache,
+                  products: nextProds,
+                  savedAt: Date.now()
+                }));
+              } catch (e) {}
+              return nextProds;
             });
             setIsLoading(false);
           }
