@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const slugify = require('slugify');
 const emailService = require('../services/emailService');
+const { invalidateHomepageBundleCache } = require('./cmsController');
 
 // ==================== GET ALL PRODUCTS ====================
 const isUUID = (str) =>
@@ -335,6 +336,8 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
       }
     });
   }
+
+  try { invalidateHomepageBundleCache(); } catch (e) {}
 
   res.status(201).json({
     success: true,

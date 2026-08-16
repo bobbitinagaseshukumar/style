@@ -1468,6 +1468,8 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
             }
         };
 
+        const publishedStatusFilter = { notIn: ['DELETED', 'ARCHIVED', 'DRAFT', 'deleted', 'archived', 'draft'] };
+
         const [
             banners,
             categories,
@@ -1490,42 +1492,41 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
                 orderBy: { displayOrder: 'asc' }
             }).catch(() => []),
             prisma.product.findMany({
-                where: { status: 'PUBLISHED', isVisible: true },
+                where: { status: publishedStatusFilter, isVisible: true },
                 take: 50,
                 orderBy: { createdAt: 'desc' },
                 include: productInclude
             }).catch(() => []),
             prisma.product.findMany({
-                where: { status: 'PUBLISHED', isVisible: true, featured: true },
+                where: { status: publishedStatusFilter, isVisible: true, featured: true },
                 take: 12,
                 orderBy: { createdAt: 'desc' },
                 include: productInclude
             }).catch(() => []),
             prisma.product.findMany({
-                where: { status: 'PUBLISHED', isVisible: true, trending: true },
+                where: { status: publishedStatusFilter, isVisible: true, trending: true },
                 take: 12,
                 orderBy: { createdAt: 'desc' },
                 include: productInclude
             }).catch(() => []),
             prisma.product.findMany({
-                where: { status: 'PUBLISHED', isVisible: true, newArrival: true },
+                where: { status: publishedStatusFilter, isVisible: true, newArrival: true },
                 take: 12,
                 orderBy: { createdAt: 'desc' },
                 include: productInclude
             }).catch(() => []),
             prisma.product.findMany({
-                where: { status: 'PUBLISHED', isVisible: true, bestSeller: true },
+                where: { status: publishedStatusFilter, isVisible: true, bestSeller: true },
                 take: 12,
                 orderBy: { createdAt: 'desc' },
                 include: productInclude
             }).catch(() => []),
             prisma.trendingSelection.findFirst({
-                where: { isActive: true, status: 'PUBLISHED' }
+                where: { isActive: true }
             }).catch(() => null),
             prisma.storeSettings.findFirst().catch(() => null),
             prisma.homepageSection.findMany({
-                where: { isActive: true, status: 'PUBLISHED' },
-                orderBy: { sortOrder: 'asc' }
+                where: { isActive: true }
             }).catch(() => [])
         ]);
 
