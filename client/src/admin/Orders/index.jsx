@@ -55,7 +55,7 @@ const StatusBadge = ({ status }) => {
 };
 
 /* ─── Order Detail Side Panel ─────────────────────────────── */
-const OrderDetail = ({ order, onClose, onStatusUpdate, onOpenCancelModal }) => {
+const OrderDetail = ({ order, onClose, onStatusUpdate, onOpenCancelModal, onDeleteTarget }) => {
   const [updating, setUpdating] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('');
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState(order?.expectedDeliveryDate || '');
@@ -397,6 +397,33 @@ const OrderDetail = ({ order, onClose, onStatusUpdate, onOpenCancelModal }) => {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* REJECTED ORDER CONTROLS & PERMANENT DELETION */}
+          {order.orderStatus === 'REJECTED' && (
+            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center gap-2 text-rose-800 font-black text-sm">
+                <FiAlertTriangle className="text-rose-600 w-4 h-4 shrink-0" /> Order Rejected by Admin
+              </div>
+              {order.cancellationReason && (
+                <p className="text-xs text-rose-700 bg-white/80 p-2.5 rounded-xl border border-rose-200/70">
+                  <span className="font-bold">Rejection Reason:</span> {order.cancellationReason}
+                </p>
+              )}
+              <p className="text-xs text-gray-500 leading-relaxed">
+                This order is safely stored in the database under Rejected Orders. To delete it permanently from the database and remove all its items, click below.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  if (onDeleteTarget) onDeleteTarget(order);
+                }}
+                className="w-full py-2.5 rounded-xl bg-red-600 text-white font-bold text-xs hover:bg-red-700 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <FiTrash2 size={13} /> Delete Permanently from Database
+              </button>
             </div>
           )}
 
@@ -797,6 +824,9 @@ const AdminOrders = () => {
     }
   };
 
+  const [statusCounts, setStatusCounts] = useState({});
+  const [totalAllOrders, setTotalAllOrders] = useState(0);
+
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
@@ -806,6 +836,11 @@ const AdminOrders = () => {
       const res = await api.get(`/orders/admin/all?${params}`);
       const list = res.data?.data || res.data?.orders || [];
       setOrders(Array.isArray(list) ? list : []);
+      if (res.data?.statusCounts) {
+        setStatusCounts(res.data.statusCounts);
+        const sum = Object.values(res.data.statusCounts).reduce((a, b) => a + b, 0);
+        setTotalAllOrders(sum);
+      }
     } catch (err) {
       console.error('Admin orders load notification:', err.message);
       setOrders([]);
@@ -824,7 +859,7 @@ const AdminOrders = () => {
   };
 
   const counts = ALL_STATUSES.reduce((acc, s) => {
-    acc[s] = orders.filter(o => o.orderStatus === s).length;
+    acc[s] = statusCounts[s] !== undefined ? statusCounts[s] : orders.filter(o => o.orderStatus === s).length;
     return acc;
   }, {});
 
@@ -838,7 +873,7 @@ const AdminOrders = () => {
           <h1 className="text-2xl font-black text-gray-900">Orders</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage all online & WhatsApp orders</p>
         </div>
-        <button onClick={fetchOrders} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-bold hover:bg-gray-200 transition">
+        <button onClick={fetchOrders} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-bold hover:bg-gray-200 transition cursor-pointer">
           <FiRefreshCw size={13} /> Refresh
         </button>
       </div>
@@ -856,7 +891,7 @@ const AdminOrders = () => {
             <p className="text-xs text-green-600">Customers sent orders via WhatsApp — review and confirm below</p>
           </div>
           <button onClick={() => setFilterStatus('WHATSAPP_PENDING')}
-            className="px-3 py-1.5 rounded-xl bg-green-500 text-white text-xs font-bold hover:bg-green-600 transition">
+            className="px-3 py-1.5 rounded-xl bg-green-500 text-white text-xs font-bold hover:bg-green-600 transition cursor-pointer">
             View All
           </button>
         </div>
@@ -865,18 +900,21 @@ const AdminOrders = () => {
       {/* Status filter chips */}
       <div className="flex flex-wrap gap-2">
         <button onClick={() => setFilterStatus('')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition
-            ${filterStatus === '' ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}>
-          All ({orders.length})
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition cursor-pointer
+            ${filterStatus === '' ? 'border-gray-900 bg-gray-900 text-white shadow-sm' : 'border-gray-200 text-gray-600 hover:border-gray-400 bg-white'}`}>
+          All ({totalAllOrders || orders.length})
         </button>
-        {ALL_STATUSES.map(s => counts[s] > 0 && (
-          <button key={s} onClick={() => setFilterStatus(s === filterStatus ? '' : s)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition
-              ${filterStatus === s ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}>
-            <span className={`w-2 h-2 rounded-full ${STATUS_CONFIG[s]?.dot}`} />
-            {STATUS_CONFIG[s]?.label} ({counts[s]})
-          </button>
-        ))}
+        {ALL_STATUSES.map(s => {
+          const count = counts[s] || 0;
+          return (
+            <button key={s} onClick={() => setFilterStatus(s === filterStatus ? '' : s)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition cursor-pointer
+                ${filterStatus === s ? 'border-gray-900 bg-gray-900 text-white shadow-sm' : 'border-gray-200 text-gray-600 hover:border-gray-400 bg-white'}`}>
+              <span className={`w-2 h-2 rounded-full ${STATUS_CONFIG[s]?.dot}`} />
+              {STATUS_CONFIG[s]?.label} ({count})
+            </button>
+          );
+        })}
       </div>
 
       {/* Search */}
@@ -986,22 +1024,37 @@ const AdminOrders = () => {
                           >
                             <FiEye size={12} /> View
                           </button>
-                          {order.orderStatus !== 'CANCELLED' && order.orderStatus !== 'DELIVERED' && (
+                          {order.orderStatus === 'REJECTED' ? (
                             <button
-                              onClick={(e) => { e.stopPropagation(); setCancelModalOrder(order); setApologyReason(''); }}
-                              className="p-1.5 rounded-lg text-amber-700 hover:bg-amber-100 transition cursor-pointer"
-                              title="Cancel Order & Send Apology Email"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTarget(order);
+                              }}
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition cursor-pointer shadow-sm"
+                              title="Delete permanently from database"
                             >
-                              <FiXCircle size={14} />
+                              <FiTrash2 size={12} /> Delete Permanently
                             </button>
+                          ) : (
+                            <>
+                              {order.orderStatus !== 'CANCELLED' && order.orderStatus !== 'DELIVERED' && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setCancelModalOrder(order); setApologyReason(''); }}
+                                  className="p-1.5 rounded-lg text-amber-700 hover:bg-amber-100 transition cursor-pointer"
+                                  title="Cancel Order & Send Apology Email"
+                                >
+                                  <FiXCircle size={14} />
+                                </button>
+                              )}
+                              <button
+                                onClick={e => { e.stopPropagation(); setDeleteTarget(order); }}
+                                className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition cursor-pointer"
+                                title="Delete Order"
+                              >
+                                <FiTrash2 size={14} />
+                              </button>
+                            </>
                           )}
-                          <button
-                            onClick={e => { e.stopPropagation(); setDeleteTarget(order); }}
-                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition cursor-pointer"
-                            title="Delete Order"
-                          >
-                            <FiTrash2 size={14} />
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1024,6 +1077,7 @@ const AdminOrders = () => {
               setCancelModalOrder(order);
               setApologyReason('');
             }}
+            onDeleteTarget={setDeleteTarget}
           />
         )}
         {approvalModalOrder && (

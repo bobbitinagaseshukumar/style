@@ -192,33 +192,43 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
   if (customerIds.length > 0) {
     const pageOrders = await prisma.order.findMany({
       where: { userId: { in: customerIds } },
-      select: { userId: true, totalAmount: true, orderStatus: true }
+      select: { userId: true, totalAmount: true, orderStatus: true, approvalStatus: true }
     });
 
     pageOrders.forEach(o => {
       if (!spendingMap[o.userId]) spendingMap[o.userId] = 0;
-      spendingMap[o.userId] += Number(o.totalAmount || 0);
-
       if (!orderStatsMap[o.userId]) {
-        orderStatsMap[o.userId] = { pending: 0, delivered: 0, cancelled: 0, returned: 0 };
+        orderStatsMap[o.userId] = { pending: 0, delivered: 0, cancelled: 0, returned: 0, rejected: 0 };
       }
       const st = o.orderStatus || 'PENDING';
-      if (['PENDING', 'PENDING_APPROVAL', 'PROCESSING', 'PACKED', 'SHIPPED'].includes(st)) orderStatsMap[o.userId].pending++;
-      if (st === 'DELIVERED') orderStatsMap[o.userId].delivered++;
-      if (st === 'CANCELLED') orderStatsMap[o.userId].cancelled++;
-      if (st === 'RETURNED') orderStatsMap[o.userId].returned++;
+      const isRejected = st === 'REJECTED' || o.approvalStatus === 'REJECTED';
+      const isCancelled = st === 'CANCELLED';
+
+      if (isRejected) {
+        orderStatsMap[o.userId].rejected++;
+      } else if (isCancelled) {
+        orderStatsMap[o.userId].cancelled++;
+      } else if (st === 'RETURNED') {
+        orderStatsMap[o.userId].returned++;
+      } else if (st === 'DELIVERED') {
+        orderStatsMap[o.userId].delivered++;
+        spendingMap[o.userId] += Number(o.totalAmount || 0);
+      } else {
+        orderStatsMap[o.userId].pending++;
+      }
     });
   }
 
   const enrichedCustomers = customers.map(c => {
-    const stats = orderStatsMap[c.id] || { pending: 0, delivered: 0, cancelled: 0, returned: 0 };
+    const stats = orderStatsMap[c.id] || { pending: 0, delivered: 0, cancelled: 0, returned: 0, rejected: 0 };
     return {
       ...c,
       stats: {
-        totalOrders: c._count.orders,
+        totalOrders: stats.delivered,
         pendingOrders: stats.pending,
         deliveredOrders: stats.delivered,
         cancelledOrders: stats.cancelled,
+        rejectedOrders: stats.rejected,
         returnedOrders: stats.returned,
         totalSpent: spendingMap[c.id] || 0
       }
@@ -236,6 +246,7 @@ exports.getAllCustomers = asyncHandler(async (req, res) => {
       where: Object.keys(baseWhere).length > 0 ? { AND: [baseWhere, { isVerified: false }] } : { isVerified: false }
     }),
     prisma.order.aggregate({
+      where: { orderStatus: 'DELIVERED' },
       _sum: { totalAmount: true }
     })
   ]);
@@ -372,13 +383,15 @@ exports.getCustomerProfile = asyncHandler(async (req, res, next) => {
 
   const { password, otpCode, ...safeCustomer } = customer;
 
-  const totalOrders = customer.orders?.length || 0;
-  const pendingOrders = (customer.orders || []).filter(o => ['PENDING', 'PENDING_APPROVAL', 'PROCESSING', 'PACKED', 'SHIPPED'].includes(o.orderStatus || o.status)).length;
   const deliveredOrders = (customer.orders || []).filter(o => (o.orderStatus || o.status) === 'DELIVERED').length;
+  const pendingOrders = (customer.orders || []).filter(o => ['PENDING', 'PENDING_APPROVAL', 'PROCESSING', 'PACKED', 'SHIPPED'].includes(o.orderStatus || o.status)).length;
   const cancelledOrders = (customer.orders || []).filter(o => (o.orderStatus || o.status) === 'CANCELLED').length;
+  const rejectedOrders = (customer.orders || []).filter(o => (o.orderStatus || o.status) === 'REJECTED' || o.approvalStatus === 'REJECTED').length;
   const returnedOrders = (customer.orders || []).filter(o => (o.orderStatus || o.status) === 'RETURNED').length;
-  const totalAmountSpent = (customer.orders || []).reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
-  const avgOrderValue = totalOrders > 0 ? totalAmountSpent / totalOrders : 0;
+  const totalAmountSpent = (customer.orders || [])
+    .filter(o => (o.orderStatus || o.status) === 'DELIVERED')
+    .reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
+  const avgOrderValue = deliveredOrders > 0 ? totalAmountSpent / deliveredOrders : 0;
   const wishlistCount = customer.wishlist?.items?.length || 0;
   const addressCount = customer.addresses?.length || 0;
 
@@ -387,10 +400,11 @@ exports.getCustomerProfile = asyncHandler(async (req, res, next) => {
     data: {
       ...safeCustomer,
       metrics: {
-        totalOrders,
+        totalOrders: deliveredOrders,
         pendingOrders,
         deliveredOrders,
         cancelledOrders,
+        rejectedOrders,
         returnedOrders,
         totalAmountSpent,
         avgOrderValue,

@@ -451,7 +451,7 @@ exports.adminGetAllOrders = asyncHandler(async (req, res) => {
     ];
   }
 
-  const [orders, total] = await Promise.all([
+  const [orders, total, statusCounts] = await Promise.all([
     prisma.order.findMany({
       where,
       include: {
@@ -464,11 +464,22 @@ exports.adminGetAllOrders = asyncHandler(async (req, res) => {
       take: parseInt(limit),
     }),
     prisma.order.count({ where }),
+    prisma.order.groupBy({
+      by: ['orderStatus'],
+      where: { deletedByAdmin: false },
+      _count: { id: true }
+    }),
   ]);
+
+  const statusMap = (statusCounts || []).reduce((acc, cur) => {
+    acc[cur.orderStatus] = cur._count.id;
+    return acc;
+  }, {});
 
   res.status(200).json({
     success: true,
     data: orders || [],
+    statusCounts: statusMap,
     meta: { total: total || 0, page: parseInt(page), limit: parseInt(limit) },
   });
 });
