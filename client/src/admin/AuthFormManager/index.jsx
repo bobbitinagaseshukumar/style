@@ -67,12 +67,23 @@ const AuthFormManager = () => {
     fetchFields();
   }, []);
 
+  const broadcastUpdate = () => {
+    try {
+      localStorage.removeItem('__KVLR_HOME_PERSISTENT_CACHE_V3__');
+      sessionStorage.removeItem('__KVLR_HOME_CACHE__');
+      window.dispatchEvent(new CustomEvent('auth_settings_updated'));
+      window.dispatchEvent(new CustomEvent('kvlr:content-updated'));
+      window.dispatchEvent(new CustomEvent('settings_updated'));
+    } catch (e) {}
+  };
+
   const handleToggleEnabled = async (field) => {
     try {
       const updated = !field.isEnabled;
       setFields(fields.map(f => f.id === field.id ? { ...f, isEnabled: updated } : f));
       await api.put(`/auth-form/admin/auth-form-fields/${field.id}`, { isEnabled: updated });
-      toast.success(`"${field.label}" ${updated ? 'enabled' : 'disabled'}!`);
+      toast.success(`"${field.label}" ${updated ? 'enabled' : 'disabled'} and saved to database!`);
+      broadcastUpdate();
     } catch (err) {
       toast.error('Failed to update field status');
       fetchFields();
@@ -84,7 +95,8 @@ const AuthFormManager = () => {
       const updated = !field.isRequired;
       setFields(fields.map(f => f.id === field.id ? { ...f, isRequired: updated } : f));
       await api.put(`/auth-form/admin/auth-form-fields/${field.id}`, { isRequired: updated });
-      toast.success(`"${field.label}" marked as ${updated ? 'Required' : 'Optional'}`);
+      toast.success(`"${field.label}" marked as ${updated ? 'Required' : 'Optional'} and saved to database!`);
+      broadcastUpdate();
     } catch (err) {
       toast.error('Failed to update field requirement');
       fetchFields();
@@ -106,7 +118,8 @@ const AuthFormManager = () => {
 
     try {
       await api.put('/auth-form/admin/auth-form-fields/reorder', { fieldOrders });
-      toast.success('Field order updated');
+      toast.success('Field order saved to database!');
+      broadcastUpdate();
     } catch (err) {
       toast.error('Failed to save field order');
     }
@@ -132,7 +145,7 @@ const AuthFormManager = () => {
         validationRules,
       });
 
-      toast.success(`Custom field "${newField.label}" created!`);
+      toast.success(`Custom field "${newField.label}" created & saved to database! ✨`);
       setAddModalOpen(false);
       setNewField({
         fieldKey: '',
@@ -149,6 +162,7 @@ const AuthFormManager = () => {
         patternMsg: '',
       });
       fetchFields();
+      broadcastUpdate();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create field');
     } finally {
@@ -179,9 +193,10 @@ const AuthFormManager = () => {
         validationRules,
       });
 
-      toast.success(`Field "${editingField.label}" updated!`);
+      toast.success(`Field "${editingField.label}" updated & saved to database!`);
       setEditModalOpen(false);
       fetchFields();
+      broadcastUpdate();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update field');
     } finally {
@@ -198,8 +213,9 @@ const AuthFormManager = () => {
 
     try {
       await api.delete(`/auth-form/admin/auth-form-fields/${field.id}`);
-      toast.success(`Field "${field.label}" deleted`);
+      toast.success(`Field "${field.label}" deleted from database`);
       fetchFields();
+      broadcastUpdate();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete field');
     }

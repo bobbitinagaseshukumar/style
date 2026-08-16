@@ -5,6 +5,7 @@ const PORT = env.PORT;
 
 const { bootstrapSuperAdmin } = require('./controllers/adminAuthController');
 const { ensureStoreSettingsSchema } = require('./controllers/cmsController');
+const { ensureAuthFormFieldTable } = require('./controllers/authFormController');
 const prisma = require('./config/db');
 
 const autoPublishVisibleProducts = async () => {
@@ -53,6 +54,7 @@ const server = app.listen(PORT, async () => {
   console.log(`  Environment: ${env.NODE_ENV}`);
   console.log(`====================================================`);
   await ensureStoreSettingsSchema();
+  await ensureAuthFormFieldTable();
   await bootstrapSuperAdmin();
   await autoPublishVisibleProducts();
   startKeepAliveEngine();
