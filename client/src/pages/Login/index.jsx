@@ -7,7 +7,7 @@ import {
 } from 'react-icons/fi';
 import { useDispatch, useSelector } from 'react-redux';
 import api from '../../config/api';
-import { setCredentials } from '../../redux/auth/authSlice';
+import { setCredentials, logoutUser } from '../../redux/auth/authSlice';
 import { fetchServerCart } from '../../redux/cart/cartSlice';
 import { fetchServerWishlist } from '../../redux/wishlist/wishlistSlice';
 import { toast } from 'react-toastify';
