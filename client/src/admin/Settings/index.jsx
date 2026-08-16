@@ -318,8 +318,18 @@ const AdminSettings = () => {
         <form onSubmit={handleSave} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
           {/* Tab 1: General Store Profile */}
           {activeTab === 'general' && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-serif font-bold text-charcoal-900 border-b pb-2">Store Profile & Branding</h3>
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-gold-500/10 to-transparent p-4 rounded-2xl border border-gold-500/30">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-gold-700">⚡ Real-Time Storefront Live Link</span>
+                  </div>
+                  <h3 className="text-base font-serif font-bold text-charcoal-900 mt-0.5">Store Profile & Global Branding</h3>
+                  <p className="text-xs text-gray-500">Controls store name, support contacts, address, currency symbol, and primary/secondary color schemes across all pages.</p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input label="Store Name" name="storeName" value={settings.storeName} onChange={handleChange} required />
                 <Input label="Currency Symbol" name="currencySymbol" value={settings.currencySymbol} onChange={handleChange} required />
@@ -330,12 +340,18 @@ const AdminSettings = () => {
 
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Primary Theme Gold (#D4AF37)</label>
-                  <input type="color" name="primaryColor" value={settings.primaryColor} onChange={handleChange} className="w-full h-10 rounded-xl cursor-pointer" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Primary Theme Gold ({settings.primaryColor})</label>
+                  <div className="flex items-center gap-3">
+                    <input type="color" name="primaryColor" value={settings.primaryColor} onChange={handleChange} className="w-14 h-11 rounded-xl cursor-pointer border" />
+                    <span className="text-xs font-mono font-bold text-gray-700">{settings.primaryColor}</span>
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Theme Charcoal (#1A1A1A)</label>
-                  <input type="color" name="secondaryColor" value={settings.secondaryColor} onChange={handleChange} className="w-full h-10 rounded-xl cursor-pointer" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Theme Charcoal ({settings.secondaryColor})</label>
+                  <div className="flex items-center gap-3">
+                    <input type="color" name="secondaryColor" value={settings.secondaryColor} onChange={handleChange} className="w-14 h-11 rounded-xl cursor-pointer border" />
+                    <span className="text-xs font-mono font-bold text-gray-700">{settings.secondaryColor}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -344,17 +360,22 @@ const AdminSettings = () => {
           {/* Tab 2: Shipping Rules */}
           {activeTab === 'shipping' && (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+              {/* Connection Banner + Add Button */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-amber-500/10 via-gold-500/10 to-transparent p-5 rounded-2xl border border-gold-500/30">
                 <div>
-                  <h3 className="text-lg font-serif font-bold text-charcoal-900">Standard Shipping & Rates</h3>
-                  <p className="text-xs text-gray-500">Configure baseline shipping fees and delivery estimates.</p>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-gold-700">⚡ Live Connected to: Cart & Checkout Delivery Speed</span>
+                  </div>
+                  <h3 className="text-base font-serif font-bold text-charcoal-900 mt-0.5">Shipping Rules & Delivery Tiers</h3>
+                  <p className="text-xs text-gray-500">Configure standard delivery rates and add custom shipping options (Express, Same-Day, VIP Courier).</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowAddShippingModal(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-charcoal-900 hover:bg-black text-gold-400 font-bold text-xs shadow transition cursor-pointer self-start sm:self-auto"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-charcoal-900 to-black hover:from-black hover:to-charcoal-900 text-gold-400 font-extrabold text-xs shadow-lg transition-all cursor-pointer shrink-0 border border-gold-500/30"
                 >
-                  <FiPlus className="w-4 h-4" /> Add Shipping Tier
+                  <FiPlus className="w-4 h-4 text-gold-400" /> + Add Shipping Tier
                 </button>
               </div>
 
@@ -365,9 +386,28 @@ const AdminSettings = () => {
               <Input label="Estimated Delivery Timeframe" name="estimatedDeliveryDays" value={settings.estimatedDeliveryDays} onChange={handleChange} />
 
               {/* Custom Shipping Tiers */}
-              {customShippingTiers.length > 0 && (
-                <div className="space-y-3 pt-4 border-t">
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center justify-between">
                   <h4 className="text-sm font-bold text-charcoal-900">Custom Delivery Tiers / Express Options</h4>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddShippingModal(true)}
+                    className="text-xs font-bold text-gold-600 hover:text-gold-700 cursor-pointer flex items-center gap-1"
+                  >
+                    <FiPlus className="w-3.5 h-3.5" /> Add Tier
+                  </button>
+                </div>
+
+                {customShippingTiers.length === 0 ? (
+                  <div
+                    onClick={() => setShowAddShippingModal(true)}
+                    className="p-6 rounded-2xl border-2 border-dashed border-gray-300 hover:border-gold-500 bg-gray-50 hover:bg-gold-50/20 text-center transition cursor-pointer"
+                  >
+                    <FiTruck className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                    <p className="text-xs font-bold text-charcoal-900">No custom shipping tiers added yet</p>
+                    <p className="text-[11px] text-gray-500 mt-1">Click here or the button above to add Express Delivery, Next-Day Air, or VIP Courier options.</p>
+                  </div>
+                ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {customShippingTiers.map((tier) => (
                       <div key={tier.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-between">
@@ -400,25 +440,30 @@ const AdminSettings = () => {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 
           {/* Tab 3: Payment Gateways */}
           {activeTab === 'payment' && (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+              {/* Connection Banner + Add Button */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-amber-500/10 via-gold-500/10 to-transparent p-5 rounded-2xl border border-gold-500/30">
                 <div>
-                  <h3 className="text-lg font-serif font-bold text-charcoal-900">Payment Gateways & Options</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-gold-700">⚡ Live Connected to: Storefront Checkout (Step 3: Payment Options)</span>
+                  </div>
+                  <h3 className="text-base font-serif font-bold text-charcoal-900 mt-0.5">Payment Gateways & Options</h3>
                   <p className="text-xs text-gray-500">Enable or add payment options that customers can choose at checkout.</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowAddPaymentModal(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-charcoal-900 hover:bg-black text-gold-400 font-bold text-xs shadow transition cursor-pointer self-start sm:self-auto"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-charcoal-900 to-black hover:from-black hover:to-charcoal-900 text-gold-400 font-extrabold text-xs shadow-lg transition-all cursor-pointer shrink-0 border border-gold-500/30"
                 >
-                  <FiPlus className="w-4 h-4" /> Add Payment Option
+                  <FiPlus className="w-4 h-4 text-gold-400" /> + Add Payment Option
                 </button>
               </div>
 
@@ -450,9 +495,28 @@ const AdminSettings = () => {
               </div>
 
               {/* Custom Gateways */}
-              {customPaymentMethods.length > 0 && (
-                <div className="space-y-3 pt-4 border-t">
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center justify-between">
                   <h4 className="text-sm font-bold text-charcoal-900">Custom Payment Gateways & Methods</h4>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPaymentModal(true)}
+                    className="text-xs font-bold text-gold-600 hover:text-gold-700 cursor-pointer flex items-center gap-1"
+                  >
+                    <FiPlus className="w-3.5 h-3.5" /> Add Payment Method
+                  </button>
+                </div>
+
+                {customPaymentMethods.length === 0 ? (
+                  <div
+                    onClick={() => setShowAddPaymentModal(true)}
+                    className="p-6 rounded-2xl border-2 border-dashed border-gray-300 hover:border-gold-500 bg-gray-50 hover:bg-gold-50/20 text-center transition cursor-pointer"
+                  >
+                    <FiCreditCard className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                    <p className="text-xs font-bold text-charcoal-900">No custom payment gateways added</p>
+                    <p className="text-[11px] text-gray-500 mt-1">Click here or the button above to add PhonePe UPI, Cashfree, Direct Bank Transfer, or Crypto Checkout.</p>
+                  </div>
+                ) : (
                   <div className="space-y-3">
                     {customPaymentMethods.map((pm) => (
                       <div key={pm.id} className="flex items-center justify-between p-4 border rounded-xl bg-gray-50/50">
@@ -485,25 +549,30 @@ const AdminSettings = () => {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 
           {/* Tab 4: SEO Settings */}
           {activeTab === 'seo' && (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+              {/* Connection Banner + Add Button */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-amber-500/10 via-gold-500/10 to-transparent p-5 rounded-2xl border border-gold-500/30">
                 <div>
-                  <h3 className="text-lg font-serif font-bold text-charcoal-900">Search Engine Optimization (SEO)</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-gold-700">⚡ Live Connected to: Global HTML &lt;head&gt; & Search Previews</span>
+                  </div>
+                  <h3 className="text-base font-serif font-bold text-charcoal-900 mt-0.5">Search Engine Optimization (SEO)</h3>
                   <p className="text-xs text-gray-500">Configure global metadata and custom meta tags for search engines & social previews.</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowAddSeoModal(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-charcoal-900 hover:bg-black text-gold-400 font-bold text-xs shadow transition cursor-pointer self-start sm:self-auto"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-charcoal-900 to-black hover:from-black hover:to-charcoal-900 text-gold-400 font-extrabold text-xs shadow-lg transition-all cursor-pointer shrink-0 border border-gold-500/30"
                 >
-                  <FiPlus className="w-4 h-4" /> Add Meta / SEO Tag
+                  <FiPlus className="w-4 h-4 text-gold-400" /> + Add Meta / SEO Tag
                 </button>
               </div>
 
@@ -512,9 +581,28 @@ const AdminSettings = () => {
               <Input label="Meta Keywords (Comma separated)" name="metaKeywords" value={settings.metaKeywords} onChange={handleChange} />
 
               {/* Custom SEO Tags List */}
-              {customSeoTags.length > 0 && (
-                <div className="space-y-3 pt-4 border-t">
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center justify-between">
                   <h4 className="text-sm font-bold text-charcoal-900">Custom SEO & Open Graph Tags</h4>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSeoModal(true)}
+                    className="text-xs font-bold text-gold-600 hover:text-gold-700 cursor-pointer flex items-center gap-1"
+                  >
+                    <FiPlus className="w-3.5 h-3.5" /> Add Tag
+                  </button>
+                </div>
+
+                {customSeoTags.length === 0 ? (
+                  <div
+                    onClick={() => setShowAddSeoModal(true)}
+                    className="p-6 rounded-2xl border-2 border-dashed border-gray-300 hover:border-gold-500 bg-gray-50 hover:bg-gold-50/20 text-center transition cursor-pointer"
+                  >
+                    <FiSearch className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                    <p className="text-xs font-bold text-charcoal-900">No custom meta tags added</p>
+                    <p className="text-[11px] text-gray-500 mt-1">Click here or the button above to add custom tags (e.g. og:image, twitter:card, author, canonical).</p>
+                  </div>
+                ) : (
                   <div className="space-y-2">
                     {customSeoTags.map((tag) => (
                       <div key={tag.id} className="flex items-center justify-between p-3.5 border rounded-xl bg-gray-50 text-xs">
@@ -545,25 +633,30 @@ const AdminSettings = () => {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 
           {/* Tab 5: Checkout Form Fields */}
           {activeTab === 'checkout' && (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+              {/* Connection Banner + Add Button */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-amber-500/10 via-gold-500/10 to-transparent p-5 rounded-2xl border border-gold-500/30">
                 <div>
-                  <h3 className="text-lg font-serif font-bold text-charcoal-900">Checkout Address Form Fields</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-gold-700">⚡ Live Connected to: Storefront Checkout (Address Form & Validation)</span>
+                  </div>
+                  <h3 className="text-base font-serif font-bold text-charcoal-900 mt-0.5">Checkout Address Form Fields</h3>
                   <p className="text-xs text-gray-500">Configure which fields appear when customers add their shipping address at checkout.</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowAddCheckoutFieldModal(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-charcoal-900 hover:bg-black text-gold-400 font-bold text-xs shadow transition cursor-pointer self-start sm:self-auto"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-charcoal-900 to-black hover:from-black hover:to-charcoal-900 text-gold-400 font-extrabold text-xs shadow-lg transition-all cursor-pointer shrink-0 border border-gold-500/30"
                 >
-                  <FiPlus className="w-4 h-4" /> Add Checkout Field
+                  <FiPlus className="w-4 h-4 text-gold-400" /> + Add Checkout Field
                 </button>
               </div>
 
@@ -574,7 +667,7 @@ const AdminSettings = () => {
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm text-charcoal-900">{field.label}</span>
                         {field.isCustom && (
-                          <span className="text-[10px] uppercase font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded">Custom</span>
+                          <span className="text-[10px] uppercase font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded">Custom Field</span>
                         )}
                       </div>
                       <span className="text-xs text-gray-400 font-mono">Field key: {key} • {field.type || 'text'}</span>
