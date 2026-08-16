@@ -533,6 +533,9 @@ model StoreSettings {
   metaKeywords   String   @default("sarees, jewellery, kurtis, lehengas, silk, fashion")
   ogImageUrl     String?
   robotsTxt      String   @default("User-agent: *\nAllow: /")
+  customPaymentMethods String @default("[]")
+  customShippingTiers  String @default("[]")
+  customSeoTags        String @default("[]")
   updatedAt      DateTime @default(now()) @updatedAt
 }
 

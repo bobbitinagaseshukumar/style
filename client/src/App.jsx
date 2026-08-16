@@ -43,12 +43,55 @@ const App = () => {
     };
   }, [dispatch]);
 
-  // Synchronize document title and theme colors when storeSettings update
+  // Synchronize document title, meta tags, and custom SEO tags when storeSettings update
   useEffect(() => {
     if (storeSettings?.metaTitle) {
       document.title = storeSettings.metaTitle;
     } else if (storeSettings?.storeName) {
       document.title = `${storeSettings.storeName} | Luxury Fashion & Jewellery`;
+    }
+
+    // Dynamic Meta Description
+    if (storeSettings?.metaDescription) {
+      let metaDesc = document.querySelector('meta[name="description"]');
+      if (!metaDesc) {
+        metaDesc = document.createElement('meta');
+        metaDesc.name = 'description';
+        document.head.appendChild(metaDesc);
+      }
+      metaDesc.content = storeSettings.metaDescription;
+    }
+
+    // Dynamic Meta Keywords
+    if (storeSettings?.metaKeywords) {
+      let metaKeywords = document.querySelector('meta[name="keywords"]');
+      if (!metaKeywords) {
+        metaKeywords = document.createElement('meta');
+        metaKeywords.name = 'keywords';
+        document.head.appendChild(metaKeywords);
+      }
+      metaKeywords.content = storeSettings.metaKeywords;
+    }
+
+    // Dynamic Custom SEO Tags
+    if (storeSettings?.customSeoTags) {
+      try {
+        const tags = typeof storeSettings.customSeoTags === 'string'
+          ? JSON.parse(storeSettings.customSeoTags)
+          : storeSettings.customSeoTags;
+        if (Array.isArray(tags)) {
+          // Remove previously injected custom tags
+          document.querySelectorAll('[data-kvlr-custom-seo]').forEach(el => el.remove());
+
+          tags.filter(t => t.enabled).forEach(tag => {
+            const meta = document.createElement('meta');
+            meta.setAttribute(tag.type || 'name', tag.key);
+            meta.content = tag.value;
+            meta.setAttribute('data-kvlr-custom-seo', 'true');
+            document.head.appendChild(meta);
+          });
+        }
+      } catch (e) {}
     }
   }, [storeSettings]);
 

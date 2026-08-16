@@ -66,11 +66,26 @@ exports.updateStoreSettings = asyncHandler(async (req, res) => {
         }
     });
 
-    // Handle checkoutFields JSON
+    // Handle JSON configuration fields
     if (raw.checkoutFields !== undefined) {
         sanitizedData.checkoutFields = typeof raw.checkoutFields === 'string'
             ? raw.checkoutFields
             : JSON.stringify(raw.checkoutFields);
+    }
+    if (raw.customPaymentMethods !== undefined) {
+        sanitizedData.customPaymentMethods = typeof raw.customPaymentMethods === 'string'
+            ? raw.customPaymentMethods
+            : JSON.stringify(raw.customPaymentMethods);
+    }
+    if (raw.customShippingTiers !== undefined) {
+        sanitizedData.customShippingTiers = typeof raw.customShippingTiers === 'string'
+            ? raw.customShippingTiers
+            : JSON.stringify(raw.customShippingTiers);
+    }
+    if (raw.customSeoTags !== undefined) {
+        sanitizedData.customSeoTags = typeof raw.customSeoTags === 'string'
+            ? raw.customSeoTags
+            : JSON.stringify(raw.customSeoTags);
     }
 
     // Number fields

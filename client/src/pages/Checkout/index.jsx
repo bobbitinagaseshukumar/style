@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiMapPin, FiTruck, FiCreditCard, FiCheckCircle, FiShield, FiPlus, FiLock } from 'react-icons/fi';
+import { FiMapPin, FiTruck, FiCreditCard, FiCheckCircle, FiShield, FiPlus, FiLock, FiDollarSign } from 'react-icons/fi';
 import { useSelector, useDispatch } from 'react-redux';
 import api from '../../config/api';
 import { clearCart } from '../../redux/cart/cartSlice';
@@ -12,21 +12,36 @@ import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import { toast } from 'react-toastify';
 
+const DEFAULT_CHECKOUT_FIELDS = {
+  fullName: { enabled: true, required: true, label: 'Full Name', type: 'text', placeholder: 'Your Full Name' },
+  phone: { enabled: true, required: true, label: 'Phone Number', type: 'tel', placeholder: '+91 98765 43210' },
+  street: { enabled: true, required: true, label: 'Street Address', type: 'text', placeholder: 'Flat, House no., Building, Street' },
+  city: { enabled: true, required: true, label: 'City', type: 'text', placeholder: 'City' },
+  state: { enabled: true, required: true, label: 'State', type: 'text', placeholder: 'State' },
+  postalCode: { enabled: true, required: true, label: 'Pincode', type: 'text', placeholder: 'Pincode' },
+};
+
 const Checkout = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { items, appliedCoupon, discountAmount, shippingFee, freeShippingThreshold } = useSelector((state) => state.cart);
+  const { items, appliedCoupon, discountAmount, shippingFee: cartShippingFee, freeShippingThreshold: cartFreeThreshold } = useSelector((state) => state.cart);
   const { user } = useSelector((state) => state.auth || {});
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('COD');
+  const [selectedShippingTierId, setSelectedShippingTierId] = useState('standard');
   const [loading, setLoading] = useState(false);
 
-  // Add Address Modal
+  // Dynamic Store Settings
+  const [storeSettings, setStoreSettings] = useState(null);
+  const [checkoutFields, setCheckoutFields] = useState(DEFAULT_CHECKOUT_FIELDS);
+  const [customPaymentMethods, setCustomPaymentMethods] = useState([]);
+  const [customShippingTiers, setCustomShippingTiers] = useState([]);
+
+  // Add Address Modal & Dynamic Form State
   const [addressModal, setAddressModal] = useState(false);
-  const [checkoutFields, setCheckoutFields] = useState(null);
   const [addressForm, setAddressForm] = useState({
     fullName: '',
     phone: '',
@@ -34,16 +49,32 @@ const Checkout = () => {
     city: '',
     state: '',
     postalCode: '',
-    village: '',
-    landmark: '',
-    alternatePhone: '',
     addressType: 'HOME',
     isDefault: true,
   });
 
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const calculatedShipping = subtotal > freeShippingThreshold ? 0 : shippingFee;
-  const grandTotal = Math.max(0, subtotal - discountAmount + calculatedShipping);
+
+  // Calculate dynamic shipping cost based on selected delivery tier
+  let activeShippingFee = subtotal > (storeSettings?.freeShippingThreshold || cartFreeThreshold || 999)
+    ? 0
+    : (parseFloat(storeSettings?.shippingCharge || storeSettings?.shippingFee || cartShippingFee) || 0);
+
+  let activeDeliveryEstimate = storeSettings?.estimatedDeliveryDays || '3-5 Business Days';
+
+  if (selectedShippingTierId !== 'standard' && customShippingTiers.length > 0) {
+    const selectedTier = customShippingTiers.find(t => t.id === selectedShippingTierId && t.enabled);
+    if (selectedTier) {
+      if (selectedTier.freeThreshold > 0 && subtotal >= selectedTier.freeThreshold) {
+        activeShippingFee = 0;
+      } else {
+        activeShippingFee = parseFloat(selectedTier.price) || 0;
+      }
+      activeDeliveryEstimate = selectedTier.deliveryDays || activeDeliveryEstimate;
+    }
+  }
+
+  const grandTotal = Math.max(0, subtotal - discountAmount + activeShippingFee);
 
   const fetchAddresses = async () => {
     try {
@@ -61,42 +92,82 @@ const Checkout = () => {
     }
   };
 
-  useEffect(() => {
-    fetchAddresses();
-
-    const handleSync = () => fetchAddresses();
-    window.addEventListener('addresses_updated', handleSync);
-
-    const fetchCheckoutConfig = async () => {
-      try {
-        const { data } = await api.get('/cms/settings');
-        if (data?.data?.checkoutFields) {
+  const fetchStoreConfig = async () => {
+    try {
+      const { data } = await api.get('/cms/settings');
+      if (data?.data) {
+        setStoreSettings(data.data);
+        if (data.data.checkoutFields) {
           try {
-            const fields = typeof data.data.checkoutFields === 'string' 
-              ? JSON.parse(data.data.checkoutFields) 
+            const fields = typeof data.data.checkoutFields === 'string'
+              ? JSON.parse(data.data.checkoutFields)
               : data.data.checkoutFields;
-            setCheckoutFields(fields);
+            if (fields && typeof fields === 'object') {
+              setCheckoutFields(fields);
+            }
           } catch (e) {}
         }
-      } catch (err) {}
-    };
-    fetchCheckoutConfig();
+        if (data.data.customPaymentMethods) {
+          try {
+            const pm = typeof data.data.customPaymentMethods === 'string'
+              ? JSON.parse(data.data.customPaymentMethods)
+              : data.data.customPaymentMethods;
+            if (Array.isArray(pm)) setCustomPaymentMethods(pm);
+          } catch (e) {}
+        }
+        if (data.data.customShippingTiers) {
+          try {
+            const tiers = typeof data.data.customShippingTiers === 'string'
+              ? JSON.parse(data.data.customShippingTiers)
+              : data.data.customShippingTiers;
+            if (Array.isArray(tiers)) setCustomShippingTiers(tiers);
+          } catch (e) {}
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-    return () => window.removeEventListener('addresses_updated', handleSync);
+  useEffect(() => {
+    fetchAddresses();
+    fetchStoreConfig();
+
+    const handleSync = () => fetchAddresses();
+    const handleSettingsSync = () => fetchStoreConfig();
+
+    window.addEventListener('addresses_updated', handleSync);
+    window.addEventListener('settings_updated', handleSettingsSync);
+    window.addEventListener('kvlr:content-updated', handleSettingsSync);
+
+    return () => {
+      window.removeEventListener('addresses_updated', handleSync);
+      window.removeEventListener('settings_updated', handleSettingsSync);
+      window.removeEventListener('kvlr:content-updated', handleSettingsSync);
+    };
   }, []);
 
   const handleAddAddress = async (e) => {
     e.preventDefault();
+    // Validate all enabled and required checkout fields
+    for (const [key, field] of Object.entries(checkoutFields)) {
+      if (field.enabled && field.required) {
+        if (!addressForm[key] || String(addressForm[key]).trim() === '') {
+          return toast.error(`Please enter ${field.label || key}`);
+        }
+      }
+    }
+
     try {
       const { data } = await api.post('/users/addresses', addressForm);
       toast.success('Address added!');
       setAddressModal(false);
-      setAddressForm({ fullName: '', phone: '', street: '', city: '', state: '', postalCode: '', village: '', landmark: '', alternatePhone: '', addressType: 'HOME', isDefault: true });
+      setAddressForm({ fullName: '', phone: '', street: '', city: '', state: '', postalCode: '', addressType: 'HOME', isDefault: true });
       fetchAddresses();
       window.dispatchEvent(new CustomEvent('addresses_updated'));
       if (data?.data?.id) setSelectedAddressId(data.data.id);
     } catch (err) {
-      toast.error('Failed to add address');
+      toast.error(err.response?.data?.message || 'Failed to add address');
     }
   };
 
@@ -119,7 +190,9 @@ const Checkout = () => {
         paymentMethod,
         couponCode: appliedCoupon,
         discountAmount,
-        shippingFee: calculatedShipping,
+        shippingFee: activeShippingFee,
+        deliveryEstimate: activeDeliveryEstimate,
+        shippingTier: selectedShippingTierId,
       };
 
       const { data } = await api.post('/orders', payload);
@@ -175,15 +248,16 @@ const Checkout = () => {
                           name="shippingAddress"
                           checked={selectedAddressId === addr.id}
                           onChange={() => setSelectedAddressId(addr.id)}
-                          className="mt-1 text-gold-500 focus:ring-gold-500"
+                          className="mt-1 text-gold-500 focus:ring-gold-500 cursor-pointer"
                         />
-                        <div>
+                        <div className="space-y-1">
                           <strong className="block text-sm text-charcoal-900">{addr.fullName}</strong>
-                          <p className="text-xs text-gray-600 mt-1">{addr.street}</p>
-                          {addr.village && <p className="text-xs text-gray-500">{addr.village}</p>}
+                          <p className="text-xs text-gray-600">{addr.street}</p>
+                          {addr.apartment && <p className="text-xs text-gray-500">Apt/Suite: {addr.apartment}</p>}
                           {addr.landmark && <p className="text-xs text-gray-500">Landmark: {addr.landmark}</p>}
+                          {addr.village && <p className="text-xs text-gray-500">{addr.village}</p>}
                           <p className="text-xs text-gray-600">{addr.city}, {addr.state} - {addr.postalCode}</p>
-                          <p className="text-xs text-gray-400 mt-2">Phone: {addr.phone}</p>
+                          <p className="text-xs text-gray-400 mt-2 font-mono">Phone: {addr.phone}</p>
                         </div>
                       </div>
                     </label>
@@ -192,43 +266,152 @@ const Checkout = () => {
               )}
             </div>
 
-            {/* STEP 2: PAYMENT METHOD */}
+            {/* STEP 2: DELIVERY METHOD / SHIPPING TIER */}
+            {customShippingTiers.filter(t => t.enabled).length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm space-y-4">
+                <div className="flex items-center gap-2 border-b pb-3">
+                  <FiTruck className="w-5 h-5 text-gold-600" />
+                  <h2 className="font-serif font-bold text-lg text-charcoal-900">2. Select Delivery Speed</h2>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label
+                    className={`p-4 rounded-2xl border-2 cursor-pointer transition flex items-center justify-between ${
+                      selectedShippingTierId === 'standard'
+                        ? 'border-gold-500 bg-gold-50/50 shadow-sm'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="shippingTier"
+                        value="standard"
+                        checked={selectedShippingTierId === 'standard'}
+                        onChange={(e) => setSelectedShippingTierId(e.target.value)}
+                        className="text-gold-500 focus:ring-gold-500 cursor-pointer"
+                      />
+                      <div>
+                        <span className="font-bold text-sm text-charcoal-900 block">Standard Delivery</span>
+                        <span className="text-xs text-gray-500">{storeSettings?.estimatedDeliveryDays || '3-5 Business Days'}</span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-charcoal-900">
+                      {subtotal > (storeSettings?.freeShippingThreshold || 999) ? 'FREE' : formatCurrency(storeSettings?.shippingCharge || 99)}
+                    </span>
+                  </label>
+
+                  {customShippingTiers.filter(t => t.enabled).map((tier) => (
+                    <label
+                      key={tier.id}
+                      className={`p-4 rounded-2xl border-2 cursor-pointer transition flex items-center justify-between ${
+                        selectedShippingTierId === tier.id
+                          ? 'border-gold-500 bg-gold-50/50 shadow-sm'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="shippingTier"
+                          value={tier.id}
+                          checked={selectedShippingTierId === tier.id}
+                          onChange={(e) => setSelectedShippingTierId(e.target.value)}
+                          className="text-gold-500 focus:ring-gold-500 cursor-pointer"
+                        />
+                        <div>
+                          <span className="font-bold text-sm text-charcoal-900 block">{tier.name}</span>
+                          <span className="text-xs text-gray-500">{tier.deliveryDays}</span>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-charcoal-900">
+                        {tier.freeThreshold > 0 && subtotal >= tier.freeThreshold ? 'FREE' : formatCurrency(tier.price)}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: PAYMENT METHOD */}
             <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm space-y-4">
               <div className="flex items-center gap-2 border-b pb-3">
                 <FiCreditCard className="w-5 h-5 text-gold-600" />
-                <h2 className="font-serif font-bold text-lg text-charcoal-900">2. Select Payment Method</h2>
+                <h2 className="font-serif font-bold text-lg text-charcoal-900">3. Select Payment Method</h2>
               </div>
 
               <div className="space-y-3">
-                <label className="flex items-center gap-3 p-4 border rounded-2xl cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="COD"
-                    checked={paymentMethod === 'COD'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="text-gold-500 focus:ring-gold-500"
-                  />
-                  <div>
-                    <span className="font-bold text-sm text-charcoal-900 block">Cash On Delivery (COD)</span>
-                    <span className="text-xs text-gray-500">Pay cash when your order is delivered to your doorstep</span>
-                  </div>
-                </label>
+                {/* Standard COD */}
+                {storeSettings?.isCODEnabled !== false && (
+                  <label className={`flex items-center gap-3 p-4 border-2 rounded-2xl cursor-pointer transition ${paymentMethod === 'COD' ? 'border-gold-500 bg-gold-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="COD"
+                      checked={paymentMethod === 'COD'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="text-gold-500 focus:ring-gold-500 cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-bold text-sm text-charcoal-900 block">Cash On Delivery (COD)</span>
+                      <span className="text-xs text-gray-500">Pay cash upon delivery at your doorstep</span>
+                    </div>
+                  </label>
+                )}
 
-                <label className="flex items-center gap-3 p-4 border rounded-2xl cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="UPI"
-                    checked={paymentMethod === 'UPI'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="text-gold-500 focus:ring-gold-500"
-                  />
-                  <div>
-                    <span className="font-bold text-sm text-charcoal-900 block">Instant UPI / NetBanking / Cards</span>
-                    <span className="text-xs text-gray-500">Pay via PhonePe, Google Pay, Paytm, or Credit/Debit Card</span>
-                  </div>
-                </label>
+                {/* Standard Razorpay */}
+                {storeSettings?.isRazorpayEnabled !== false && (
+                  <label className={`flex items-center gap-3 p-4 border-2 rounded-2xl cursor-pointer transition ${paymentMethod === 'UPI' ? 'border-gold-500 bg-gold-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="UPI"
+                      checked={paymentMethod === 'UPI'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="text-gold-500 focus:ring-gold-500 cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-bold text-sm text-charcoal-900 block">Razorpay UPI & Cards</span>
+                      <span className="text-xs text-gray-500">Instant online payments via UPI (PhonePe, GPay), NetBanking & Cards</span>
+                    </div>
+                  </label>
+                )}
+
+                {/* Stripe International */}
+                {storeSettings?.isStripeEnabled && (
+                  <label className={`flex items-center gap-3 p-4 border-2 rounded-2xl cursor-pointer transition ${paymentMethod === 'STRIPE' ? 'border-gold-500 bg-gold-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="STRIPE"
+                      checked={paymentMethod === 'STRIPE'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="text-gold-500 focus:ring-gold-500 cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-bold text-sm text-charcoal-900 block">Stripe International</span>
+                      <span className="text-xs text-gray-500">Accept global credit and debit cards worldwide</span>
+                    </div>
+                  </label>
+                )}
+
+                {/* Custom Payment Methods */}
+                {customPaymentMethods.filter(p => p.enabled).map((pm) => (
+                  <label key={pm.id} className={`flex items-center gap-3 p-4 border-2 rounded-2xl cursor-pointer transition ${paymentMethod === pm.id ? 'border-gold-500 bg-gold-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      value={pm.id}
+                      checked={paymentMethod === pm.id}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="text-gold-500 focus:ring-gold-500 cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-bold text-sm text-charcoal-900 block">{pm.name}</span>
+                      <span className="text-xs text-gray-500">{pm.description}</span>
+                    </div>
+                  </label>
+                ))}
               </div>
             </div>
           </div>
@@ -264,8 +447,12 @@ const Checkout = () => {
               <div className="flex justify-between">
                 <span>Shipping Fee</span>
                 <span className="font-semibold text-charcoal-900">
-                  {calculatedShipping === 0 ? <strong className="text-emerald-600">FREE</strong> : formatCurrency(calculatedShipping)}
+                  {activeShippingFee === 0 ? <strong className="text-emerald-600">FREE</strong> : formatCurrency(activeShippingFee)}
                 </span>
+              </div>
+              <div className="flex justify-between text-[11px] text-gray-400">
+                <span>Estimated Delivery</span>
+                <span>{activeDeliveryEstimate}</span>
               </div>
             </div>
 
@@ -297,38 +484,42 @@ const Checkout = () => {
         </div>
       </div>
 
-      {/* Modal: Add Address */}
+      {/* Modal: Add Address (Dynamic Form Rendering) */}
       <Modal isOpen={addressModal} onClose={() => addresses.length > 0 ? setAddressModal(false) : null} title="Add Shipping Address">
-        <form onSubmit={handleAddAddress} className="space-y-4">
-          {(!checkoutFields || checkoutFields?.fullName?.enabled !== false) && (
-            <Input label={checkoutFields?.fullName?.label || 'Full Name'} value={addressForm.fullName} onChange={e => setAddressForm({ ...addressForm, fullName: e.target.value })} required={checkoutFields?.fullName?.required !== false} />
-          )}
-          {(!checkoutFields || checkoutFields?.phone?.enabled !== false) && (
-            <Input label={checkoutFields?.phone?.label || 'Phone Number'} value={addressForm.phone} onChange={e => setAddressForm({ ...addressForm, phone: e.target.value })} required={checkoutFields?.phone?.required !== false} />
-          )}
-          {(!checkoutFields || checkoutFields?.street?.enabled !== false) && (
-            <Input label={checkoutFields?.street?.label || 'Street Address'} value={addressForm.street} onChange={e => setAddressForm({ ...addressForm, street: e.target.value })} required={checkoutFields?.street?.required !== false} />
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {(!checkoutFields || checkoutFields?.city?.enabled !== false) && (
-              <Input label={checkoutFields?.city?.label || 'City'} value={addressForm.city} onChange={e => setAddressForm({ ...addressForm, city: e.target.value })} required={checkoutFields?.city?.required !== false} />
-            )}
-            {(!checkoutFields || checkoutFields?.state?.enabled !== false) && (
-              <Input label={checkoutFields?.state?.label || 'State'} value={addressForm.state} onChange={e => setAddressForm({ ...addressForm, state: e.target.value })} required={checkoutFields?.state?.required !== false} />
-            )}
-          </div>
-          {(!checkoutFields || checkoutFields?.postalCode?.enabled !== false) && (
-            <Input label={checkoutFields?.postalCode?.label || 'Pincode'} value={addressForm.postalCode} onChange={e => setAddressForm({ ...addressForm, postalCode: e.target.value })} required={checkoutFields?.postalCode?.required !== false} />
-          )}
-          {checkoutFields?.village?.enabled && (
-            <Input label={checkoutFields?.village?.label || 'Village'} value={addressForm.village} onChange={e => setAddressForm({ ...addressForm, village: e.target.value })} required={checkoutFields?.village?.required} />
-          )}
-          {checkoutFields?.landmark?.enabled && (
-            <Input label={checkoutFields?.landmark?.label || 'Landmark'} value={addressForm.landmark} onChange={e => setAddressForm({ ...addressForm, landmark: e.target.value })} required={checkoutFields?.landmark?.required} />
-          )}
-          {checkoutFields?.alternatePhone?.enabled && (
-            <Input label={checkoutFields?.alternatePhone?.label || 'Alternate Phone'} value={addressForm.alternatePhone} onChange={e => setAddressForm({ ...addressForm, alternatePhone: e.target.value })} required={checkoutFields?.alternatePhone?.required} />
-          )}
+        <form onSubmit={handleAddAddress} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+          {Object.entries(checkoutFields).filter(([_, f]) => f.enabled).map(([key, field]) => {
+            if (field.type === 'textarea') {
+              return (
+                <div key={key}>
+                  <label className="block text-xs font-bold text-charcoal-900 uppercase tracking-wide mb-1">
+                    {field.label || key} {field.required ? '*' : ''}
+                  </label>
+                  <textarea
+                    rows={2}
+                    required={field.required}
+                    placeholder={field.placeholder || ''}
+                    value={addressForm[key] || ''}
+                    onChange={(e) => setAddressForm({ ...addressForm, [key]: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-gold-500"
+                  />
+                </div>
+              );
+            }
+
+            return (
+              <div key={key}>
+                <Input
+                  label={`${field.label || key}${field.required ? ' *' : ''}`}
+                  type={field.type || 'text'}
+                  placeholder={field.placeholder || ''}
+                  value={addressForm[key] || ''}
+                  onChange={(e) => setAddressForm({ ...addressForm, [key]: e.target.value })}
+                  required={field.required}
+                />
+              </div>
+            );
+          })}
+
           {addresses.length === 0 && (
             <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium">
               ⚠️ Please add your delivery address to proceed with the order.
