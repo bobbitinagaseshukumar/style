@@ -6,16 +6,25 @@ const ApiError = require('../utils/ApiError');
 // ==================== PROFILE MANAGEMENT ====================
 exports.updateProfile = asyncHandler(async (req, res, next) => {
   const body = req.body?.user || req.body || {};
-  const { fullName, phone, gender, dob, preferredLanguage, emailNotifications, smsNotifications } = body;
+  const {
+    fullName, phone, alternatePhone, altPhone, gender, dob, avatar,
+    preferredLanguage, emailNotifications, smsNotifications, promoNotifications,
+    address, street, city, district, state, country, zipCode, postalCode
+  } = body;
 
   const updatePayload = {};
   if (fullName !== undefined) updatePayload.fullName = String(fullName).trim();
   if (phone !== undefined) updatePayload.phone = String(phone).trim();
+  if (alternatePhone !== undefined || altPhone !== undefined) {
+    updatePayload.alternatePhone = String(alternatePhone || altPhone).trim();
+  }
   if (gender !== undefined) updatePayload.gender = String(gender).trim();
   if (dob !== undefined) updatePayload.dob = dob ? new Date(dob) : null;
+  if (avatar !== undefined) updatePayload.avatar = String(avatar).trim();
   if (preferredLanguage !== undefined) updatePayload.preferredLanguage = String(preferredLanguage).trim();
   if (emailNotifications !== undefined) updatePayload.emailNotifications = Boolean(emailNotifications);
   if (smsNotifications !== undefined) updatePayload.smsNotifications = Boolean(smsNotifications);
+  if (promoNotifications !== undefined) updatePayload.promoNotifications = Boolean(promoNotifications);
 
   const updatedUser = await prisma.user.update({
     where: { id: req.user.id },
@@ -25,20 +34,78 @@ exports.updateProfile = asyncHandler(async (req, res, next) => {
       fullName: true,
       email: true,
       phone: true,
+      alternatePhone: true,
       gender: true,
       dob: true,
       role: true,
       isVerified: true,
+      avatar: true,
       preferredLanguage: true,
       emailNotifications: true,
       smsNotifications: true,
+      promoNotifications: true,
     },
+  });
+
+  // If address info is provided, update or create default Address record
+  const streetAddress = address || street;
+  const zip = zipCode || postalCode;
+  if (streetAddress !== undefined || city !== undefined || zip !== undefined || state !== undefined || country !== undefined) {
+    const existingDefault = await prisma.address.findFirst({
+      where: { userId: req.user.id, isDefault: true }
+    }) || await prisma.address.findFirst({
+      where: { userId: req.user.id }
+    });
+
+    if (existingDefault) {
+      await prisma.address.update({
+        where: { id: existingDefault.id },
+        data: {
+          fullName: fullName || updatedUser.fullName,
+          phone: phone || updatedUser.phone || '',
+          street: streetAddress !== undefined ? String(streetAddress).trim() : existingDefault.street,
+          city: city !== undefined ? String(city).trim() : existingDefault.city,
+          state: state !== undefined ? String(state).trim() : existingDefault.state,
+          postalCode: zip !== undefined ? String(zip).trim() : existingDefault.postalCode,
+          country: country !== undefined ? String(country).trim() : existingDefault.country,
+        }
+      });
+    } else if (streetAddress || city || zip) {
+      await prisma.address.create({
+        data: {
+          userId: req.user.id,
+          fullName: fullName || updatedUser.fullName,
+          phone: phone || updatedUser.phone || '',
+          street: streetAddress ? String(streetAddress).trim() : '',
+          city: city ? String(city).trim() : '',
+          state: state ? String(state).trim() : '',
+          postalCode: zip ? String(zip).trim() : '',
+          country: country ? String(country).trim() : 'India',
+          isDefault: true
+        }
+      });
+    }
+  }
+
+  // Fetch primary address to include in returned data
+  const primaryAddress = await prisma.address.findFirst({
+    where: { userId: req.user.id, isDefault: true }
+  }) || await prisma.address.findFirst({
+    where: { userId: req.user.id }
   });
 
   res.status(200).json({
     success: true,
     message: 'Profile updated successfully',
-    data: updatedUser,
+    data: {
+      ...updatedUser,
+      primaryAddress,
+      address: primaryAddress?.street || '',
+      city: primaryAddress?.city || '',
+      state: primaryAddress?.state || '',
+      zipCode: primaryAddress?.postalCode || '',
+      country: primaryAddress?.country || 'India',
+    },
   });
 });
 
@@ -67,9 +134,9 @@ exports.requestPasswordOTP = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, 'New password cannot be the same as your current password.'));
   }
 
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
   if (!passwordRegex.test(newPassword)) {
-    return next(new ApiError(400, 'New password must be at least 8 characters long and contain uppercase, lowercase, number, and special character.'));
+    return next(new ApiError(400, 'New password must be at least 8 characters long and contain uppercase, lowercase, number, and a special character.'));
   }
 
   // Generate 6-digit OTP code

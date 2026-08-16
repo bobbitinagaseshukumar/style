@@ -437,6 +437,7 @@ exports.getMe = asyncHandler(async (req, res, next) => {
       fullName: true,
       email: true,
       phone: true,
+      alternatePhone: true,
       gender: true,
       dob: true,
       role: true,
@@ -445,13 +446,37 @@ exports.getMe = asyncHandler(async (req, res, next) => {
       preferredLanguage: true,
       emailNotifications: true,
       smsNotifications: true,
+      promoNotifications: true,
       createdAt: true,
+      addresses: {
+        where: { isDefault: true },
+        take: 1,
+      },
     },
   });
 
   if (!user) return next(new ApiError(404, 'User not found'));
 
-  res.status(200).json({ success: true, data: user });
+  let primaryAddress = user.addresses?.[0];
+  if (!primaryAddress) {
+    primaryAddress = await prisma.address.findFirst({
+      where: { userId: req.user.id }
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      ...user,
+      altPhone: user.alternatePhone || '',
+      primaryAddress,
+      address: primaryAddress?.street || '',
+      city: primaryAddress?.city || '',
+      state: primaryAddress?.state || '',
+      zipCode: primaryAddress?.postalCode || '',
+      country: primaryAddress?.country || 'India',
+    }
+  });
 });
 
 // ==================== LOGOUT ====================

@@ -4,6 +4,9 @@ import { FiMapPin, FiPlus, FiEdit2, FiTrash2, FiCheck, FiHome, FiBriefcase } fro
 import api from '../../config/api';
 import { toast } from 'react-toastify';
 
+import { useDispatch } from 'react-redux';
+import { getMe } from '../../redux/auth/authSlice';
+
 const BLANK_FORM = {
   fullName: '',
   phone: '',
@@ -17,6 +20,7 @@ const BLANK_FORM = {
 };
 
 const AddressTab = () => {
+  const dispatch = useDispatch();
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -83,6 +87,7 @@ const AddressTab = () => {
       setEditingId(null);
       setForm(BLANK_FORM);
       loadAddresses();
+      dispatch(getMe());
       window.dispatchEvent(new CustomEvent('addresses_updated'));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save address');
@@ -98,6 +103,7 @@ const AddressTab = () => {
       await api.delete(`/users/addresses/${id}`);
       toast.success('Address removed.');
       loadAddresses();
+      dispatch(getMe());
       window.dispatchEvent(new CustomEvent('addresses_updated'));
     } catch (err) {
       toast.error('Failed to delete address.');
@@ -111,6 +117,7 @@ const AddressTab = () => {
       await api.put(`/users/addresses/${id}/default`);
       toast.success('Default address updated');
       loadAddresses();
+      dispatch(getMe());
       window.dispatchEvent(new CustomEvent('addresses_updated'));
     } catch (err) {
       toast.error('Failed to set default address');

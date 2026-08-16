@@ -9,7 +9,10 @@ import { toast } from 'react-toastify';
 import api from '../../config/api';
 import GlobalImageEditor from '../../components/common/GlobalImageEditor';
 
+import { updateUser, getMe } from '../../redux/auth/authSlice';
+
 const ProfileTab = () => {
+  const dispatch = useDispatch();
   const user = useSelector((s) => s.auth.user);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -18,7 +21,7 @@ const ProfileTab = () => {
   const [form, setForm] = useState({
     fullName: user?.fullName || '',
     phone: user?.phone || '',
-    altPhone: user?.altPhone || '',
+    altPhone: user?.alternatePhone || user?.altPhone || '',
     gender: user?.gender || '',
     dob: user?.dob ? user.dob.slice(0, 10) : '',
     address: user?.address || '',
@@ -30,6 +33,41 @@ const ProfileTab = () => {
     avatar: user?.avatar || '',
   });
 
+  // Keep form in sync when user object updates
+  React.useEffect(() => {
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        fullName: user.fullName || prev.fullName || '',
+        phone: user.phone || prev.phone || '',
+        altPhone: user.alternatePhone || user.altPhone || prev.altPhone || '',
+        gender: user.gender || prev.gender || '',
+        dob: user.dob ? user.dob.slice(0, 10) : prev.dob || '',
+        avatar: user.avatar || prev.avatar || '',
+        address: user.address || prev.address || '',
+        city: user.city || prev.city || '',
+        state: user.state || prev.state || '',
+        zipCode: user.zipCode || prev.zipCode || '',
+        country: user.country || prev.country || 'India',
+      }));
+    }
+
+    api.get('/users/addresses').then((res) => {
+      const addrs = res.data?.data || [];
+      const primary = addrs.find((a) => a.isDefault) || addrs[0];
+      if (primary) {
+        setForm((prev) => ({
+          ...prev,
+          address: primary.street || prev.address || '',
+          city: primary.city || prev.city || '',
+          state: primary.state || prev.state || '',
+          zipCode: primary.postalCode || prev.zipCode || '',
+          country: primary.country || prev.country || 'India',
+        }));
+      }
+    }).catch(() => {});
+  }, [user]);
+
   // Cropper Modal state
   const [rawImage, setRawImage] = useState(null);
   const [isCropperOpen, setIsCropperOpen] = useState(false);
@@ -38,8 +76,13 @@ const ProfileTab = () => {
     if (!form.fullName) return toast.error('Full Name is required');
     try {
       setSaving(true);
-      await api.put('/auth/me', form);
+      const res = await api.put('/users/profile', form);
       toast.success('Profile updated successfully!');
+      if (res.data?.data) {
+        dispatch(updateUser(res.data.data));
+        dispatch(getMe());
+        window.dispatchEvent(new CustomEvent('user_updated', { detail: res.data.data }));
+      }
       setEditing(false);
     } catch (err) {
       console.error('Failed to update profile:', err);
@@ -66,8 +109,12 @@ const ProfileTab = () => {
     setForm((prev) => ({ ...prev, avatar: croppedDataUrl }));
     setIsCropperOpen(false);
     try {
-      await api.put('/auth/me', { ...form, avatar: croppedDataUrl });
+      const res = await api.put('/users/profile', { ...form, avatar: croppedDataUrl });
       toast.success('Profile photo updated!');
+      if (res.data?.data) {
+        dispatch(updateUser(res.data.data));
+        dispatch(getMe());
+      }
     } catch (err) {
       console.error('Failed to update avatar:', err);
     }
