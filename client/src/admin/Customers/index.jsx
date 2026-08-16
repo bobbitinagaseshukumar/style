@@ -178,8 +178,17 @@ export default function AdminCustomers() {
       fn: async () => { await api.post(`/admin/customers/${c.id}/force-logout`); toast.success('Logged out from all devices.'); setConfirmDlg(null); } });
   };
   const doDelete = async () => {
-    try { setActionLoading(true); await api.delete(`/admin/customers/${deleteTarget.id}`, { data: deleteOpts }); toast.success(`"${deleteTarget.fullName}" deleted.`); setDeleteTarget(null); fetchCustomers(); }
-    catch (err) { toast.error('Delete failed'); } finally { setActionLoading(false); }
+    try {
+      setActionLoading(true);
+      const res = await api.delete(`/admin/customers/${deleteTarget.id}`, { data: deleteOpts });
+      toast.success(res.data?.message || `"${deleteTarget.fullName}" deleted.`);
+      setDeleteTarget(null);
+      fetchCustomers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Delete failed');
+    } finally {
+      setActionLoading(false);
+    }
   };
   const doMsg = async e => {
     e.preventDefault();
@@ -558,9 +567,11 @@ export default function AdminCustomers() {
 }
 
 /* ═══ TABLE ROW ═══ */
-function Row({ c, onView, onEdit, onPwd, onResetPwd, onBlock, onUnblock, onSuspend, onForceLogout, onDelete, onMsg, onPerms, onNotes }) {
+function Row({ c, idx, totalRows, onView, onEdit, onPwd, onResetPwd, onBlock, onUnblock, onSuspend, onForceLogout, onDelete, onMsg, onPerms, onNotes }) {
   const [menu, setMenu] = useState(false);
   const td = { padding: '14px 16px', borderBottom: '1px solid #f7f7f7', verticalAlign: 'middle' };
+  const isNearBottom = idx !== undefined && totalRows !== undefined && idx >= Math.max(0, totalRows - 3);
+
   return (
     <tr style={{ transition: 'background .1s' }} onMouseEnter={e => e.currentTarget.style.background='#FAFAFE'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
       <td style={td}>
@@ -602,8 +613,8 @@ function Row({ c, onView, onEdit, onPwd, onResetPwd, onBlock, onUnblock, onSuspe
             <IconBtn icon={FiMoreVertical} color="#666" bg="#F3F4F6" onClick={() => setMenu(m=>!m)} tip="More" />
             {menu && (
               <>
-                <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setMenu(false)} />
-                <div style={{ position: 'absolute', right: 0, top: 34, zIndex: 20, background: '#fff', borderRadius: 12, boxShadow: '0 10px 40px rgba(0,0,0,.15)', border: '1px solid #eee', minWidth: 200, overflow: 'hidden' }}>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setMenu(false)} />
+                <div style={{ position: 'absolute', right: 0, ...(isNearBottom ? { bottom: 34 } : { top: 34 }), zIndex: 99, background: '#fff', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,.2)', border: '1px solid #e5e7eb', minWidth: 210, maxHeight: 280, overflowY: 'auto' }}>
                   {[
                     { label: '🔑 Change Password', fn: onPwd },
                     { label: '🔄 Reset Password', fn: onResetPwd },

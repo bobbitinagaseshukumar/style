@@ -795,41 +795,79 @@ exports.deleteCustomer = asyncHandler(async (req, res, next) => {
 
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return next(new ApiError(404, 'Customer not found'));
-  if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
-    return next(new ApiError(403, 'Cannot delete an admin account from customer management'));
+
+  // Prevent deleting currently logged-in Super Admin self
+  if (req.user?.id === id) {
+    return next(new ApiError(400, 'You cannot delete your own active admin account.'));
   }
 
-  if (deleteAll || deleteReviews) {
-    await prisma.review.deleteMany({ where: { userId: id } }).catch(() => {});
-  }
-  if (deleteAll || deleteWishlist) {
-    const wishlist = await prisma.wishlist.findUnique({ where: { userId: id } });
-    if (wishlist) {
-      await prisma.wishlistItem.deleteMany({ where: { wishlistId: wishlist.id } }).catch(() => {});
-      await prisma.wishlist.delete({ where: { id: wishlist.id } }).catch(() => {});
+  if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+    // Only allow deletion if explicitly requested
+    if (user.role === 'SUPER_ADMIN') {
+      return next(new ApiError(403, 'Super Admin accounts cannot be deleted from Customer Management.'));
     }
   }
-  if (deleteAll || deleteAddresses) {
-    await prisma.address.deleteMany({ where: { userId: id } }).catch(() => {});
+
+  try {
+    if (deleteAll || deleteReviews) {
+      await prisma.review.deleteMany({ where: { userId: id } }).catch(() => {});
+      await prisma.reviewLike.deleteMany({ where: { userId: id } }).catch(() => {});
+    }
+    if (deleteAll || deleteWishlist) {
+      const wishlist = await prisma.wishlist.findUnique({ where: { userId: id } });
+      if (wishlist) {
+        await prisma.wishlistItem.deleteMany({ where: { wishlistId: wishlist.id } }).catch(() => {});
+        await prisma.wishlist.delete({ where: { id: wishlist.id } }).catch(() => {});
+      }
+    }
+    if (deleteAll || deleteAddresses) {
+      await prisma.address.deleteMany({ where: { userId: id } }).catch(() => {});
+    }
+    if (deleteAll || deleteMessages) {
+      await prisma.notification.deleteMany({ where: { userId: id } }).catch(() => {});
+      await prisma.supportTicket.deleteMany({ where: { userId: id } }).catch(() => {});
+    }
+
+    // Clean up auxiliary user records to prevent FK constraint failures
+    await prisma.activityLog.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.recentlyViewed.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.emailOTP.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.productRecommendationScore.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.customerBehaviorLog.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.couponUsage.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.backInStockSubscription.deleteMany({ where: { userId: id } }).catch(() => {});
+
+    // Decouple wallet
+    const wallet = await prisma.wallet.findUnique({ where: { userId: id } }).catch(() => null);
+    if (wallet) {
+      await prisma.walletTransaction.deleteMany({ where: { walletId: wallet.id } }).catch(() => {});
+      await prisma.wallet.delete({ where: { id: wallet.id } }).catch(() => {});
+    }
+
+    // Decouple cart
+    const cart = await prisma.cart.findUnique({ where: { userId: id } }).catch(() => null);
+    if (cart) {
+      await prisma.cartItem.deleteMany({ where: { cartId: cart.id } }).catch(() => {});
+      await prisma.cart.delete({ where: { id: cart.id } }).catch(() => {});
+    }
+
+    // Decouple orders
+    const orders = await prisma.order.findMany({ where: { userId: id } }).catch(() => []);
+    if (orders.length > 0) {
+      for (const ord of orders) {
+        await prisma.orderItem.deleteMany({ where: { orderId: ord.id } }).catch(() => {});
+        await prisma.orderStatusHistory.deleteMany({ where: { orderId: ord.id } }).catch(() => {});
+        await prisma.payment.deleteMany({ where: { orderId: ord.id } }).catch(() => {});
+      }
+      await prisma.order.deleteMany({ where: { userId: id } }).catch(() => {});
+    }
+
+    await logAdminAction(req, user, 'ACCOUNT_DELETED', 'Admin permanently deleted customer account');
+    await prisma.user.delete({ where: { id } });
+  } catch (err) {
+    console.error('[DELETE CUSTOMER ERROR]:', err);
+    return next(new ApiError(500, `Failed to delete customer: ${err.message}`));
   }
-  if (deleteAll || deleteMessages) {
-    await prisma.notification.deleteMany({ where: { userId: id } }).catch(() => {});
-    await prisma.supportTicket.deleteMany({ where: { userId: id } }).catch(() => {});
-  }
-
-  await prisma.activityLog.deleteMany({ where: { userId: id } }).catch(() => {});
-  await prisma.recentlyViewed.deleteMany({ where: { userId: id } }).catch(() => {});
-  await prisma.emailOTP.deleteMany({ where: { userId: id } }).catch(() => {});
-
-  const cart = await prisma.cart.findUnique({ where: { userId: id } });
-  if (cart) {
-    await prisma.cartItem.deleteMany({ where: { cartId: cart.id } }).catch(() => {});
-    await prisma.cart.delete({ where: { id: cart.id } }).catch(() => {});
-  }
-
-  await logAdminAction(req, user, 'ACCOUNT_DELETED', 'Admin permanently deleted customer account');
-
-  await prisma.user.delete({ where: { id } });
 
   res.status(200).json({
     success: true,
