@@ -456,7 +456,8 @@ const Navbar = () => {
                               <Link
                                 key={item.label}
                                 to={item.path}
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setIsUserMenuOpen(false);
                                   setActiveMegaMenu(null);
                                 }}
@@ -472,7 +473,8 @@ const Navbar = () => {
                             <div className="border-t border-white/10 py-1">
                               <Link
                                 to="/admin/dashboard"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setIsUserMenuOpen(false);
                                   setActiveMegaMenu(null);
                                 }}
