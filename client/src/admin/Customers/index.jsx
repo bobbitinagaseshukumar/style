@@ -567,10 +567,24 @@ export default function AdminCustomers() {
 }
 
 /* ═══ TABLE ROW ═══ */
-function Row({ c, idx, totalRows, onView, onEdit, onPwd, onResetPwd, onBlock, onUnblock, onSuspend, onForceLogout, onDelete, onMsg, onPerms, onNotes }) {
-  const [menu, setMenu] = useState(false);
+function Row({ c, onView, onEdit, onPwd, onResetPwd, onBlock, onUnblock, onSuspend, onForceLogout, onDelete, onMsg, onPerms, onNotes }) {
+  const [menuPos, setMenuPos] = useState(null);
   const td = { padding: '14px 16px', borderBottom: '1px solid #f7f7f7', verticalAlign: 'middle' };
-  const isNearBottom = idx !== undefined && totalRows !== undefined && idx >= Math.max(0, totalRows - 3);
+
+  const handleToggleMenu = (e) => {
+    if (menuPos) {
+      setMenuPos(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUp = spaceBelow < 310;
+    setMenuPos({
+      top: openUp ? 'auto' : rect.bottom + 4,
+      bottom: openUp ? (window.innerHeight - rect.top + 4) : 'auto',
+      right: window.innerWidth - rect.right
+    });
+  };
 
   return (
     <tr style={{ transition: 'background .1s' }} onMouseEnter={e => e.currentTarget.style.background='#FAFAFE'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
@@ -609,12 +623,26 @@ function Row({ c, idx, totalRows, onView, onEdit, onPwd, onResetPwd, onBlock, on
             ? <IconBtn icon={FiUnlock} color="#059669" bg="#ECFDF5" onClick={onUnblock} tip="Unblock" />
             : <IconBtn icon={FiLock} color="#DC2626" bg="#FEF2F2" onClick={onBlock} tip="Block" />
           }
-          <div style={{ position: 'relative' }}>
-            <IconBtn icon={FiMoreVertical} color="#666" bg="#F3F4F6" onClick={() => setMenu(m=>!m)} tip="More" />
-            {menu && (
+          <div>
+            <IconBtn icon={FiMoreVertical} color="#666" bg="#F3F4F6" onClick={handleToggleMenu} tip="More" />
+            {menuPos && (
               <>
-                <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setMenu(false)} />
-                <div style={{ position: 'absolute', right: 0, ...(isNearBottom ? { bottom: 34 } : { top: 34 }), zIndex: 99, background: '#fff', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,.2)', border: '1px solid #e5e7eb', minWidth: 210, maxHeight: 280, overflowY: 'auto' }}>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setMenuPos(null)} />
+                <div style={{
+                  position: 'fixed',
+                  top: menuPos.top,
+                  bottom: menuPos.bottom,
+                  right: menuPos.right,
+                  zIndex: 9999,
+                  background: '#fff',
+                  borderRadius: 12,
+                  boxShadow: '0 10px 40px rgba(0,0,0,.25)',
+                  border: '1px solid #e5e7eb',
+                  minWidth: 210,
+                  maxHeight: 320,
+                  overflowY: 'auto',
+                  padding: '4px 0'
+                }}>
                   {[
                     { label: '🔑 Change Password', fn: onPwd },
                     { label: '🔄 Reset Password', fn: onResetPwd },
@@ -625,7 +653,7 @@ function Row({ c, idx, totalRows, onView, onEdit, onPwd, onResetPwd, onBlock, on
                     { label: '📝 Private Notes', fn: onNotes },
                     { label: '🗑️ Delete Account', fn: onDelete, danger: true },
                   ].map(x => (
-                    <button key={x.label} onClick={() => { setMenu(false); x.fn(); }}
+                    <button key={x.label} onClick={() => { setMenuPos(null); x.fn(); }}
                       style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 16px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 12, color: x.danger ? '#DC2626' : '#333', fontWeight: x.danger ? 700 : 500, transition: 'background .1s' }}
                       onMouseEnter={e => e.target.style.background='#f7f7f7'} onMouseLeave={e => e.target.style.background='transparent'}>
                       {x.label}
