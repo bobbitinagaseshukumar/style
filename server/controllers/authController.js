@@ -8,7 +8,7 @@ const { sendOTPEmail, sendWelcomeEmail, sendPasswordResetEmail, sendPasswordChan
 const { generateCustomerId } = require('./adminCustomerController');
 
 // Password complexity regex (min 8 chars, uppercase, lowercase, number, special char)
-const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 // ==================== REGISTER ====================
 exports.register = asyncHandler(async (req, res, next) => {
@@ -20,7 +20,7 @@ exports.register = asyncHandler(async (req, res, next) => {
 
   // Check password strength
   if (!passwordRegex.test(password)) {
-    return next(new ApiError(400, 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'));
+    return next(new ApiError(400, 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character'));
   }
 
   // Check duplicate user
