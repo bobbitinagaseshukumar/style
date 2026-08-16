@@ -22,6 +22,19 @@ const Toggle = ({ value, onChange, disabled }) => (
   </button>
 );
 
+const checkPasswordStrength = (pass) => {
+  const p = pass || '';
+  const checks = {
+    length: p.length >= 8,
+    upper: /[A-Z]/.test(p),
+    lower: /[a-z]/.test(p),
+    number: /[0-9]/.test(p),
+    special: /[@$!%*?&]/.test(p),
+  };
+  const score = Object.values(checks).filter(Boolean).length;
+  return { checks, score };
+};
+
 const SettingsTab = () => {
   const dispatch = useDispatch();
   const user = useSelector((s) => s.auth.user);
@@ -88,32 +101,31 @@ const SettingsTab = () => {
     }
   };
 
-  const handleRequestPasswordOTP = async (e, forceForgot = false) => {
+  const handleRequestPasswordOTP = async (e) => {
     if (e) e.preventDefault();
-    const forgot = forceForgot || isForgotFlow;
     if (!passwords.newPassword) {
       return toast.error('Please enter your new password');
     }
     if (passwords.newPassword !== passwords.confirmPassword) {
       return toast.error('New passwords do not match');
     }
-    if (passwords.newPassword.length < 8) {
-      return toast.error('Password must be at least 8 characters long');
+    const { score } = checkPasswordStrength(passwords.newPassword);
+    if (score < 5) {
+      return toast.error('Please fulfill all password security requirements shown below.');
     }
-    if (!forgot && !passwords.currentPassword) {
+    if (!isForgotFlow && !passwords.currentPassword) {
       return toast.error('Please enter current password or click "Forgot Current Password?"');
     }
 
     try {
       setRequestingOtp(true);
       const res = await api.post('/users/password-otp/request', {
-        currentPassword: passwords.currentPassword,
+        currentPassword: isForgotFlow ? '' : passwords.currentPassword,
         newPassword: passwords.newPassword,
         confirmNewPassword: passwords.confirmPassword,
-        isForgotFlow: forgot
+        isForgotFlow
       });
       toast.success(res.data?.message || 'Verification OTP code sent to your registered email!');
-      setIsForgotFlow(forgot);
       setOtpModal(true);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send OTP for password change');
@@ -158,45 +170,52 @@ const SettingsTab = () => {
 
       {/* Password Change Form */}
       <div className="space-y-4 bg-white/5 p-6 rounded-2xl border border-white/10 shadow-sm">
-        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/5">
-          <FiLock className="text-yellow-400 w-4 h-4" />
-          <div>
-            <h3 className="text-xs font-bold text-white uppercase tracking-widest">Change Security Password</h3>
-            <p className="text-[11px] text-white/40 mt-0.5">A security verification OTP will be sent to your email</p>
+        <div className="flex items-center justify-between mb-2 pb-2 border-b border-white/5 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <FiLock className="text-yellow-400 w-4 h-4" />
+            <div>
+              <h3 className="text-xs font-bold text-white uppercase tracking-widest">
+                {isForgotFlow ? 'Reset Password (Forgot Current Password)' : 'Change Security Password'}
+              </h3>
+              <p className="text-[11px] text-white/40 mt-0.5">
+                {isForgotFlow ? 'Current password not required. Security OTP will be sent to your email.' : 'A security verification OTP will be sent to your email'}
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setIsForgotFlow(!isForgotFlow);
+              setPasswords(p => ({ ...p, currentPassword: '' }));
+            }}
+            className="text-[11px] text-yellow-400 font-bold hover:underline cursor-pointer bg-white/10 px-3 py-1.5 rounded-lg"
+          >
+            {isForgotFlow ? '← Remember Current Password?' : 'Forgot Current Password?'}
+          </button>
         </div>
 
         <form onSubmit={handleRequestPasswordOTP} className="space-y-4 max-w-md">
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="text-[10px] font-bold text-gray-400 uppercase">Current Password *</label>
-              <button
-                type="button"
-                onClick={(e) => {
-                  setIsForgotFlow(true);
-                  handleRequestPasswordOTP(e, true);
-                }}
-                className="text-[11px] text-yellow-400 font-bold hover:underline cursor-pointer"
-              >
-                Forgot Current Password?
-              </button>
+          {!isForgotFlow && (
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Current Password *</label>
+              <div className="relative">
+                <input
+                  type={showCurrentPass ? 'text' : 'password'}
+                  value={passwords.currentPassword}
+                  onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-yellow-400 transition-all pr-10"
+                  required={!isForgotFlow}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPass(!showCurrentPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white p-1 cursor-pointer"
+                >
+                  {showCurrentPass ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                </button>
+              </div>
             </div>
-            <div className="relative">
-              <input
-                type={showCurrentPass ? 'text' : 'password'}
-                value={passwords.currentPassword}
-                onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-yellow-400 transition-all pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowCurrentPass(!showCurrentPass)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white p-1 cursor-pointer"
-              >
-                {showCurrentPass ? <FiEyeOff size={14} /> : <FiEye size={14} />}
-              </button>
-            </div>
-          </div>
+          )}
 
           <div>
             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">New Password *</label>
@@ -217,6 +236,30 @@ const SettingsTab = () => {
               </button>
             </div>
           </div>
+
+          {/* Live Password Security Requirements Checklist */}
+          {passwords.newPassword && (
+            <div className="bg-black/30 border border-white/10 p-3 rounded-xl text-xs space-y-1.5">
+              <p className="font-bold text-gray-300 text-[11px]">Password Security Requirements:</p>
+              <div className="grid grid-cols-2 gap-1 text-[11px]">
+                <span className={checkPasswordStrength(passwords.newPassword).checks.length ? "text-emerald-400 font-bold" : "text-gray-500"}>
+                  {checkPasswordStrength(passwords.newPassword).checks.length ? "✓" : "○"} Min 8 characters
+                </span>
+                <span className={checkPasswordStrength(passwords.newPassword).checks.upper ? "text-emerald-400 font-bold" : "text-gray-500"}>
+                  {checkPasswordStrength(passwords.newPassword).checks.upper ? "✓" : "○"} Uppercase letter (A-Z)
+                </span>
+                <span className={checkPasswordStrength(passwords.newPassword).checks.lower ? "text-emerald-400 font-bold" : "text-gray-500"}>
+                  {checkPasswordStrength(passwords.newPassword).checks.lower ? "✓" : "○"} Lowercase letter (a-z)
+                </span>
+                <span className={checkPasswordStrength(passwords.newPassword).checks.number ? "text-emerald-400 font-bold" : "text-gray-500"}>
+                  {checkPasswordStrength(passwords.newPassword).checks.number ? "✓" : "○"} Number (0-9)
+                </span>
+                <span className={checkPasswordStrength(passwords.newPassword).checks.special ? "text-emerald-400 font-bold" : "text-gray-500"}>
+                  {checkPasswordStrength(passwords.newPassword).checks.special ? "✓" : "○"} Special character (@$!%*?&)
+                </span>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Confirm New Password *</label>

@@ -444,43 +444,50 @@ export default function AdminProfile() {
       {/* ══════════════════ TAB 3: CHANGE PASSWORD ══════════════════ */}
       {activeTab === 'password' && (
         <div style={S.card}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111', marginBottom: 6 }}>Change Admin Password</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>
+              {isForgotFlow ? 'Reset Admin Password (Forgot Current Password)' : 'Change Admin Password'}
+            </h2>
+            <button
+              type="button"
+              onClick={() => {
+                setIsForgotFlow(!isForgotFlow);
+                setCurrentPassword('');
+              }}
+              style={{ background: '#FEF3C7', border: '1px solid #FDE68A', padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#D97706', cursor: 'pointer' }}
+            >
+              {isForgotFlow ? '← Remember Current Password?' : 'Forgot Current Password?'}
+            </button>
+          </div>
           <p style={{ fontSize: 13, color: '#666', marginBottom: 20 }}>
-            Every password change requires your current password plus a 6-digit OTP sent to your registered email address. Changing your password will log out all other active sessions.
+            {isForgotFlow 
+              ? 'Current password is not required. A 6-digit verification code will be sent to your registered admin email address.'
+              : 'Every password change requires your current password plus a 6-digit OTP sent to your registered email address.'}
           </p>
 
           {passStep === 1 ? (
             <form onSubmit={handleRequestPasswordOTP} style={{ maxWidth: 480 }}>
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <label style={S.label}>Current Password</label>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      setIsForgotFlow(true);
-                      handleRequestPasswordOTP(e, true);
-                    }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: '#D97706', textDecoration: 'underline' }}
-                  >
-                    Forgot Current Password?
-                  </button>
+              {!isForgotFlow && (
+                <div style={{ marginBottom: 16 }}>
+                  <label style={S.label}>Current Password *</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showCurrentPass ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={e => setCurrentPassword(e.target.value)}
+                      style={{ ...S.input, paddingRight: 36 }}
+                      required={!isForgotFlow}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPass(s => !s)}
+                      style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#888' }}
+                    >
+                      {showCurrentPass ? <FiEyeOff /> : <FiEye />}
+                    </button>
+                  </div>
                 </div>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type={showCurrentPass ? 'text' : 'password'}
-                    value={currentPassword}
-                    onChange={e => setCurrentPassword(e.target.value)}
-                    style={{ ...S.input, paddingRight: 36 }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPass(s => !s)}
-                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#888' }}
-                  >
-                    {showCurrentPass ? <FiEyeOff /> : <FiEye />}
-                  </button>
-                </div>
-              </div>
+              )}
 
               <div style={{ marginBottom: 16 }}>
                 <label style={S.label}>New Password</label>

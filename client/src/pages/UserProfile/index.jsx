@@ -105,35 +105,44 @@ const UserProfile = () => {
     }
   };
 
-  const [passForm, setPassForm] = useState({ currentPassword: '', newPassword: '' });
+  const [passForm, setPassForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [isForgotFlow, setIsForgotFlow] = useState(false);
   const [otpModal, setOtpModal] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [requestingOtp, setRequestingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
 
-  const handleRequestPasswordOTP = async (e, forceForgot = false) => {
+  const handleRequestPasswordOTP = async (e) => {
     if (e) e.preventDefault();
-    const forgot = forceForgot || isForgotFlow;
     if (!passForm.newPassword) {
       toast.error('Please enter your new password first.');
       return;
     }
-    if (!forgot && !passForm.currentPassword) {
+    if (passForm.confirmPassword && passForm.newPassword !== passForm.confirmPassword) {
+      toast.error('New passwords do not match.');
+      return;
+    }
+    const { score } = checkPasswordStrength(passForm.newPassword);
+    if (score < 5) {
+      toast.error('Please satisfy all password security requirements shown in green below.');
+      return;
+    }
+    if (!isForgotFlow && !passForm.currentPassword) {
       toast.error('Please enter your current password or click "Forgot Current Password?"');
       return;
     }
     try {
       setRequestingOtp(true);
       const res = await api.post('/users/password-otp/request', {
-        currentPassword: passForm.currentPassword,
+        currentPassword: isForgotFlow ? '' : passForm.currentPassword,
         newPassword: passForm.newPassword,
-        isForgotFlow: forgot
+        confirmNewPassword: passForm.confirmPassword,
+        isForgotFlow
       });
       toast.success(res.data?.message || 'Verification OTP code sent to your registered email!');
-      setIsForgotFlow(forgot);
       setOtpModal(true);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send OTP for password change');
@@ -158,7 +167,7 @@ const UserProfile = () => {
       toast.success(res.data?.message || 'Password changed successfully!');
       setOtpModal(false);
       setOtpCode('');
-      setPassForm({ currentPassword: '', newPassword: '' });
+      setPassForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setIsForgotFlow(false);
       fetchUserData();
     } catch (err) {
@@ -421,46 +430,52 @@ const UserProfile = () => {
             <div className="space-y-8">
               {/* Change Security Password */}
               <form onSubmit={handleRequestPasswordOTP} className="space-y-4 bg-amber-50/30 p-6 rounded-2xl border border-amber-200/60 shadow-sm">
-                <div className="border-b border-amber-200/60 pb-3">
-                  <h3 className="text-xl font-serif font-bold text-charcoal-900 flex items-center gap-2">
-                    <FiLock className="text-amber-600" /> Change Security Password
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-1">
-                    An OTP verification code will be sent to your email to confirm the password update.
-                  </p>
-                </div>
-                {/* Current Password Field */}
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs font-bold text-gray-700 uppercase">Current Password *</label>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        setIsForgotFlow(true);
-                        handleRequestPasswordOTP(e, true);
-                      }}
-                      className="text-xs text-amber-600 font-bold hover:underline cursor-pointer"
-                    >
-                      Forgot Current Password?
-                    </button>
+                <div className="border-b border-amber-200/60 pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div>
+                    <h3 className="text-xl font-serif font-bold text-charcoal-900 flex items-center gap-2">
+                      <FiLock className="text-amber-600" /> {isForgotFlow ? 'Reset Password (Forgot Current Password)' : 'Change Security Password'}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {isForgotFlow 
+                        ? 'Current password is not required. A 6-digit OTP code will be sent to your registered email address.' 
+                        : 'An OTP verification code will be sent to your email to confirm the password update.'}
+                    </p>
                   </div>
-                  <div className="relative">
-                    <input
-                      type={showCurrentPass ? 'text' : 'password'}
-                      value={passForm.currentPassword}
-                      onChange={e => setPassForm({ ...passForm, currentPassword: e.target.value })}
-                      placeholder="••••••••"
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-amber-600 outline-none text-sm pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPass(!showCurrentPass)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
-                    >
-                      {showCurrentPass ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotFlow(!isForgotFlow);
+                      setPassForm(p => ({ ...p, currentPassword: '' }));
+                    }}
+                    className="text-xs text-amber-600 font-bold hover:underline cursor-pointer bg-amber-100/60 px-3 py-1.5 rounded-lg whitespace-nowrap"
+                  >
+                    {isForgotFlow ? '← Remember Current Password?' : 'Forgot Current Password?'}
+                  </button>
                 </div>
+
+                {/* Current Password Field (Only shown when NOT in forgot flow) */}
+                {!isForgotFlow && (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Current Password *</label>
+                    <div className="relative">
+                      <input
+                        type={showCurrentPass ? 'text' : 'password'}
+                        value={passForm.currentPassword}
+                        onChange={e => setPassForm({ ...passForm, currentPassword: e.target.value })}
+                        placeholder="••••••••"
+                        required={!isForgotFlow}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-amber-600 outline-none text-sm pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPass(!showCurrentPass)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+                      >
+                        {showCurrentPass ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* New Password Field */}
                 <div>
@@ -480,6 +495,52 @@ const UserProfile = () => {
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
                     >
                       {showNewPass ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Live Password Security Requirements Checklist */}
+                {passForm.newPassword && (
+                  <div className="bg-white/80 border border-amber-200/80 p-3 rounded-xl text-xs space-y-1.5 shadow-inner">
+                    <p className="font-bold text-gray-700">Password Security Requirements:</p>
+                    <div className="grid grid-cols-2 gap-1.5 text-xs">
+                      <span className={checkPasswordStrength(passForm.newPassword).checks.length ? "text-emerald-600 font-bold flex items-center gap-1" : "text-gray-400 flex items-center gap-1"}>
+                        {checkPasswordStrength(passForm.newPassword).checks.length ? "✓" : "○"} Min 8 characters
+                      </span>
+                      <span className={checkPasswordStrength(passForm.newPassword).checks.upper ? "text-emerald-600 font-bold flex items-center gap-1" : "text-gray-400 flex items-center gap-1"}>
+                        {checkPasswordStrength(passForm.newPassword).checks.upper ? "✓" : "○"} Uppercase letter (A-Z)
+                      </span>
+                      <span className={checkPasswordStrength(passForm.newPassword).checks.lower ? "text-emerald-600 font-bold flex items-center gap-1" : "text-gray-400 flex items-center gap-1"}>
+                        {checkPasswordStrength(passForm.newPassword).checks.lower ? "✓" : "○"} Lowercase letter (a-z)
+                      </span>
+                      <span className={checkPasswordStrength(passForm.newPassword).checks.number ? "text-emerald-600 font-bold flex items-center gap-1" : "text-gray-400 flex items-center gap-1"}>
+                        {checkPasswordStrength(passForm.newPassword).checks.number ? "✓" : "○"} Number (0-9)
+                      </span>
+                      <span className={checkPasswordStrength(passForm.newPassword).checks.special ? "text-emerald-600 font-bold flex items-center gap-1" : "text-gray-400 flex items-center gap-1"}>
+                        {checkPasswordStrength(passForm.newPassword).checks.special ? "✓" : "○"} Special character (@$!%*?&)
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Confirm New Password Field */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Confirm New Password *</label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPass ? 'text' : 'password'}
+                      value={passForm.confirmPassword || ''}
+                      onChange={e => setPassForm({ ...passForm, confirmPassword: e.target.value })}
+                      placeholder="••••••••"
+                      required
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-amber-600 outline-none text-sm pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPass(!showConfirmPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+                    >
+                      {showConfirmPass ? <FiEyeOff size={16} /> : <FiEye size={16} />}
                     </button>
                   </div>
                 </div>
