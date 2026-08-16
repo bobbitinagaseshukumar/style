@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { FiFilter, FiSliders, FiHeart, FiShoppingBag, FiStar, FiX, FiLayers, FiCheck } from 'react-icons/fi';
 import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { formatImageUrl } from '../../utils/formatImageUrl';
 
 const Categories = () => {
   const { slug } = useParams();
@@ -114,13 +115,22 @@ const Categories = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-charcoal-900 via-charcoal-800 to-charcoal-900 text-white py-12 px-4 text-center relative overflow-hidden">
+      {/* Header Banner with Admin-Uploaded Photo & Description */}
+      <div className="relative bg-gradient-to-r from-charcoal-900 via-charcoal-800 to-charcoal-900 text-white py-12 sm:py-16 px-4 text-center overflow-hidden">
+        {(activeCategoryObj?.banner || activeCategoryObj?.image) && (
+          <img
+            src={formatImageUrl(activeCategoryObj.banner || activeCategoryObj.image)}
+            alt={activeCategoryObj.name}
+            className="absolute inset-0 w-full h-full object-cover opacity-25"
+          />
+        )}
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 relative z-10">
-          <h1 className="text-3xl sm:text-4xl font-serif font-bold text-white mb-2">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-bold text-white mb-2">
             {activeCategoryObj ? activeCategoryObj.name : 'Explore All Collections'}
           </h1>
-          <p className="text-sm text-gray-300">Discover handcrafted sarees, kundan jewellery, kurtis, and designer wear</p>
+          <p className="text-sm text-gray-300 max-w-2xl mx-auto leading-relaxed">
+            {activeCategoryObj?.shortDesc || activeCategoryObj?.description || 'Discover handcrafted sarees, kundan jewellery, kurtis, and designer wear'}
+          </p>
         </div>
       </div>
 
@@ -168,7 +178,7 @@ const Categories = () => {
                     }`}
                   >
                     <img
-                      src={sub.image || 'https://via.placeholder.com/80'}
+                      src={formatImageUrl(sub.image) || 'https://via.placeholder.com/80'}
                       alt={sub.name}
                       className="w-10 h-10 rounded-xl object-cover border border-amber-200"
                     />

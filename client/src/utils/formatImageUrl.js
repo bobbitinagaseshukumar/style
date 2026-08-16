@@ -2,8 +2,8 @@
  * Robust image URL formatter that handles:
  * 1. Base64 Data URLs (data:image/...) -> returns as-is
  * 2. Absolute HTTP/HTTPS URLs -> returns as-is
- * 3. Relative server paths (/uploads/products/...) -> attaches backend API base URL
- * 4. Local browser blob: URLs or broken/empty URLs -> returns high quality fashion image fallback
+ * 3. Local Blob URLs (blob:http...) -> returns as-is for active editing
+ * 4. Relative server paths (/uploads/products/...) -> attaches backend API base URL
  */
 export const formatImageUrl = (url, fallbackName = 'Product') => {
   if (!url || typeof url !== 'string') {
@@ -11,15 +11,21 @@ export const formatImageUrl = (url, fallbackName = 'Product') => {
   }
 
   const trimmed = url.trim();
+  if (!trimmed) return '';
 
-  // 1. Data URLs & Absolute HTTP/HTTPS URLs
-  if (trimmed.startsWith('data:image/') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+  // 1. Data URLs, Absolute HTTP/HTTPS URLs, and active session Blob URLs
+  if (
+    trimmed.startsWith('data:image/') ||
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('blob:')
+  ) {
     return trimmed;
   }
 
-  // 2. Reject temporary local browser blob: URLs
-  if (trimmed.startsWith('blob:')) {
-    return '';
+  // 2. Handle protocol-relative URLs (//example.com/img.jpg)
+  if (trimmed.startsWith('//')) {
+    return `https:${trimmed}`;
   }
 
   // 3. Handle relative server paths (/uploads/...)

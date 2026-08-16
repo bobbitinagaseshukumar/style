@@ -67,8 +67,8 @@ const getCategoryThumbnail = (cat) => {
   if (!cat) return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80';
   
   const rawImage = cat.image || cat.imageUrl || cat.coverImage || cat.banner || cat.thumbnail;
-  if (rawImage && typeof rawImage === 'string' && rawImage.trim().length > 5 && !rawImage.includes('ui-avatars.com')) {
-    return rawImage.trim();
+  if (rawImage && typeof rawImage === 'string' && rawImage.trim().length > 5) {
+    return formatImageUrl(rawImage.trim());
   }
 
   const slug = String(cat.slug || '').toLowerCase();
@@ -366,7 +366,9 @@ const Home = () => {
               <p className="text-gray-500">Explore our handcrafted luxury collections</p>
             </motion.div>
             <motion.div {...stagger} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
-              {categories.map((cat) => (
+              {categories
+                .filter(cat => (cat.status || 'PUBLISHED') === 'PUBLISHED' && cat.isVisible !== false && cat.showOnHomepage !== false)
+                .map((cat) => (
                 <motion.div key={cat.id} variants={fadeInUp}>
                   <Link to={`/categories/${cat.slug}`}
                     className="group relative block aspect-[4/5] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 bg-charcoal-900">
@@ -548,12 +550,13 @@ const Home = () => {
               {/* Optional Section Banner */}
               {sec.bannerUrl && (
                 <div className="relative rounded-2xl overflow-hidden mb-8 h-48 sm:h-64 shadow-md">
-                  <img src={sec.bannerUrl} alt={sec.title} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent flex items-center p-6 lg:p-10">
-                    <div className="max-w-md text-white">
+                  <img src={formatImageUrl(sec.bannerUrl)} alt={sec.title} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent flex items-center p-6 lg:p-10">
+                    <div className="max-w-lg text-white">
                       <span className="text-xs font-bold text-gold-400 uppercase tracking-widest">SPECIAL COLLECTION</span>
                       <h2 className="text-2xl sm:text-3xl font-serif font-bold mt-1">{sec.title}</h2>
-                      {sec.subtitle && <p className="text-sm text-gray-200 mt-2">{sec.subtitle}</p>}
+                      {sec.subtitle && <p className="text-sm text-gray-200 mt-1">{sec.subtitle}</p>}
+                      {sec.description && <p className="text-xs text-gray-300 mt-2 line-clamp-2 leading-relaxed">{sec.description}</p>}
                     </div>
                   </div>
                 </div>

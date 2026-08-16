@@ -357,6 +357,17 @@ const GlobalImageEditor = ({
       }
       setUploadProgress(40);
 
+      // Helper to convert blob to permanent Base64 Data URL
+      const getBase64DataUrl = (blob) =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+      let finalUrl = null;
+
       if (uploadOnApply) {
         const formData = new FormData();
         formData.append('image', croppedBlob, `edited-${Date.now()}.webp`);
@@ -369,19 +380,24 @@ const GlobalImageEditor = ({
           });
           setUploadProgress(100);
           if (data?.url) {
-            onComplete(data.url, croppedBlob);
-            toast.success('Image edited & uploaded!');
-            onClose();
-          } else {
-            toast.error('Image uploaded, but no URL was returned. Please try again.');
+            finalUrl = data.url;
           }
         } catch (err) {
-          console.error('[UPLOAD ERROR]', err);
-          toast.error('Image upload failed. Please try again.');
+          console.warn('[UPLOAD SERVER FALLBACK TO BASE64]', err.message);
         }
+      }
+
+      // If server upload did not return a permanent URL, convert croppedBlob to Base64 data URL
+      if (!finalUrl) {
+        finalUrl = await getBase64DataUrl(croppedBlob);
+      }
+
+      if (finalUrl) {
+        onComplete(finalUrl, croppedBlob);
+        toast.success('Image cropped & saved successfully! ✨');
+        onClose();
       } else {
-        const objectUrl = URL.createObjectURL(croppedBlob);
-        onComplete(objectUrl, croppedBlob);
+        toast.error('Could not process cropped image. Please try again.');
       }
     } catch (err) {
       console.error('[CROP ERROR]', err);

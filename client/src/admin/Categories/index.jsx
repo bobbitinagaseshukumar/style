@@ -9,6 +9,7 @@ import {
 import { toast } from 'react-toastify';
 import { AnimatePresence, motion } from 'framer-motion';
 import CategoryDrawer from './CategoryDrawer';
+import { formatImageUrl } from '../../utils/formatImageUrl';
 
 /* ─── Subcategory Inline Form ──────────────────────────────────── */
 const SubCategoryForm = ({ categoryId, onAdd, onCancel }) => {
@@ -53,7 +54,7 @@ const SubCategoryForm = ({ categoryId, onAdd, onCancel }) => {
 };
 
 /* ─── Single Premium Category Card ────────────────────────────── */
-const CategoryCard = ({ category, onDelete, onEdit, onToggleHomepage }) => {
+const CategoryCard = ({ category, onDelete, onEdit, onToggleHomepage, onTogglePublish }) => {
   const [expanded, setExpanded] = useState(false);
   const [subs, setSubs] = useState([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
@@ -103,10 +104,11 @@ const CategoryCard = ({ category, onDelete, onEdit, onToggleHomepage }) => {
     }
   };
 
-  const img = category.image
+  const img = formatImageUrl(category.image || category.imageUrl)
     || `https://ui-avatars.com/api/?name=${encodeURIComponent(category.name)}&background=D4AF37&color=fff&size=200`;
 
-  const bannerImg = category.banner;
+  const bannerImg = formatImageUrl(category.banner);
+  const isPublished = (category.status || 'PUBLISHED') === 'PUBLISHED';
 
   return (
     <div className="bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col">
@@ -121,6 +123,17 @@ const CategoryCard = ({ category, onDelete, onEdit, onToggleHomepage }) => {
 
         {/* Action Controls */}
         <div className="absolute top-3 right-3 flex gap-1.5 z-10">
+          <button
+            onClick={() => onTogglePublish(category)}
+            className={`px-2.5 py-1.5 rounded-xl font-bold text-[11px] transition shadow-md backdrop-blur-md cursor-pointer flex items-center gap-1 ${
+              isPublished
+                ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                : 'bg-yellow-500 hover:bg-yellow-600 text-black'
+            }`}
+            title={isPublished ? 'Click to Unpublish / Draft' : 'Click to Publish on Website'}
+          >
+            {isPublished ? '✓ Published' : 'Draft / Hidden'}
+          </button>
           <button
             onClick={() => onEdit(category)}
             className="p-2 rounded-xl bg-white/90 text-blue-600 hover:bg-white transition shadow-md backdrop-blur-md cursor-pointer"
@@ -160,11 +173,11 @@ const CategoryCard = ({ category, onDelete, onEdit, onToggleHomepage }) => {
 
           <div className="mt-3 flex flex-wrap gap-1.5">
             <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
-              (category.status || 'PUBLISHED') === 'PUBLISHED'
+              isPublished
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-gray-100 text-gray-700 border-gray-200'
+                : 'bg-yellow-50 text-yellow-700 border-yellow-200'
             }`}>
-              {category.status || 'PUBLISHED'}
+              {isPublished ? '✓ Published on Website' : 'Draft / Unpublished'}
             </span>
 
             {category.isFeaturedCategory && (
@@ -183,6 +196,21 @@ const CategoryCard = ({ category, onDelete, onEdit, onToggleHomepage }) => {
         {/* Home Page Toggle & Subcategories Accordion */}
         <div className="space-y-2 border-t border-gray-100 pt-3">
           {/* Home Page Display Switch */}
+          <button
+            type="button"
+            onClick={() => onToggleHomepage(category)}
+            className={`w-full py-2 px-3 rounded-xl text-xs font-bold border transition flex items-center justify-between cursor-pointer ${
+              category.showOnHomepage
+                ? 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
+                : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <span className="flex items-center gap-1.5">
+              <FiHome className="text-amber-500" size={13} />
+              {category.showOnHomepage ? 'Shown on Home Page' : 'Hidden from Home Page'}
+            </span>
+            <span className="text-[10px] underline">Toggle</span>
+          </button>
           <button
             type="button"
             onClick={() => onToggleHomepage(category)}
@@ -292,6 +320,26 @@ const AdminCategories = () => {
   const openAdd = () => { setEditingCategory(null); setDrawerOpen(true); };
   const openEdit = (cat) => { setEditingCategory(cat); setDrawerOpen(true); };
 
+  // 1-Click Publish / Unpublish Toggle
+  const handleTogglePublish = async (category) => {
+    const isCurrentlyPublished = (category.status || 'PUBLISHED') === 'PUBLISHED';
+    const newStatus = isCurrentlyPublished ? 'DRAFT' : 'PUBLISHED';
+    setCategories(prev => prev.map(c => c.id === category.id ? { ...c, status: newStatus } : c));
+    try {
+      await api.put(`/categories/${category.id}`, { status: newStatus });
+      toast.success(newStatus === 'PUBLISHED' ? `"${category.name}" is now Published to website! 🚀` : `"${category.name}" moved to Draft / Unpublished.`);
+      try {
+        localStorage.removeItem('__KVLR_HOME_PERSISTENT_CACHE_V3__');
+        sessionStorage.removeItem('__KVLR_HOME_CACHE__');
+        sessionStorage.removeItem('__KVLR_MEGA_CACHE__');
+        window.dispatchEvent(new Event('kvlr:content-updated'));
+      } catch (e) {}
+    } catch {
+      toast.error('Failed to update publishing status');
+      fetchCategories();
+    }
+  };
+
   // 1-Click Home Page Toggle
   const handleToggleHomepage = async (category) => {
     const newValue = !category.showOnHomepage;
@@ -299,6 +347,12 @@ const AdminCategories = () => {
     try {
       await api.put(`/categories/${category.id}`, { showOnHomepage: newValue });
       toast.success(newValue ? `"${category.name}" shown on Home Page` : `"${category.name}" removed from Home Page (still in Catalog)`);
+      try {
+        localStorage.removeItem('__KVLR_HOME_PERSISTENT_CACHE_V3__');
+        sessionStorage.removeItem('__KVLR_HOME_CACHE__');
+        sessionStorage.removeItem('__KVLR_MEGA_CACHE__');
+        window.dispatchEvent(new Event('kvlr:content-updated'));
+      } catch (e) {}
     } catch {
       toast.error('Failed to update homepage visibility');
       fetchCategories();
@@ -397,6 +451,7 @@ const AdminCategories = () => {
               onDelete={handleOpenDelete}
               onEdit={openEdit}
               onToggleHomepage={handleToggleHomepage}
+              onTogglePublish={handleTogglePublish}
             />
           ))}
         </div>
