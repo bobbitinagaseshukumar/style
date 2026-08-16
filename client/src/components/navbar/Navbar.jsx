@@ -169,8 +169,28 @@ const Navbar = () => {
   const userAvatar = user?.avatar || user?.photo;
   const userInitial = userName.charAt(0).toUpperCase();
 
+  const handleUserMenuNavigate = (path) => {
+    setIsUserMenuOpen(false);
+    setActiveMegaMenu(null);
+    if (path) navigate(path);
+  };
+
   return (
     <>
+      {/* ── FULL-SCREEN INVISIBLE BACKDROP FOR USER PROFILE DROPDOWN ── */}
+      <AnimatePresence>
+        {isAuthenticated && isUserMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[999] bg-black/20 backdrop-blur-[1px] cursor-default"
+            onClick={() => setIsUserMenuOpen(false)}
+            onTouchStart={() => setIsUserMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* ── STICKY HEADER WRAPPER (Guarantees zero overlap on mobile/desktop) ── */}
       <header className="sticky top-0 z-50 w-full transition-all duration-300">
         {/* Top Announcement Banner (Only rendered if admin published an active announcement) */}
@@ -425,93 +445,83 @@ const Navbar = () => {
                     {/* USER PROFILE DROPDOWN MENU */}
                     <AnimatePresence>
                       {isAuthenticated && isUserMenuOpen && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-40 bg-transparent cursor-default"
-                            onClick={() => setIsUserMenuOpen(false)}
-                          />
-                          <motion.div
-                            ref={userDropdownRef}
-                            initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute right-0 mt-2 w-60 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-50 text-xs"
-                          >
-                            <div className="px-4 py-3 border-b border-white/10 bg-white/5">
-                              <p className="text-sm font-bold text-white truncate">{userName}</p>
-                              <p className="text-xs text-white/50 truncate">{user?.email}</p>
-                              <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-400/10 text-amber-400 border border-amber-400/30">
-                                {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '⚡ ADMIN' : '⭐ CUSTOMER'}
-                              </div>
+                        <motion.div
+                          ref={userDropdownRef}
+                          initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute right-0 mt-2 w-60 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-[1000] text-xs"
+                        >
+                          <div className="px-4 py-3 border-b border-white/10 bg-white/5">
+                            <p className="text-sm font-bold text-white truncate">{userName}</p>
+                            <p className="text-xs text-white/50 truncate">{user?.email}</p>
+                            <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-400/10 text-amber-400 border border-amber-400/30">
+                              {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '⚡ ADMIN' : '⭐ CUSTOMER'}
                             </div>
+                          </div>
 
-                            <div className="py-1">
-                              {[
-                                { label: 'Dashboard', icon: FiGrid, path: '/dashboard' },
-                                { label: 'My Orders', icon: FiPackage, path: '/orders' },
-                                { label: 'Recently Viewed', icon: FiClock, path: '/recently-viewed' },
-                                { label: 'Address Book', icon: FiMapPin, path: '/address-book' },
-                                { label: 'Wishlist', icon: FiHeart, path: '/wishlist' },
-                                { label: 'Profile Settings', icon: FiUser, path: '/profile' },
-                                { label: 'Notifications', icon: FiBell, path: '/notifications' },
-                              ].map((item) => (
-                                <Link
-                                  key={item.label}
-                                  to={item.path}
-                                  onClick={() => {
-                                    setIsUserMenuOpen(false);
-                                    setActiveMegaMenu(null);
-                                  }}
-                                  className="flex items-center gap-3 px-4 py-2.5 text-white/80 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-                                >
-                                  <item.icon size={14} className="text-amber-400/80 shrink-0" />
-                                  <span className="font-semibold">{item.label}</span>
-                                </Link>
-                              ))}
-                            </div>
-
-                            {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.isAdmin) && (
-                              <div className="border-t border-white/10 py-1">
-                                <Link
-                                  to="/admin/dashboard"
-                                  onClick={() => {
-                                    setIsUserMenuOpen(false);
-                                    setActiveMegaMenu(null);
-                                  }}
-                                  className="flex items-center gap-3 px-4 py-2.5 text-amber-400 hover:bg-amber-400/10 font-bold transition-colors cursor-pointer"
-                                >
-                                  <FiSettings size={14} className="shrink-0" />
-                                  Super Admin Panel
-                                </Link>
-                              </div>
-                            )}
-
-                            <div className="border-t border-white/10 p-1 space-y-1">
+                          <div className="py-1">
+                            {[
+                              { label: 'Dashboard', icon: FiGrid, path: '/dashboard' },
+                              { label: 'My Orders', icon: FiPackage, path: '/orders' },
+                              { label: 'Recently Viewed', icon: FiClock, path: '/recently-viewed' },
+                              { label: 'Address Book', icon: FiMapPin, path: '/address-book' },
+                              { label: 'Wishlist', icon: FiHeart, path: '/wishlist' },
+                              { label: 'Profile Settings', icon: FiUser, path: '/profile' },
+                              { label: 'Notifications', icon: FiBell, path: '/notifications' },
+                            ].map((item) => (
                               <button
-                                onClick={() => {
-                                  setIsUserMenuOpen(false);
-                                  logout();
-                                  navigate('/login?switch=true');
-                                }}
-                                className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-amber-400 hover:bg-amber-400/10 font-bold text-xs transition-colors cursor-pointer"
+                                key={item.label}
+                                type="button"
+                                onClick={() => handleUserMenuNavigate(item.path)}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-white/80 hover:text-white hover:bg-white/5 transition-colors cursor-pointer text-left"
                               >
-                                <FiRefreshCw size={14} className="shrink-0" />
-                                Switch Account
+                                <item.icon size={14} className="text-amber-400/80 shrink-0" />
+                                <span className="font-semibold">{item.label}</span>
                               </button>
+                            ))}
+                          </div>
+
+                          {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.isAdmin) && (
+                            <div className="border-t border-white/10 py-1">
                               <button
-                                onClick={() => {
-                                  setIsUserMenuOpen(false);
-                                  logout();
-                                }}
-                                className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 font-bold text-xs transition-colors cursor-pointer"
+                                type="button"
+                                onClick={() => handleUserMenuNavigate('/admin/dashboard')}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-amber-400 hover:bg-amber-400/10 font-bold transition-colors cursor-pointer text-left"
                               >
-                                <FiLogOut size={14} className="shrink-0" />
-                                Sign Out
+                                <FiSettings size={14} className="shrink-0" />
+                                Super Admin Panel
                               </button>
                             </div>
-                          </motion.div>
-                        </>
+                          )}
+
+                          <div className="border-t border-white/10 p-1 space-y-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsUserMenuOpen(false);
+                                logout();
+                                navigate('/login?switch=true');
+                              }}
+                              className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-amber-400 hover:bg-amber-400/10 font-bold text-xs transition-colors cursor-pointer"
+                            >
+                              <FiRefreshCw size={14} className="shrink-0" />
+                              Switch Account
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsUserMenuOpen(false);
+                                logout();
+                              }}
+                              className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 font-bold text-xs transition-colors cursor-pointer"
+                            >
+                              <FiLogOut size={14} className="shrink-0" />
+                              Sign Out
+                            </button>
+                          </div>
+                        </motion.div>
                       )}
                     </AnimatePresence>
                   </div>
