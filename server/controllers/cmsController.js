@@ -1243,23 +1243,64 @@ exports.reorderProductsInSection = asyncHandler(async (req, res) => {
 
 // ==================== Header Navigation Menu Manager ====================
 exports.getHeaderMenusPublic = asyncHandler(async (req, res) => {
+    // 1. Fetch explicit HeaderMenu entries
     const menus = await prisma.headerMenu.findMany({
         where: { isActive: true, status: 'PUBLISHED' },
         orderBy: { sortOrder: 'asc' }
     });
 
-    const enriched = await Promise.all(menus.map(async menu => {
+    // 2. Fetch ALL categories that should appear in nav (inNavMenu=true, visible, published)
+    const navCategories = await prisma.category.findMany({
+        where: {
+            inNavMenu: true,
+            isVisible: true,
+            status: 'PUBLISHED'
+        },
+        include: { subcategories: { orderBy: { sortOrder: 'asc' } } },
+        orderBy: { sortOrder: 'asc' }
+    }).catch(() => []);
+
+    // 3. Build a set of categoryIds already covered by explicit HeaderMenu entries
+    const menuCategoryIds = new Set(menus.filter(m => m.categoryId).map(m => m.categoryId));
+    const menuSlugs = new Set(menus.map(m => m.slug));
+
+    // 4. Enrich explicit HeaderMenu entries with subcategories
+    const enrichedMenus = await Promise.all(menus.map(async menu => {
         let subcategories = [];
         if (menu.categoryId) {
-            subcategories = await prisma.subCategory.findMany({
-                where: { categoryId: menu.categoryId },
-                orderBy: { sortOrder: 'asc' }
-            }).catch(() => []);
+            // Find the matching category from our fetched list
+            const matchedCat = navCategories.find(c => c.id === menu.categoryId);
+            subcategories = matchedCat?.subcategories || [];
+            if (subcategories.length === 0) {
+                subcategories = await prisma.subCategory.findMany({
+                    where: { categoryId: menu.categoryId },
+                    orderBy: { sortOrder: 'asc' }
+                }).catch(() => []);
+            }
         }
         return { ...menu, subcategories };
     }));
 
-    res.status(200).json({ success: true, data: enriched });
+    // 5. Auto-include categories that DON'T have a HeaderMenu entry yet
+    const autoCategoryMenus = navCategories
+        .filter(cat => !menuCategoryIds.has(cat.id) && !menuSlugs.has(cat.slug))
+        .map((cat, idx) => ({
+            id: `auto-cat-${cat.id}`,
+            title: cat.name,
+            slug: cat.slug,
+            link: `/categories/${cat.slug}`,
+            categoryId: cat.id,
+            icon: null,
+            sortOrder: 1000 + (cat.sortOrder || idx),
+            status: 'PUBLISHED',
+            isActive: true,
+            subcategories: cat.subcategories || []
+        }));
+
+    // 6. Combine and sort
+    const combined = [...enrichedMenus, ...autoCategoryMenus].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+    res.status(200).json({ success: true, data: combined });
 });
 
 exports.getAllHeaderMenusAdmin = asyncHandler(async (req, res) => {

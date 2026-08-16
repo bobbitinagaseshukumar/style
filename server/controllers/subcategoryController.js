@@ -2,6 +2,7 @@ const prisma = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const slugify = require('slugify');
+const { invalidateHomepageBundleCache } = require('./cmsController');
 
 // ==================== GET ALL SUBCATEGORIES ====================
 exports.getAllSubcategories = asyncHandler(async (req, res) => {
@@ -146,6 +147,8 @@ exports.createSubcategory = asyncHandler(async (req, res, next) => {
     }
   });
 
+  invalidateHomepageBundleCache();
+
   res.status(201).json({
     success: true,
     message: `Subcategory "${subcategory.name}" created under "${parentCat.name}" successfully!`,
@@ -212,6 +215,8 @@ exports.updateSubcategory = asyncHandler(async (req, res, next) => {
     }
   });
 
+  invalidateHomepageBundleCache();
+
   res.status(200).json({
     success: true,
     message: `Subcategory "${updated.name}" updated successfully!`,
@@ -233,6 +238,8 @@ exports.reorderSubcategories = asyncHandler(async (req, res) => {
       )
     );
   }
+
+  invalidateHomepageBundleCache();
 
   res.status(200).json({
     success: true,
@@ -280,6 +287,8 @@ exports.deleteSubcategory = asyncHandler(async (req, res, next) => {
     });
     await prisma.subCategory.delete({ where: { id } });
 
+    invalidateHomepageBundleCache();
+
     return res.status(200).json({
       success: true,
       message: `Transferred ${productCount} product(s) to "${targetSub.name}" and removed subcategory successfully!`
@@ -291,6 +300,8 @@ exports.deleteSubcategory = asyncHandler(async (req, res, next) => {
     await prisma.product.deleteMany({ where: { subCategoryId: id } }).catch(() => {});
     await prisma.subCategory.delete({ where: { id } });
 
+    invalidateHomepageBundleCache();
+
     return res.status(200).json({
       success: true,
       message: `Subcategory "${subcategory.name}" and all ${productCount} assigned products deleted permanently.`
@@ -300,8 +311,11 @@ exports.deleteSubcategory = asyncHandler(async (req, res, next) => {
   // 0 Products assigned -> Clean delete
   await prisma.subCategory.delete({ where: { id } });
 
+  invalidateHomepageBundleCache();
+
   res.status(200).json({
     success: true,
     message: `Subcategory "${subcategory.name}" deleted successfully!`
   });
 });
+

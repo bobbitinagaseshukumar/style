@@ -428,7 +428,12 @@ const Home = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <h3 className="text-lg font-serif font-bold text-white mb-1">{cat.name}</h3>
+                      <h3 className="text-lg font-serif font-bold text-white mb-0.5">{cat.name}</h3>
+                      {Array.isArray(cat.subcategories) && cat.subcategories.length > 0 && (
+                        <p className="text-[11px] text-gold-300/90 font-medium truncate mb-1">
+                          {cat.subcategories.filter(s => s.isVisible !== false).map(s => s.name).join(' • ')}
+                        </p>
+                      )}
                       <span className="inline-flex items-center gap-1 text-gold-400 text-xs font-semibold group-hover:gap-2 transition-all">
                         Explore <FiArrowRight className="w-3.5 h-3.5" />
                       </span>

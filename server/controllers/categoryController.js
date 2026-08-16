@@ -322,6 +322,7 @@ exports.createSubCategory = asyncHandler(async (req, res, next) => {
   const sub = await prisma.subCategory.create({
     data: { name, slug, categoryId, image, isVisible: isVisible !== false }
   });
+  invalidateHomepageBundleCache();
   res.status(201).json({ success: true, message: 'Subcategory created', data: sub });
 });
 
@@ -330,11 +331,13 @@ exports.updateSubCategory = asyncHandler(async (req, res, next) => {
   const data = { ...req.body };
   if (data.name) data.slug = slugify(data.name, { lower: true, strict: true });
   const sub = await prisma.subCategory.update({ where: { id }, data });
+  invalidateHomepageBundleCache();
   res.status(200).json({ success: true, message: 'Subcategory updated', data: sub });
 });
 
 exports.deleteSubCategory = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   await prisma.subCategory.delete({ where: { id } });
+  invalidateHomepageBundleCache();
   res.status(200).json({ success: true, message: 'Subcategory deleted', data: null });
 });

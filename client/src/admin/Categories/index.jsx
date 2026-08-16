@@ -86,6 +86,12 @@ const CategoryCard = ({ category, onDelete, onEdit, onToggleHomepage, onTogglePu
       setSubs(prev => [...prev, data.data]);
       setShowAddSub(false);
       toast.success(`"${name}" subcategory added!`);
+      try {
+        localStorage.removeItem('__KVLR_HOME_PERSISTENT_CACHE_V3__');
+        sessionStorage.removeItem('__KVLR_HOME_CACHE__');
+        sessionStorage.removeItem('__KVLR_MEGA_CACHE__');
+        window.dispatchEvent(new Event('kvlr:content-updated'));
+      } catch (e) {}
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to add subcategory');
     }
@@ -97,6 +103,12 @@ const CategoryCard = ({ category, onDelete, onEdit, onToggleHomepage, onTogglePu
       await api.delete(`/categories/subcategories/${sub.id}`);
       setSubs(prev => prev.filter(s => s.id !== sub.id));
       toast.success(`"${sub.name}" subcategory removed`);
+      try {
+        localStorage.removeItem('__KVLR_HOME_PERSISTENT_CACHE_V3__');
+        sessionStorage.removeItem('__KVLR_HOME_CACHE__');
+        sessionStorage.removeItem('__KVLR_MEGA_CACHE__');
+        window.dispatchEvent(new Event('kvlr:content-updated'));
+      } catch (e) {}
     } catch {
       toast.error('Failed to delete subcategory');
     } finally {
