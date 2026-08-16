@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { useSelector, useDispatch } from 'react-redux';
+import { setCredentials } from '../../redux/auth/authSlice';
 import {
   FiUser, FiShield, FiSmartphone, FiMonitor, FiLogOut, FiTrash2,
   FiClock, FiCheck, FiRefreshCw, FiKey, FiLock, FiGlobe, FiMail,
@@ -31,6 +32,7 @@ const checkPasswordStrength = (pass) => {
    MAIN ADMIN ACCOUNT SECURITY COMPONENT
 ═══════════════════════════════════════════════════════════ */
 export default function AdminProfile() {
+  const dispatch = useDispatch();
   const { user: authUser } = useSelector(state => state.auth);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -62,6 +64,9 @@ export default function AdminProfile() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [isForgotFlow, setIsForgotFlow] = useState(false);
   const [passOTP, setPassOTP] = useState('');
   const [passOTPDemo, setPassOTPDemo] = useState('');
 
@@ -106,9 +111,15 @@ export default function AdminProfile() {
     try {
       setActionLoading(true);
       const res = await api.put('/admin/auth/profile', profileForm);
-      toast.success('Admin profile updated successfully!');
-      setProfile(res.data?.data);
+      toast.success('Admin profile updated successfully & saved to database!');
+      const updatedAdmin = res.data?.data;
+      if (updatedAdmin) {
+        setProfile(updatedAdmin);
+        dispatch(setCredentials({ user: updatedAdmin, token: localStorage.getItem('adminToken') || localStorage.getItem('token') }));
+      }
       fetchAdminData();
+      window.dispatchEvent(new CustomEvent('auth_settings_updated'));
+      window.dispatchEvent(new CustomEvent('kvlr:content-updated'));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Update failed');
     } finally {
@@ -163,11 +174,18 @@ export default function AdminProfile() {
     try {
       setActionLoading(true);
       const res = await api.post('/admin/auth/change-email/verify-otp', { otpCode: emailOTP });
-      toast.success(res.data.message);
+      toast.success(res.data.message || 'Email updated successfully in database!');
+      const updatedAdmin = res.data?.data?.user || res.data?.data;
+      if (updatedAdmin) {
+        setProfile(updatedAdmin);
+        dispatch(setCredentials({ user: updatedAdmin, token: localStorage.getItem('adminToken') || localStorage.getItem('token') }));
+      }
       setEmailStep(1);
       setNewEmail('');
       setEmailOTP('');
       fetchAdminData();
+      window.dispatchEvent(new CustomEvent('auth_settings_updated'));
+      window.dispatchEvent(new CustomEvent('kvlr:content-updated'));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Verification failed');
     } finally {
@@ -221,9 +239,10 @@ export default function AdminProfile() {
         otpCode: passOTP.trim(),
         isForgotFlow
       });
-      toast.success(res.data.message);
+      toast.success(res.data.message || 'Password successfully updated & saved to database!');
       if (res.data.data?.token) {
         localStorage.setItem('adminToken', res.data.data.token);
+        localStorage.setItem('token', res.data.data.token);
       }
       setPassStep(1);
       setCurrentPassword('');
@@ -232,6 +251,8 @@ export default function AdminProfile() {
       setPassOTP('');
       setIsForgotFlow(false);
       fetchAdminData();
+      window.dispatchEvent(new CustomEvent('auth_settings_updated'));
+      window.dispatchEvent(new CustomEvent('kvlr:content-updated'));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Password update failed');
     } finally {
