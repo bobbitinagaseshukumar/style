@@ -41,6 +41,9 @@ const AddressBook = () => {
 
   useEffect(() => {
     fetchAddresses();
+    const handleSync = () => fetchAddresses();
+    window.addEventListener('addresses_updated', handleSync);
+    return () => window.removeEventListener('addresses_updated', handleSync);
   }, []);
 
   const openAddForm = () => {
@@ -80,6 +83,7 @@ const AddressBook = () => {
       setFormData(BLANK_FORM);
       setEditingId(null);
       fetchAddresses();
+      window.dispatchEvent(new CustomEvent('addresses_updated'));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save address');
     } finally {
@@ -93,6 +97,7 @@ const AddressBook = () => {
       await api.delete(`/users/addresses/${id}`);
       toast.success('Address removed');
       fetchAddresses();
+      window.dispatchEvent(new CustomEvent('addresses_updated'));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete address');
     }
@@ -103,6 +108,7 @@ const AddressBook = () => {
       await api.put(`/users/addresses/${id}/default`);
       toast.success('Default address updated');
       fetchAddresses();
+      window.dispatchEvent(new CustomEvent('addresses_updated'));
     } catch (err) {
       toast.error('Failed to set default address');
     }

@@ -17,7 +17,12 @@ const AddressTab = () => {
   const load = () => {
     api.get('/users/addresses').then(({ data }) => setAddresses(data.data || [])).catch(() => {}).finally(() => setLoading(false));
   };
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    const handleSync = () => load();
+    window.addEventListener('addresses_updated', handleSync);
+    return () => window.removeEventListener('addresses_updated', handleSync);
+  }, []);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -28,6 +33,7 @@ const AddressTab = () => {
       setShowForm(false);
       setForm(BLANK);
       load();
+      window.dispatchEvent(new CustomEvent('addresses_updated'));
     } catch { toast.error('Failed to save address.'); }
     finally { setSaving(false); }
   };
@@ -38,6 +44,7 @@ const AddressTab = () => {
       await api.delete(`/users/addresses/${id}`);
       toast.success('Address removed.');
       load();
+      window.dispatchEvent(new CustomEvent('addresses_updated'));
     } catch { toast.error('Failed to delete.'); }
     finally { setDeleting(null); }
   };

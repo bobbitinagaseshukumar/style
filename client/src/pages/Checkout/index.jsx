@@ -45,23 +45,27 @@ const Checkout = () => {
   const calculatedShipping = subtotal > freeShippingThreshold ? 0 : shippingFee;
   const grandTotal = Math.max(0, subtotal - discountAmount + calculatedShipping);
 
-  useEffect(() => {
-    const fetchAddresses = async () => {
-      try {
-        const { data } = await api.get('/users/addresses');
-        if (data?.data?.length > 0) {
-          setAddresses(data.data);
-          const defaultAddr = data.data.find(a => a.isDefault) || data.data[0];
-          setSelectedAddressId(defaultAddr.id);
-        }
-        if (!data?.data?.length || data.data.length === 0) {
-          setAddressModal(true);
-        }
-      } catch (err) {
-        console.error(err);
+  const fetchAddresses = async () => {
+    try {
+      const { data } = await api.get('/users/addresses');
+      if (data?.data?.length > 0) {
+        setAddresses(data.data);
+        const defaultAddr = data.data.find(a => a.isDefault) || data.data[0];
+        setSelectedAddressId(prev => prev || defaultAddr.id);
+      } else {
+        setAddresses([]);
+        setAddressModal(true);
       }
-    };
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
     fetchAddresses();
+
+    const handleSync = () => fetchAddresses();
+    window.addEventListener('addresses_updated', handleSync);
 
     const fetchCheckoutConfig = async () => {
       try {
@@ -77,6 +81,8 @@ const Checkout = () => {
       } catch (err) {}
     };
     fetchCheckoutConfig();
+
+    return () => window.removeEventListener('addresses_updated', handleSync);
   }, []);
 
   const handleAddAddress = async (e) => {
@@ -86,8 +92,8 @@ const Checkout = () => {
       toast.success('Address added!');
       setAddressModal(false);
       setAddressForm({ fullName: '', phone: '', street: '', city: '', state: '', postalCode: '', village: '', landmark: '', alternatePhone: '', addressType: 'HOME', isDefault: true });
-      const addrRes = await api.get('/users/addresses');
-      setAddresses(addrRes.data?.data || []);
+      fetchAddresses();
+      window.dispatchEvent(new CustomEvent('addresses_updated'));
       if (data?.data?.id) setSelectedAddressId(data.data.id);
     } catch (err) {
       toast.error('Failed to add address');

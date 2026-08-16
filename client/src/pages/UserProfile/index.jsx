@@ -38,6 +38,15 @@ const UserProfile = () => {
   // Password Form
   const [passForm, setPassForm] = useState({ currentPassword: '', newPassword: '' });
 
+  const fetchAddresses = async () => {
+    try {
+      const addrRes = await api.get('/users/addresses');
+      setAddresses(addrRes.data?.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const fetchUserData = async () => {
     try {
       setLoading(true);
@@ -61,6 +70,9 @@ const UserProfile = () => {
 
   useEffect(() => {
     fetchUserData();
+    const handleSync = () => fetchAddresses();
+    window.addEventListener('addresses_updated', handleSync);
+    return () => window.removeEventListener('addresses_updated', handleSync);
   }, []);
 
   const handleProfileSave = async (e) => {
@@ -84,27 +96,69 @@ const UserProfile = () => {
     }
   };
 
+  const [editingAddressId, setEditingAddressId] = useState(null);
+
+  const openAddAddressModal = () => {
+    setEditingAddressId(null);
+    setAddressForm({ fullName: user?.fullName || '', phone: user?.phone || '', street: '', city: '', state: '', postalCode: '', country: 'India', addressType: 'HOME', isDefault: false });
+    setAddressModal(true);
+  };
+
+  const openEditAddressModal = (addr) => {
+    setEditingAddressId(addr.id);
+    setAddressForm({
+      fullName: addr.fullName || '',
+      phone: addr.phone || '',
+      street: addr.street || addr.streetAddress || '',
+      city: addr.city || '',
+      state: addr.state || '',
+      postalCode: addr.postalCode || addr.zipCode || '',
+      country: addr.country || 'India',
+      addressType: addr.addressType || addr.type || 'HOME',
+      isDefault: Boolean(addr.isDefault)
+    });
+    setAddressModal(true);
+  };
+
   const handleAddAddress = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/users/addresses', addressForm);
-      toast.success('Address saved!');
+      if (editingAddressId) {
+        await api.put(`/users/addresses/${editingAddressId}`, addressForm);
+        toast.success('Address updated successfully!');
+      } else {
+        await api.post('/users/addresses', addressForm);
+        toast.success('Address saved successfully!');
+      }
       setAddressModal(false);
-      setAddressForm({ fullName: '', phone: '', street: '', city: '', state: '', postalCode: '', addressType: 'HOME', isDefault: false });
-      const addrRes = await api.get('/users/addresses');
-      setAddresses(addrRes.data?.data || []);
+      setEditingAddressId(null);
+      fetchAddresses();
+      window.dispatchEvent(new CustomEvent('addresses_updated'));
     } catch (err) {
-      toast.error('Failed to save address');
+      toast.error(err.response?.data?.message || 'Failed to save address');
     }
   };
 
   const handleDeleteAddress = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this address?')) return;
     try {
       await api.delete(`/users/addresses/${id}`);
       toast.success('Address removed');
-      setAddresses(prev => prev.filter(a => a.id !== id));
+      fetchAddresses();
+      window.dispatchEvent(new CustomEvent('addresses_updated'));
     } catch (err) {
       toast.error('Failed to delete address');
+    }
+  };
+
+  const handleSetDefaultAddress = async (id) => {
+    try {
+      await api.put(`/users/addresses/${id}/default`);
+      toast.success('Default address updated');
+      fetchAddresses();
+      window.dispatchEvent(new CustomEvent('addresses_updated'));
+    } catch (err) {
+      toast.error('Failed to set default address');
     }
   };
 
@@ -119,82 +173,69 @@ const UserProfile = () => {
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold text-3xl mx-auto shadow-lg mb-3">
               {user?.fullName?.[0] || 'U'}
             </div>
-            <h2 className="font-serif font-bold text-lg text-charcoal-900">{user?.fullName || 'Customer Account'}</h2>
+            <h2 className="font-bold text-charcoal-900 text-lg">{user?.fullName}</h2>
             <p className="text-xs text-gray-400">{user?.email}</p>
           </div>
 
-          {[
-            { id: 'profile', label: 'Profile Details', icon: FiUser },
-            { id: 'orders', label: 'Order History', icon: FiShoppingBag },
-            { id: 'addresses', label: 'Saved Addresses', icon: FiMapPin },
-            { id: 'security', label: 'Security & Activity', icon: FiShield },
-          ].map(tab => {
-            const Icon = tab.icon;
-            return (
+          <div className="pt-4 space-y-1">
+            {[
+              { id: 'profile', label: 'Profile Details', icon: FiUser },
+              { id: 'orders', label: 'Order History', icon: FiShoppingBag },
+              { id: 'addresses', label: 'Saved Addresses', icon: FiMapPin },
+              { id: 'security', label: 'Security & Activity', icon: FiShield },
+            ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all ${
                   activeTab === tab.id
                     ? 'bg-charcoal-900 text-gold-400 shadow-md'
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <tab.icon className="w-4 h-4" />
                 {tab.label}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
 
         {/* Tab Contents */}
         <div className="lg:col-span-3 bg-white border border-gray-200 rounded-3xl p-6 lg:p-8 shadow-sm">
-          {/* TAB 1: PROFILE DETAILS */}
+          {/* TAB 1: PROFILE */}
           {activeTab === 'profile' && (
             <form onSubmit={handleProfileSave} className="space-y-6">
-              <h3 className="text-xl font-serif font-bold text-charcoal-900 border-b pb-3">Personal Profile</h3>
+              <h3 className="text-xl font-serif font-bold text-charcoal-900 border-b pb-3">Personal Profile Information</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input label="Full Name" value={user?.fullName || ''} onChange={e => setUser({ ...user, fullName: e.target.value })} required />
-                <Input label="Email Address" value={user?.email || ''} disabled />
-                <Input label="Phone Number" value={user?.phone || ''} onChange={e => setUser({ ...user, phone: e.target.value })} placeholder="+91 98765 43210" />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                  <select value={user?.gender || 'Women'} onChange={e => setUser({ ...user, gender: e.target.value })} className="w-full px-3 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold-500 focus:outline-none text-sm">
-                    <option value="Women">Women</option>
-                    <option value="Men">Men</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
+                <Input label="Email Address" value={user?.email || ''} disabled readOnly />
+                <Input label="Phone Number" value={user?.phone || ''} onChange={e => setUser({ ...user, phone: e.target.value })} />
+                <Input label="Gender" value={user?.gender || ''} onChange={e => setUser({ ...user, gender: e.target.value })} placeholder="Male / Female / Other" />
               </div>
-
-              <div className="pt-4 border-t flex justify-end">
-                <Button type="submit" icon={FiSave}>Save Profile Changes</Button>
-              </div>
+              <Button type="submit" icon={FiCheck}>Save Profile Changes</Button>
             </form>
           )}
 
-          {/* TAB 2: ORDER HISTORY */}
+          {/* TAB 2: ORDERS */}
           {activeTab === 'orders' && (
             <div className="space-y-6">
-              <h3 className="text-xl font-serif font-bold text-charcoal-900 border-b pb-3">My Orders ({orders.length})</h3>
+              <h3 className="text-xl font-serif font-bold text-charcoal-900 border-b pb-3">Your Order History</h3>
               {orders.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">You have no previous orders.</div>
+                <div className="text-center py-12 text-gray-400">No orders placed yet.</div>
               ) : (
                 <div className="space-y-4">
-                  {orders.map((o) => (
-                    <div key={o.id} className="border rounded-2xl p-5 shadow-sm space-y-3">
-                      <div className="flex justify-between items-center text-sm border-b pb-3">
-                        <div>
-                          <strong className="text-charcoal-900">{o.orderNumber || o.id}</strong>
-                          <span className="text-xs text-gray-400 block">{formatDate(o.createdAt)}</span>
+                  {orders.map((order) => (
+                    <div key={order.id} className="border border-gray-200 rounded-2xl p-5 hover:border-gold-500/50 transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-bold text-charcoal-900">#{order.orderNumber || order.id.slice(-8)}</span>
+                          <span className="text-xs bg-gold-50 text-gold-700 px-2 py-0.5 rounded-full font-bold uppercase">{order.status}</span>
                         </div>
-                        <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-                          {o.orderStatus}
-                        </span>
+                        <p className="text-xs text-gray-500">{formatDate(order.createdAt)} • {order.orderItems?.length || 0} Items</p>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Total Items: {o.items?.length || 1}</span>
-                        <strong className="text-charcoal-900">{formatCurrency(o.totalAmount)}</strong>
+                      <div className="text-right">
+                        <div className="font-bold text-charcoal-900">{formatCurrency(order.totalAmount)}</div>
+                        <Link to={`/orders/${order.id}`} className="text-xs text-gold-600 font-bold hover:underline">View Order Details →</Link>
                       </div>
                     </div>
                   ))}
@@ -207,31 +248,58 @@ const UserProfile = () => {
           {activeTab === 'addresses' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center border-b pb-3">
-                <h3 className="text-xl font-serif font-bold text-charcoal-900">Saved Shipping Addresses</h3>
-                <Button icon={FiPlus} onClick={() => setAddressModal(true)}>Add New Address</Button>
+                <div>
+                  <h3 className="text-xl font-serif font-bold text-charcoal-900">Saved Shipping Addresses</h3>
+                  <p className="text-xs text-gray-500 mt-1">Manage your delivery addresses</p>
+                </div>
+                <Button icon={FiPlus} onClick={openAddAddressModal}>Add New Address</Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {addresses.map((a) => (
-                  <div key={a.id} className="border border-gray-200 rounded-2xl p-5 shadow-sm relative">
-                    {a.isDefault && (
-                      <span className="absolute top-3 right-3 bg-gold-100 text-gold-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        DEFAULT
-                      </span>
-                    )}
-                    <h4 className="font-bold text-charcoal-900 text-sm mb-1">{a.fullName}</h4>
-                    <p className="text-xs text-gray-600">{a.street}</p>
-                    <p className="text-xs text-gray-600">{a.city}, {a.state} - {a.postalCode}</p>
-                    <p className="text-xs text-gray-400 mt-2">Phone: {a.phone}</p>
+              {addresses.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                  <FiMapPin className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm font-bold text-gray-600">No Addresses Saved</p>
+                  <p className="text-xs text-gray-400 mt-1 mb-4">You have not added any shipping addresses yet.</p>
+                  <Button icon={FiPlus} onClick={openAddAddressModal}>Add Address</Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {addresses.map((a) => (
+                    <div key={a.id} className="border border-gray-200 rounded-2xl p-5 shadow-sm relative bg-white hover:border-gold-500/50 transition-all">
+                      {a.isDefault && (
+                        <span className="absolute top-3 right-3 bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          DEFAULT
+                        </span>
+                      )}
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
+                          {a.addressType || a.type || 'HOME'}
+                        </span>
+                        <h4 className="font-bold text-charcoal-900 text-sm">{a.fullName}</h4>
+                      </div>
+                      <p className="text-xs text-gray-600 mb-1">{a.street || a.streetAddress}</p>
+                      <p className="text-xs text-gray-600 mb-1">
+                        {a.city}, {a.state} - {a.postalCode || a.zipCode}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-2">{a.country || 'India'} • Phone: {a.phone}</p>
 
-                    <div className="mt-4 pt-3 border-t flex justify-end">
-                      <button onClick={() => handleDeleteAddress(a.id)} className="text-xs text-red-600 font-semibold hover:underline">
-                        Remove
-                      </button>
+                      <div className="mt-4 pt-3 border-t border-gray-100 flex items-center gap-3">
+                        <button onClick={() => openEditAddressModal(a)} className="text-xs text-amber-600 font-bold hover:underline">
+                          Edit
+                        </button>
+                        <button onClick={() => handleDeleteAddress(a.id)} className="text-xs text-red-600 font-bold hover:underline">
+                          Remove
+                        </button>
+                        {!a.isDefault && (
+                          <button onClick={() => handleSetDefaultAddress(a.id)} className="text-xs text-gray-500 font-semibold hover:text-charcoal-900 ml-auto">
+                            Set Default
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -261,24 +329,39 @@ const UserProfile = () => {
         </div>
       </div>
 
-      {/* Modal: Add Address */}
-      <Modal isOpen={addressModal} onClose={() => setAddressModal(false)} title="Add Shipping Address">
+      {/* Modal: Add/Edit Address */}
+      <Modal isOpen={addressModal} onClose={() => { setAddressModal(false); setEditingAddressId(null); }} title={editingAddressId ? "Edit Shipping Address" : "Add Shipping Address"}>
         <form onSubmit={handleAddAddress} className="space-y-4">
-          <Input label="Full Name" value={addressForm.fullName} onChange={e => setAddressForm({ ...addressForm, fullName: e.target.value })} required />
-          <Input label="Phone Number" value={addressForm.phone} onChange={e => setAddressForm({ ...addressForm, phone: e.target.value })} required />
-          <Input label="Flat, House no., Building, Street" value={addressForm.street} onChange={e => setAddressForm({ ...addressForm, street: e.target.value })} required />
+          <Input label="Full Name *" value={addressForm.fullName} onChange={e => setAddressForm({ ...addressForm, fullName: e.target.value })} required />
+          <Input label="Phone Number *" value={addressForm.phone} onChange={e => setAddressForm({ ...addressForm, phone: e.target.value })} required />
+          <Input label="Flat, House no., Building, Street *" value={addressForm.street} onChange={e => setAddressForm({ ...addressForm, street: e.target.value })} required />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="City" value={addressForm.city} onChange={e => setAddressForm({ ...addressForm, city: e.target.value })} required />
-            <Input label="State" value={addressForm.state} onChange={e => setAddressForm({ ...addressForm, state: e.target.value })} required />
+            <Input label="City *" value={addressForm.city} onChange={e => setAddressForm({ ...addressForm, city: e.target.value })} required />
+            <Input label="State *" value={addressForm.state} onChange={e => setAddressForm({ ...addressForm, state: e.target.value })} required />
           </div>
-          <Input label="Pincode / Postal Code" value={addressForm.postalCode} onChange={e => setAddressForm({ ...addressForm, postalCode: e.target.value })} required />
+          <Input label="Pincode / Postal Code *" value={addressForm.postalCode} onChange={e => setAddressForm({ ...addressForm, postalCode: e.target.value })} required />
+          
+          <div className="flex items-center gap-3 pt-1">
+            <span className="text-xs font-bold text-gray-600 uppercase">Address Type:</span>
+            {['HOME', 'WORK', 'OTHER'].map(type => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setAddressForm(p => ({ ...p, addressType: type }))}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${addressForm.addressType === type ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+
           <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer pt-2">
             <input type="checkbox" checked={addressForm.isDefault} onChange={e => setAddressForm({ ...addressForm, isDefault: e.target.checked })} className="rounded text-gold-500 focus:ring-gold-500" />
             Set as default shipping address
           </label>
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => setAddressModal(false)}>Cancel</Button>
-            <Button type="submit">Save Address</Button>
+            <Button type="button" variant="outline" onClick={() => { setAddressModal(false); setEditingAddressId(null); }}>Cancel</Button>
+            <Button type="submit">{editingAddressId ? "Update Address" : "Save Address"}</Button>
           </div>
         </form>
       </Modal>
