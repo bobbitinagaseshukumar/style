@@ -5,20 +5,27 @@ import { FiClock, FiTrash2, FiArrowLeft, FiShoppingBag, FiArrowRight } from 'rea
 import api from '../../config/api';
 import ProductCard from '../../components/common/ProductCard';
 import { toast } from 'react-toastify';
+import { getLocalRecentlyViewed, clearLocalRecentlyViewed } from '../../utils/recentlyViewed';
 
 const RecentlyViewed = () => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState(() => getLocalRecentlyViewed());
+  const [loading, setLoading] = useState(() => products.length === 0);
 
   const fetchRecentlyViewed = async () => {
+    const local = getLocalRecentlyViewed();
+    setProducts(local);
     try {
-      setLoading(true);
       const res = await api.get('/recently-viewed');
-      if (res.data?.success && res.data?.data) {
-        setProducts(res.data.data);
+      if (res.data?.success && Array.isArray(res.data?.data)) {
+        const serverItems = res.data.data;
+        const mergedMap = new Map();
+        local.forEach(p => mergedMap.set(p.id || p._id, p));
+        serverItems.forEach(p => {
+          if (!mergedMap.has(p.id || p._id)) mergedMap.set(p.id || p._id, p);
+        });
+        setProducts(Array.from(mergedMap.values()));
       }
     } catch (err) {
-      console.error('Recently viewed fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -31,12 +38,12 @@ const RecentlyViewed = () => {
 
   const handleClearHistory = async () => {
     try {
+      clearLocalRecentlyViewed();
       await api.delete('/recently-viewed');
       setProducts([]);
       toast.success('Recently viewed history cleared!');
     } catch (err) {
-      console.error('Clear recently viewed error:', err);
-      toast.error('Failed to clear history');
+      setProducts([]);
     }
   };
 

@@ -3,43 +3,55 @@ import { motion } from 'framer-motion';
 import { FiClock, FiTrash2 } from 'react-icons/fi';
 import api from '../../config/api';
 import ProductCard from '../common/ProductCard';
+import { getLocalRecentlyViewed, clearLocalRecentlyViewed } from '../../utils/recentlyViewed';
 
 const RecentlyViewedSection = ({ currentId }) => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState(() => {
+    const local = getLocalRecentlyViewed();
+    return currentId ? local.filter(p => (p.id || p._id) !== currentId) : local;
+  });
 
-  const fetchRecentlyViewed = async () => {
+  const loadData = async () => {
+    // 1. Instant local state
+    const local = getLocalRecentlyViewed();
+    let items = currentId ? local.filter(p => (p.id || p._id) !== currentId) : local;
+    setProducts(items);
+
+    // 2. Background server sync
     try {
-      setLoading(true);
       const res = await api.get('/recently-viewed');
-      if (res.data?.success && res.data?.data) {
-        let items = res.data.data;
-        if (currentId) {
-          items = items.filter((p) => p.id !== currentId);
-        }
-        setProducts(items);
+      if (res.data?.success && Array.isArray(res.data?.data)) {
+        const serverItems = res.data.data;
+        const mergedMap = new Map();
+        items.forEach(p => mergedMap.set(p.id || p._id, p));
+        serverItems.forEach(p => {
+          if (!mergedMap.has(p.id || p._id)) mergedMap.set(p.id || p._id, p);
+        });
+        let finalItems = Array.from(mergedMap.values());
+        if (currentId) finalItems = finalItems.filter(p => (p.id || p._id) !== currentId);
+        setProducts(finalItems);
       }
-    } catch (err) {
-      console.error('Recently viewed fetch error:', err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) {}
   };
 
   useEffect(() => {
-    fetchRecentlyViewed();
+    loadData();
+    const handleUpdate = () => loadData();
+    window.addEventListener('kvlr:recently-viewed-updated', handleUpdate);
+    return () => window.removeEventListener('kvlr:recently-viewed-updated', handleUpdate);
   }, [currentId]);
 
   const handleClearHistory = async () => {
     try {
+      clearLocalRecentlyViewed();
       await api.delete('/recently-viewed');
       setProducts([]);
     } catch (err) {
-      console.error('Clear recently viewed error:', err);
+      setProducts([]);
     }
   };
 
-  if (loading || products.length === 0) return null;
+  if (products.length === 0) return null;
 
   return (
     <section className="my-12 py-8 bg-gray-50/80 rounded-3xl border border-gray-100 p-4 sm:p-6">
@@ -61,7 +73,7 @@ const RecentlyViewedSection = ({ currentId }) => {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
         {products.slice(0, 8).map((product) => (
-          <ProductCard key={product.id} product={product} />
+          <ProductCard key={product.id || product._id} product={product} />
         ))}
       </div>
     </section>

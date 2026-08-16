@@ -23,6 +23,7 @@ import WriteReviewModal from '../../components/reviews/WriteReviewModal';
 import StarRating from '../../components/reviews/StarRating';
 import ProductCard from '../../components/common/ProductCard';
 import RecentlyViewedSection from '../../components/home/RecentlyViewedSection';
+import { saveToRecentlyViewed } from '../../utils/recentlyViewed';
 import { toast } from 'react-toastify';
 
 /* ═══ HELPER: SAFE JSON PARSER ═══ */
@@ -403,10 +404,10 @@ export default function ProductDetails() {
         if (sizes.length > 0) setSelectedSize(sizes[0]);
         setSelectedImgIdx(0);
 
-        // Save to Recently Viewed via server API & clear stale local cache
+        // Save to Recently Viewed locally & via server API
         try {
+          saveToRecentlyViewed(prod);
           api.post('/recently-viewed', { productId: prod.id }).catch(() => {});
-          localStorage.removeItem('styleverse_recently_viewed');
         } catch {}
 
         // Fetch Related & Recommended

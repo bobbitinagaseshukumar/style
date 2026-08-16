@@ -13,6 +13,7 @@ import { toast } from 'react-toastify';
 import QuickViewModal from './QuickViewModal';
 import StarRating from '../reviews/StarRating';
 import { formatImageUrl } from '../../utils/formatImageUrl';
+import { saveToRecentlyViewed } from '../../utils/recentlyViewed';
 
 /* ─── Color Map ─────────────────────────────────────────────── */
 const colorHexMap = {
@@ -234,10 +235,8 @@ const ProductCard = ({ product, index = 0 }) => {
     <>
       <motion.div
         ref={cardRef}
-        initial={{ opacity: 0, y: 24 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-30px' }}
-        transition={{ duration: 0.45, delay: (index % 8) * 0.04, ease: [0.25, 0.46, 0.45, 0.94] }}
+        initial={{ opacity: 1, y: 0 }}
+        animate={{ opacity: 1, y: 0 }}
         style={{
           transformStyle: 'preserve-3d',
           transform: `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
@@ -246,7 +245,10 @@ const ProductCard = ({ product, index = 0 }) => {
         onMouseMove={handleMouseMove}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={handleMouseLeave}
-        onClick={() => navigate(`/product/${slug}`)}
+        onClick={() => {
+          saveToRecentlyViewed(product);
+          navigate(`/product/${slug}`);
+        }}
         className="sv-card-shine group relative bg-white rounded-[20px] overflow-hidden border border-gray-100/80 shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.10)] transition-shadow duration-500 flex flex-col h-full cursor-pointer select-none"
       >
         {/* ── Shine Sweep Overlay ─────────────────────────────── */}
@@ -256,29 +258,15 @@ const ProductCard = ({ product, index = 0 }) => {
             HERO PRODUCT IMAGE — 70-75% of card, NO badges
             ═══════════════════════════════════════════════════════ */}
         <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#FAFAFA]">
-          {/* Skeleton Loading */}
-          <AnimatePresence>
-            {!imageLoaded && (
-              <motion.div
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-50 animate-pulse"
-              />
-            )}
-          </AnimatePresence>
-
           {/* Primary Image */}
           <motion.img
             src={primaryImage}
             alt={name}
             loading="lazy"
             decoding="async"
-            onLoad={() => setImageLoaded(true)}
             animate={{ scale: isHovered ? 1.06 : 1 }}
             transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className={`w-full h-full object-cover transition-opacity duration-500 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
+            className="w-full h-full object-cover opacity-100 transition-transform duration-500"
             style={{ willChange: 'transform' }}
           />
 
