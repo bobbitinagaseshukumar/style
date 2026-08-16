@@ -233,15 +233,8 @@ const ProductCard = ({ product, index = 0 }) => {
   /* ── Render ──────────────────────────────────────────────── */
   return (
     <>
-      <motion.div
+      <div
         ref={cardRef}
-        initial={{ opacity: 1, y: 0 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{
-          transformStyle: 'preserve-3d',
-          transform: `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
-          willChange: 'transform',
-        }}
         onMouseMove={handleMouseMove}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={handleMouseLeave}
@@ -259,27 +252,22 @@ const ProductCard = ({ product, index = 0 }) => {
             ═══════════════════════════════════════════════════════ */}
         <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#FAFAFA]">
           {/* Primary Image */}
-          <motion.img
+          <img
             src={primaryImage}
             alt={name}
             loading="lazy"
             decoding="async"
-            animate={{ scale: isHovered ? 1.06 : 1 }}
-            transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="w-full h-full object-cover opacity-100 transition-transform duration-500"
-            style={{ willChange: 'transform' }}
+            className="w-full h-full object-cover opacity-100 transition-transform duration-500 group-hover:scale-105"
           />
 
           {/* Hover Secondary Image */}
           {hoverImage && (
-            <motion.img
+            <img
               src={hoverImage}
               alt={`${name} alternate`}
               loading="lazy"
               decoding="async"
-              animate={{ opacity: isHovered ? 1 : 0 }}
-              transition={{ duration: 0.4 }}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-400"
             />
           )}
 
@@ -470,7 +458,7 @@ const ProductCard = ({ product, index = 0 }) => {
             </motion.button>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Quick View Modal */}
       <QuickViewModal

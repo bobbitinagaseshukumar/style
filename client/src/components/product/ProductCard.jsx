@@ -70,29 +70,19 @@ const ProductCard = ({ product }) => {
   const rating = product.ratings || product.rating || 0;
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
+    <div 
       className="group bg-white rounded-[20px] overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.10)] transition-all duration-500 flex flex-col h-full border border-gray-100/80"
     >
       {/* ── Product Image (70-75% of card, NO badges) ─────── */}
       <div className="relative aspect-[3/4] overflow-hidden bg-[#FAFAFA]">
         <Link to={`/product/${product.slug}`}>
-          {/* Skeleton */}
-          {!imageLoaded && (
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-50 animate-pulse" />
-          )}
-
           {/* Primary Image */}
           <img 
             src={product.images?.[0]?.url || 'https://via.placeholder.com/400x533'} 
             alt={product.name}
             loading="lazy"
-            onLoad={() => setImageLoaded(true)}
-            className={`w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
+            decoding="async"
+            className="w-full h-full object-cover opacity-100 transition-transform duration-700 ease-out group-hover:scale-105"
           />
 
           {/* Hover Secondary Image */}
@@ -197,7 +187,7 @@ const ProductCard = ({ product }) => {
           </Link>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
