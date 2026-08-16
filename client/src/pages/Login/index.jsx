@@ -14,6 +14,7 @@ import { toast } from 'react-toastify';
 import SocialAuthButtons from '../../components/auth/SocialAuthButtons';
 import LoginScene from './LoginScene';
 import DeviceLimitModal from '../../components/common/DeviceLimitModal';
+import PasswordPolicyChecklist, { validatePasswordPolicy } from '../../components/auth/PasswordPolicyChecklist';
 
 const customStyles = `
   @keyframes float-particle {
@@ -377,7 +378,28 @@ const Login = ({ initialMode }) => {
     if (isRegister) {
       if (!form.fullName.trim()) return setError('Full Name is required');
       if (!form.email.trim()) return setError('Email address is required');
-      if (form.password.length < 6) return setError('Password must be at least 6 characters');
+
+      let parsedPasswordPolicy = {
+        minLength: 6,
+        requireUppercase: true,
+        requireLowercase: true,
+        requireNumbers: false,
+        requireSymbols: false,
+        customRules: [],
+      };
+      if (authSettings?.passwordPolicy) {
+        try {
+          const p = typeof authSettings.passwordPolicy === 'string'
+            ? JSON.parse(authSettings.passwordPolicy)
+            : authSettings.passwordPolicy;
+          if (p && typeof p === 'object') parsedPasswordPolicy = { ...parsedPasswordPolicy, ...p };
+        } catch (e) {}
+      }
+
+      const policyCheck = validatePasswordPolicy(form.password, parsedPasswordPolicy);
+      if (!policyCheck.isValid) {
+        return setError(`Password requirement not met: ${policyCheck.errors.join(', ')}`);
+      }
       if (form.password !== form.confirmPassword) return setError('Passwords do not match');
       if (!form.acceptTerms) return setError('Please accept the terms & conditions');
     } else {
@@ -918,6 +940,22 @@ const Login = ({ initialMode }) => {
                       />
                     </div>
                   </div>
+
+                  {/* Dynamic Password Policy Requirements Checklist */}
+                  <PasswordPolicyChecklist
+                    password={form.password}
+                    policy={(() => {
+                      let p = { minLength: 6, requireUppercase: true, requireLowercase: true, requireNumbers: false, requireSymbols: false, customRules: [] };
+                      if (authSettings?.passwordPolicy) {
+                        try {
+                          const parsed = typeof authSettings.passwordPolicy === 'string' ? JSON.parse(authSettings.passwordPolicy) : authSettings.passwordPolicy;
+                          if (parsed && typeof parsed === 'object') p = { ...p, ...parsed };
+                        } catch (e) {}
+                      }
+                      return p;
+                    })()}
+                    isDark={true}
+                  />
 
                   <label className="flex items-center gap-2 text-gray-400 cursor-pointer pt-1 hover:text-gray-300 transition-colors">
                     <input

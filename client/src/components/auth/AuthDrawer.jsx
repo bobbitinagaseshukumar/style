@@ -9,6 +9,7 @@ import { fetchServerWishlist } from '../../redux/wishlist/wishlistSlice';
 import { fetchAuthSettings } from '../../redux/settings/settingsSlice';
 import api from '../../config/api';
 import { toast } from 'react-toastify';
+import PasswordPolicyChecklist, { validatePasswordPolicy } from './PasswordPolicyChecklist';
 
 /**
  * Premium Luxury Auth Drawer — Sign In & Register Overlay
@@ -194,6 +195,20 @@ const AuthDrawer = ({ isOpen, onClose }) => {
             return toast.error(`Please provide ${field.label || field.name}`);
           }
         }
+      }
+
+      // Validate dynamic password policy
+      let parsedPolicy = { minLength: 6, requireUppercase: true, requireLowercase: true, requireNumbers: false, requireSymbols: false, customRules: [] };
+      if (authSettings?.passwordPolicy) {
+        try {
+          const p = typeof authSettings.passwordPolicy === 'string' ? JSON.parse(authSettings.passwordPolicy) : authSettings.passwordPolicy;
+          if (p && typeof p === 'object') parsedPolicy = { ...parsedPolicy, ...p };
+        } catch (e) {}
+      }
+
+      const policyCheck = validatePasswordPolicy(formData.password, parsedPolicy);
+      if (!policyCheck.isValid) {
+        return toast.error(`Password requirement not met: ${policyCheck.errors.join(', ')}`);
       }
 
       dispatch(registerUser({
@@ -455,7 +470,7 @@ const AuthDrawer = ({ isOpen, onClose }) => {
                         }
 
                         return (
-                          <div key={field.name}>
+                          <div key={field.name} className="space-y-1.5">
                             <label className="block text-xs font-bold text-charcoal-900 uppercase tracking-wide mb-1">
                               {field.label} {field.required ? '*' : ''}
                             </label>
@@ -467,6 +482,21 @@ const AuthDrawer = ({ isOpen, onClose }) => {
                               onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
                               className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-gold-500 allow-select"
                             />
+                            {field.name === 'password' && (
+                              <PasswordPolicyChecklist
+                                password={formData.password}
+                                policy={(() => {
+                                  let p = { minLength: 6, requireUppercase: true, requireLowercase: true, requireNumbers: false, requireSymbols: false, customRules: [] };
+                                  if (authSettings?.passwordPolicy) {
+                                    try {
+                                      const parsed = typeof authSettings.passwordPolicy === 'string' ? JSON.parse(authSettings.passwordPolicy) : authSettings.passwordPolicy;
+                                      if (parsed && typeof parsed === 'object') p = { ...p, ...parsed };
+                                    } catch (e) {}
+                                  }
+                                  return p;
+                                })()}
+                              />
+                            )}
                           </div>
                         );
                       })}

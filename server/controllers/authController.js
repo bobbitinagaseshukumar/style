@@ -7,8 +7,73 @@ const { createOTP, verifyOTPCode } = require('../services/otpService');
 const { sendOTPEmail, sendWelcomeEmail, sendPasswordResetEmail, sendPasswordChangedEmail } = require('../services/emailService');
 const { generateCustomerId } = require('./adminCustomerController');
 
-// Password complexity regex (min 8 chars, uppercase, lowercase, number, special char)
-const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+// Dynamic Password Policy Validator
+const validatePasswordAgainstPolicy = async (password) => {
+  let policy = {
+    minLength: 6,
+    requireUppercase: true,
+    requireLowercase: true,
+    requireNumbers: false,
+    requireSymbols: false,
+    customRules: [],
+  };
+
+  try {
+    const authSettings = await prisma.authSettings.findUnique({ where: { id: 'default' } });
+    if (authSettings?.passwordPolicy) {
+      const parsed = typeof authSettings.passwordPolicy === 'string'
+        ? JSON.parse(authSettings.passwordPolicy)
+        : authSettings.passwordPolicy;
+      if (parsed && typeof parsed === 'object') {
+        policy = { ...policy, ...parsed };
+      }
+    }
+  } catch (e) {}
+
+  const errors = [];
+
+  // Minimum Length
+  const minLen = parseInt(policy.minLength) || 6;
+  if (!password || password.length < minLen) {
+    errors.push(`At least ${minLen} characters long`);
+  }
+
+  // Uppercase / Capital letter
+  if (policy.requireUppercase && !/[A-Z]/.test(password)) {
+    errors.push('At least one capital / uppercase letter (A-Z)');
+  }
+
+  // Lowercase letter
+  if (policy.requireLowercase && !/[a-z]/.test(password)) {
+    errors.push('At least one lowercase letter (a-z)');
+  }
+
+  // Numeric digit
+  if (policy.requireNumbers && !/\d/.test(password)) {
+    errors.push('At least one numeric digit (0-9)');
+  }
+
+  // Special symbol
+  if (policy.requireSymbols && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    errors.push('At least one special character (!@#$%^&*)');
+  }
+
+  // Custom Rules
+  if (Array.isArray(policy.customRules)) {
+    policy.customRules.filter(r => r && r.enabled).forEach(rule => {
+      if (rule.pattern) {
+        try {
+          const reg = new RegExp(rule.pattern);
+          if (!reg.test(password)) {
+            errors.push(rule.message || rule.name || 'Password does not meet custom rule');
+          }
+        } catch (e) {}
+      }
+    });
+  }
+
+  return errors;
+};
 
 // ==================== REGISTER ====================
 exports.register = asyncHandler(async (req, res, next) => {
@@ -18,9 +83,10 @@ exports.register = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, 'Please provide Full Name, Email, and Password'));
   }
 
-  // Check password strength
-  if (!passwordRegex.test(password)) {
-    return next(new ApiError(400, 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character'));
+  // Check password against dynamic admin password policy
+  const passwordErrors = await validatePasswordAgainstPolicy(password);
+  if (passwordErrors.length > 0) {
+    return next(new ApiError(400, `Password does not meet security requirements: ${passwordErrors.join(', ')}`));
   }
 
   // Check duplicate user
@@ -430,8 +496,9 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, 'User ID / Email, OTP, and new password are required'));
   }
 
-  if (!passwordRegex.test(newPassword)) {
-    return next(new ApiError(400, 'New password must be at least 8 characters long and contain uppercase, lowercase, number, and special character.'));
+  const passwordErrors = await validatePasswordAgainstPolicy(newPassword);
+  if (passwordErrors.length > 0) {
+    return next(new ApiError(400, `New password does not meet security requirements: ${passwordErrors.join(', ')}`));
   }
 
   const result = await verifyOTPCode(targetUserId, otp);

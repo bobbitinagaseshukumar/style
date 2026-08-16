@@ -43,7 +43,15 @@ const AuthenticationManager = () => {
   const [formFields, setFormFields] = useState(STANDARD_FIELDS);
   const [verificationMethod, setVerificationMethod] = useState('NONE');
   const [requireAdminApproval, setRequireAdminApproval] = useState(false);
-  const [passwordPolicy, setPasswordPolicy] = useState({ minLength: 6, requireNumbers: false, requireSymbols: false });
+  const [passwordPolicy, setPasswordPolicy] = useState({
+    minLength: 6,
+    requireUppercase: true,
+    requireLowercase: true,
+    requireNumbers: false,
+    requireSymbols: false,
+    disallowCommon: false,
+    customRules: [],
+  });
   const [socialLogins, setSocialLogins] = useState({ google: true, facebook: true, apple: false, github: false });
   const [uiSettings, setUiSettings] = useState({
     welcomeTitle: 'Welcome Back to StyleVerse',
@@ -59,6 +67,10 @@ const AuthenticationManager = () => {
   // Modal State for Adding Custom Registration Field
   const [showAddFieldModal, setShowAddFieldModal] = useState(false);
   const [newField, setNewField] = useState({ name: '', label: '', type: 'text', placeholder: '', required: false, enabled: true });
+
+  // Modal State for Adding Custom Password Rule
+  const [showAddRuleModal, setShowAddRuleModal] = useState(false);
+  const [newRule, setNewRule] = useState({ name: '', pattern: '', message: '', enabled: true });
 
   const fetchAuthSettings = async () => {
     setLoading(true);
@@ -203,6 +215,42 @@ const AuthenticationManager = () => {
     setShowAddFieldModal(false);
     setNewField({ name: '', label: '', type: 'text', placeholder: '', required: false, enabled: true });
     toast.success(`Custom field "${item.label}" added!`);
+  };
+
+  const handleAddCustomRule = (e) => {
+    e.preventDefault();
+    if (!newRule.name || !newRule.message) {
+      return toast.error('Please enter a Rule Name and Customer Requirement Message');
+    }
+    const item = {
+      id: `rule_${Date.now()}`,
+      name: newRule.name.trim(),
+      pattern: newRule.pattern.trim() || '',
+      message: newRule.message.trim(),
+      enabled: true,
+    };
+    setPasswordPolicy(prev => ({
+      ...prev,
+      customRules: [...(prev.customRules || []), item]
+    }));
+    setShowAddRuleModal(false);
+    setNewRule({ name: '', pattern: '', message: '', enabled: true });
+    toast.success(`Custom rule "${item.name}" added! Click "Save Settings" to persist.`);
+  };
+
+  const removeCustomRule = (id) => {
+    setPasswordPolicy(prev => ({
+      ...prev,
+      customRules: (prev.customRules || []).filter(r => r.id !== id)
+    }));
+    toast.info('Custom rule removed');
+  };
+
+  const toggleCustomRule = (id) => {
+    setPasswordPolicy(prev => ({
+      ...prev,
+      customRules: (prev.customRules || []).map(r => r.id === id ? { ...r, enabled: !r.enabled } : r)
+    }));
   };
 
   const removeField = (name) => {
@@ -457,40 +505,130 @@ const AuthenticationManager = () => {
 
           {/* TAB 4: PASSWORD POLICY */}
           {activeTab === 'POLICY' && (
-            <div className="space-y-4 max-w-md">
-              <div>
-                <label className="block text-xs font-bold text-charcoal-900 uppercase tracking-wide mb-1">
-                  Minimum Password Length
-                </label>
-                <input
-                  type="number"
-                  min="4"
-                  max="32"
-                  value={passwordPolicy.minLength}
-                  onChange={(e) => setPasswordPolicy({ ...passwordPolicy, minLength: parseInt(e.target.value) || 6 })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-gold-500"
-                />
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4">
+                <div>
+                  <h3 className="text-base font-bold text-charcoal-900 mb-1">Customer Password Security Policy</h3>
+                  <p className="text-xs text-gray-500">Configure strict password rules. Live customer registration and password reset forms will strictly enforce these rules before approving new passwords.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddRuleModal(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-charcoal-900 hover:bg-black text-gold-400 font-bold text-xs shadow transition cursor-pointer self-start sm:self-auto"
+                >
+                  <FiPlus className="w-4 h-4" /> Add Custom Rule
+                </button>
               </div>
 
-              <label className="flex items-center gap-2 text-xs font-bold text-charcoal-900 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={passwordPolicy.requireNumbers}
-                  onChange={(e) => setPasswordPolicy({ ...passwordPolicy, requireNumbers: e.target.checked })}
-                  className="rounded text-gold-500"
-                />
-                Require at least one numeric digit (0-9)
-              </label>
+              <div className="space-y-4 max-w-xl">
+                <div>
+                  <label className="block text-xs font-bold text-charcoal-900 uppercase tracking-wide mb-1">
+                    Minimum Password Length
+                  </label>
+                  <input
+                    type="number"
+                    min="4"
+                    max="32"
+                    value={passwordPolicy.minLength}
+                    onChange={(e) => setPasswordPolicy({ ...passwordPolicy, minLength: parseInt(e.target.value) || 6 })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-gold-500"
+                  />
+                </div>
 
-              <label className="flex items-center gap-2 text-xs font-bold text-charcoal-900 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={passwordPolicy.requireSymbols}
-                  onChange={(e) => setPasswordPolicy({ ...passwordPolicy, requireSymbols: e.target.checked })}
-                  className="rounded text-gold-500"
-                />
-                Require at least one special character (!@#$%^&*)
-              </label>
+                <div className="space-y-3 pt-2">
+                  <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-100/50 transition">
+                    <input
+                      type="checkbox"
+                      checked={!!passwordPolicy.requireUppercase}
+                      onChange={(e) => setPasswordPolicy({ ...passwordPolicy, requireUppercase: e.target.checked })}
+                      className="w-5 h-5 rounded text-gold-500"
+                    />
+                    <div>
+                      <p className="text-xs font-bold text-charcoal-900">Require at least one Capital / Uppercase letter (A-Z)</p>
+                      <p className="text-[10px] text-gray-500">Customers must include at least 1 uppercase letter like A, B, C...</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-100/50 transition">
+                    <input
+                      type="checkbox"
+                      checked={!!passwordPolicy.requireLowercase}
+                      onChange={(e) => setPasswordPolicy({ ...passwordPolicy, requireLowercase: e.target.checked })}
+                      className="w-5 h-5 rounded text-gold-500"
+                    />
+                    <div>
+                      <p className="text-xs font-bold text-charcoal-900">Require at least one Lowercase letter (a-z)</p>
+                      <p className="text-[10px] text-gray-500">Customers must include at least 1 lowercase letter like a, b, c...</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-100/50 transition">
+                    <input
+                      type="checkbox"
+                      checked={!!passwordPolicy.requireNumbers}
+                      onChange={(e) => setPasswordPolicy({ ...passwordPolicy, requireNumbers: e.target.checked })}
+                      className="w-5 h-5 rounded text-gold-500"
+                    />
+                    <div>
+                      <p className="text-xs font-bold text-charcoal-900">Require at least one Numeric digit (0-9)</p>
+                      <p className="text-[10px] text-gray-500">Customers must include numbers 0-9 in their password</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-100/50 transition">
+                    <input
+                      type="checkbox"
+                      checked={!!passwordPolicy.requireSymbols}
+                      onChange={(e) => setPasswordPolicy({ ...passwordPolicy, requireSymbols: e.target.checked })}
+                      className="w-5 h-5 rounded text-gold-500"
+                    />
+                    <div>
+                      <p className="text-xs font-bold text-charcoal-900">Require at least one Special character (!@#$%^&*)</p>
+                      <p className="text-[10px] text-gray-500">Customers must include symbols like @, #, $, %, etc.</p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Custom Password Rules List */}
+                {passwordPolicy.customRules && passwordPolicy.customRules.length > 0 && (
+                  <div className="space-y-3 pt-4 border-t">
+                    <h4 className="text-xs font-bold text-charcoal-900 uppercase tracking-wide">Custom Password Rules</h4>
+                    <div className="space-y-2">
+                      {passwordPolicy.customRules.map((rule) => (
+                        <div key={rule.id} className="flex items-center justify-between p-3.5 border rounded-xl bg-gray-50 text-xs">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-charcoal-900">{rule.name}</span>
+                              {rule.pattern && (
+                                <span className="font-mono text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded">Regex: {rule.pattern}</span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-gray-500">{rule.message}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleCustomRule(rule.id)}
+                              className={`px-2.5 py-1 rounded-md text-[11px] font-bold cursor-pointer ${
+                                rule.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'
+                              }`}
+                            >
+                              {rule.enabled ? 'Active' : 'Disabled'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeCustomRule(rule.id)}
+                              className="p-1 text-red-500 hover:bg-red-50 rounded cursor-pointer"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -740,6 +878,89 @@ const AuthenticationManager = () => {
                     className="px-5 py-2 rounded-xl text-xs font-extrabold bg-gold-500 hover:bg-gold-400 text-charcoal-900 shadow cursor-pointer"
                   >
                     Add Field to Form
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* MODAL: ADD CUSTOM PASSWORD RULE */}
+        {showAddRuleModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-gray-100 space-y-4"
+            >
+              <div className="flex items-center justify-between border-b pb-3">
+                <h3 className="font-serif font-bold text-lg text-charcoal-900">Add Custom Password Rule</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAddRuleModal(false)}
+                  className="text-gray-400 hover:text-gray-600 font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleAddCustomRule} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-charcoal-900 uppercase mb-1">
+                    Rule Name / Identifier *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. No Blank Spaces, Min 2 Symbols, No Consecutive Digits"
+                    value={newRule.name}
+                    onChange={(e) => setNewRule({ ...newRule, name: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border text-xs bg-gray-50 focus:bg-white focus:outline-none focus:border-gold-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-charcoal-900 uppercase mb-1">
+                    Customer Requirement / Error Hint *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Password cannot contain spaces or blank characters"
+                    value={newRule.message}
+                    onChange={(e) => setNewRule({ ...newRule, message: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border text-xs bg-gray-50 focus:bg-white focus:outline-none focus:border-gold-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-charcoal-900 uppercase mb-1">
+                    Regex Validation Pattern (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. ^\S+$ (for no spaces) or ^(?=.*[!@#$%^&*]).*$"
+                    value={newRule.pattern}
+                    onChange={(e) => setNewRule({ ...newRule, pattern: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border font-mono text-xs bg-gray-50 focus:bg-white focus:outline-none focus:border-gold-500"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">Leave empty if you only want the customer requirement hint or provide a standard JavaScript regex pattern.</p>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddRuleModal(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl text-xs font-extrabold bg-gold-500 hover:bg-gold-400 text-charcoal-900 shadow cursor-pointer"
+                  >
+                    Add Password Rule
                   </button>
                 </div>
               </form>
