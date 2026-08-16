@@ -44,21 +44,26 @@ exports.updateProfile = asyncHandler(async (req, res, next) => {
 
 // ==================== PASSWORD MANAGEMENT WITH MANDATORY OTP ====================
 exports.requestPasswordOTP = asyncHandler(async (req, res, next) => {
-  const { currentPassword, newPassword } = req.body;
+  const { currentPassword, newPassword, isForgotFlow } = req.body;
 
-  if (!currentPassword || !newPassword) {
-    return next(new ApiError(400, 'Current password and new password are required'));
+  if (!newPassword) {
+    return next(new ApiError(400, 'New password is required'));
   }
 
   const user = await prisma.user.findUnique({ where: { id: req.user.id } });
   if (!user) return next(new ApiError(404, 'User not found'));
 
-  const isMatch = await bcrypt.compare(currentPassword, user.password);
-  if (!isMatch) {
-    return next(new ApiError(400, 'Current password is incorrect. Please enter your valid current password.'));
+  // Verify current password only if not in forgot password flow
+  if (!isForgotFlow && currentPassword) {
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return next(new ApiError(400, 'Current password is incorrect. Click "Forgot Current Password?" if you forgot it.'));
+    }
+  } else if (!isForgotFlow && !currentPassword) {
+    return next(new ApiError(400, 'Current password is required or click "Forgot Current Password?"'));
   }
 
-  if (currentPassword === newPassword) {
+  if (currentPassword && currentPassword === newPassword) {
     return next(new ApiError(400, 'New password cannot be the same as your current password.'));
   }
 
