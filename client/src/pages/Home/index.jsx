@@ -53,7 +53,11 @@ const DEFAULT_HERO_SLIDERS = [
   }
 ];
 
-const DEFAULT_CATEGORIES = [];
+const DEFAULT_CATEGORIES = [
+  { id: 'cat-1', name: "Women's Sarees", slug: 'womens-sarees', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80' },
+  { id: 'cat-3', name: "Men's Wear", slug: 'mens-wear', image: 'https://images.unsplash.com/photo-1597983073493-88cd35cf03b0?w=800&auto=format&fit=crop&q=80' },
+  { id: 'cat-4', name: 'Kids Wear', slug: 'kids-wear', image: 'https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=800&auto=format&fit=crop&q=80' },
+];
 
 // Smart Category Thumbnail Resolver: uses admin-uploaded cropped photo or high-clarity category image
 const getCategoryThumbnail = (cat) => {
@@ -115,7 +119,7 @@ const SkeletonCard = () => (
 const Home = () => {
   const prevDataRef = React.useRef(null);
   const [banners, setBanners] = useState(initialCache?.banners?.length > 0 ? initialCache.banners : DEFAULT_HERO_SLIDERS);
-  const [categories, setCategories] = useState(Array.isArray(initialCache?.categories) ? initialCache.categories : []);
+  const [categories, setCategories] = useState(initialCache?.categories?.length > 0 ? initialCache.categories : DEFAULT_CATEGORIES);
   const [products, setProducts] = useState(initialCache?.products || {
     featured: [],
     trending: [],

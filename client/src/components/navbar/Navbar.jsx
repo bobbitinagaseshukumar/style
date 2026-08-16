@@ -460,7 +460,6 @@ const Navbar = () => {
                                     setIsUserMenuOpen(false);
                                     setActiveMegaMenu(null);
                                   }}
-                                  onPointerDown={() => setIsUserMenuOpen(false)}
                                   className="flex items-center gap-3 px-4 py-2.5 text-white/80 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                                 >
                                   <item.icon size={14} className="text-amber-400/80 shrink-0" />
@@ -477,7 +476,6 @@ const Navbar = () => {
                                     setIsUserMenuOpen(false);
                                     setActiveMegaMenu(null);
                                   }}
-                                  onPointerDown={() => setIsUserMenuOpen(false)}
                                   className="flex items-center gap-3 px-4 py-2.5 text-amber-400 hover:bg-amber-400/10 font-bold transition-colors cursor-pointer"
                                 >
                                   <FiSettings size={14} className="shrink-0" />
@@ -493,7 +491,6 @@ const Navbar = () => {
                                   logout();
                                   navigate('/login?switch=true');
                                 }}
-                                onPointerDown={() => setIsUserMenuOpen(false)}
                                 className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-amber-400 hover:bg-amber-400/10 font-bold text-xs transition-colors cursor-pointer"
                               >
                                 <FiRefreshCw size={14} className="shrink-0" />
@@ -504,7 +501,6 @@ const Navbar = () => {
                                   setIsUserMenuOpen(false);
                                   logout();
                                 }}
-                                onPointerDown={() => setIsUserMenuOpen(false)}
                                 className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 font-bold text-xs transition-colors cursor-pointer"
                               >
                                 <FiLogOut size={14} className="shrink-0" />
