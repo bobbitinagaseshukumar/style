@@ -45,18 +45,83 @@ exports.getStoreSettings = asyncHandler(async (req, res) => {
 });
 
 exports.updateStoreSettings = asyncHandler(async (req, res) => {
-    const updateData = req.body;
+    const raw = req.body || {};
+    const sanitizedData = {};
+
+    // String fields
+    const stringFields = [
+        'storeName', 'storeTagline', 'logoUrl', 'faviconUrl', 'contactEmail', 'contactPhone',
+        'alternatePhone', 'supportEmail', 'address', 'googleMapsLink', 'businessHours',
+        'currencySymbol', 'language', 'timeZone', 'primaryColor', 'secondaryColor',
+        'estimatedDeliveryDays', 'whatsappNumber', 'whatsappBusinessName', 'whatsappWorkingHours',
+        'whatsappAutoReply', 'whatsappCountryCode', 'whatsappDefaultMessage', 'whatsappGreeting',
+        'whatsappThankYou', 'instagramUrl', 'facebookUrl', 'youtubeUrl', 'twitterUrl',
+        'telegramUrl', 'pinterestUrl', 'linkedinUrl', 'footerDescription', 'copyrightText',
+        'footerQuickLinks', 'metaTitle', 'metaDescription', 'metaKeywords', 'ogImageUrl', 'robotsTxt'
+    ];
+
+    stringFields.forEach(f => {
+        if (raw[f] !== undefined) {
+            sanitizedData[f] = typeof raw[f] === 'string' ? raw[f].trim() : String(raw[f] || '');
+        }
+    });
+
+    // Handle checkoutFields JSON
+    if (raw.checkoutFields !== undefined) {
+        sanitizedData.checkoutFields = typeof raw.checkoutFields === 'string'
+            ? raw.checkoutFields
+            : JSON.stringify(raw.checkoutFields);
+    }
+
+    // Number fields
+    if (raw.shippingFee !== undefined || raw.shippingCharge !== undefined) {
+        const val = parseFloat(raw.shippingFee !== undefined ? raw.shippingFee : raw.shippingCharge) || 0;
+        sanitizedData.shippingFee = val;
+        sanitizedData.shippingCharge = val;
+    }
+    if (raw.freeShippingThreshold !== undefined) {
+        sanitizedData.freeShippingThreshold = parseFloat(raw.freeShippingThreshold) || 0;
+    }
+
+    // Boolean fields
+    const boolFields = [
+        'maintenanceMode', 'whatsappEnabled', 'showPaymentIcons', 'showTrustBadges',
+        'isCODEnabled', 'isRazorpayEnabled', 'isStripeEnabled', 'isCashfreeEnabled'
+    ];
+    boolFields.forEach(f => {
+        if (raw[f] !== undefined) {
+            sanitizedData[f] = raw[f] === true || raw[f] === 'true' || raw[f] === 1 || raw[f] === '1';
+        }
+    });
+
     try {
         let settings = await prisma.storeSettings.findFirst();
         if (settings) {
-            settings = await prisma.storeSettings.update({ where: { id: settings.id }, data: updateData });
+            settings = await prisma.storeSettings.update({
+                where: { id: settings.id },
+                data: sanitizedData
+            });
         } else {
-            settings = await prisma.storeSettings.create({ data: { id: 'default', ...updateData } });
+            settings = await prisma.storeSettings.create({
+                data: { id: 'default', ...sanitizedData }
+            });
         }
-        return res.status(200).json({ success: true, message: 'Settings updated', data: settings });
+
+        try {
+            exports.invalidateHomepageBundleCache();
+        } catch (e) {}
+
+        return res.status(200).json({
+            success: true,
+            message: 'Settings updated successfully in database',
+            data: settings
+        });
     } catch (dbErr) {
         console.error('[CMS SETTINGS UPDATE ERROR]:', dbErr.message);
-        return res.status(200).json({ success: true, message: 'Settings saved locally', data: { id: 'default', ...updateData } });
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to update settings in database: ' + dbErr.message
+        });
     }
 });
 

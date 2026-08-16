@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import api from '../../config/api';
 import { FiSave, FiGlobe, FiTruck, FiCreditCard, FiSearch, FiLock, FiClipboard, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import { setStoreSettings } from '../../redux/settings/settingsSlice';
 import AuthenticationManager from './AuthenticationManager';
 
 const AdminSettings = () => {
+  const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState('general');
   const [loading, setLoading] = useState(false);
 
@@ -75,16 +78,21 @@ const AdminSettings = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      await api.put('/cms/settings', { ...settings, checkoutFields: JSON.stringify(checkoutFields) });
-      toast.success('Store Settings updated & live!');
+      const res = await api.put('/cms/settings', { ...settings, checkoutFields: JSON.stringify(checkoutFields) });
+      toast.success('Store Settings updated & live throughout the website!');
+      if (res.data?.data) {
+        setSettings(prev => ({ ...prev, ...res.data.data }));
+        dispatch(setStoreSettings(res.data.data));
+      }
       try {
         localStorage.removeItem('__KVLR_HOME_PERSISTENT_CACHE_V3__');
         sessionStorage.removeItem('__KVLR_HOME_CACHE__');
         window.dispatchEvent(new Event('kvlr:content-updated'));
+        window.dispatchEvent(new CustomEvent('settings_updated', { detail: res.data?.data }));
       } catch(e){}
     } catch (err) {
       console.error(err);
-      toast.success('Settings saved!');
+      toast.error(err.response?.data?.message || 'Failed to save settings');
     } finally {
       setLoading(false);
     }

@@ -494,7 +494,13 @@ model StoreSettings {
   primaryColor   String   @default("#D4AF37")
   secondaryColor String   @default("#1A1A1A")
   shippingFee    Float    @default(0)
+  shippingCharge Float    @default(0)
   freeShippingThreshold Float @default(999)
+  estimatedDeliveryDays String @default("3-5 Business Days")
+  isCODEnabled    Boolean  @default(true)
+  isRazorpayEnabled Boolean @default(true)
+  isStripeEnabled Boolean  @default(false)
+  isCashfreeEnabled Boolean @default(false)
   maintenanceMode Boolean @default(false)
   checkoutFields  String   @default("{\"fullName\":{\"enabled\":true,\"required\":true,\"label\":\"Full Name\"},\"phone\":{\"enabled\":true,\"required\":true,\"label\":\"Phone Number\"},\"street\":{\"enabled\":true,\"required\":true,\"label\":\"Street Address\"},\"city\":{\"enabled\":true,\"required\":true,\"label\":\"City\"},\"state\":{\"enabled\":true,\"required\":true,\"label\":\"State\"},\"postalCode\":{\"enabled\":true,\"required\":true,\"label\":\"Pincode\"},\"village\":{\"enabled\":false,\"required\":false,\"label\":\"Village\"},\"landmark\":{\"enabled\":false,\"required\":false,\"label\":\"Landmark\"},\"alternatePhone\":{\"enabled\":false,\"required\":false,\"label\":\"Alternate Phone\"}}")
   // WhatsApp
