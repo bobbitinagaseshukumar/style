@@ -20,7 +20,6 @@ const DEFAULT_NAV_ITEMS = [
   { title: 'Home', link: '/' },
   { title: 'Women', link: '/categories/women', megaKey: 'women' },
   { title: 'Men', link: '/categories/men', megaKey: 'men' },
-  { title: 'Jewellery', link: '/categories/jewellery', megaKey: 'jewellery' },
   { title: 'Kids', link: '/categories/kids', megaKey: 'kids' },
 ];
 

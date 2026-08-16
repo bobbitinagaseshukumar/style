@@ -53,17 +53,13 @@ const DEFAULT_HERO_SLIDERS = [
   }
 ];
 
-const DEFAULT_CATEGORIES = [
-  { id: 'cat-1', name: "Women's Sarees", slug: 'womens-sarees', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80' },
-  { id: 'cat-2', name: 'Jewellery', slug: 'jewellery', image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800&auto=format&fit=crop&q=80' },
-  { id: 'cat-3', name: "Men's Wear", slug: 'mens-wear', image: 'https://images.unsplash.com/photo-1597983073493-88cd35cf03b0?w=800&auto=format&fit=crop&q=80' },
-  { id: 'cat-4', name: 'Kids Wear', slug: 'kids-wear', image: 'https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=800&auto=format&fit=crop&q=80' },
-];
+const DEFAULT_CATEGORIES = [];
 
-// Smart Category Thumbnail Resolver: uses admin-uploaded photo or high-clarity category image
+// Smart Category Thumbnail Resolver: uses admin-uploaded cropped photo or high-clarity category image
 const getCategoryThumbnail = (cat) => {
   if (!cat) return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80';
   
+  // High priority: Always use the exact admin uploaded/cropped photo if present!
   const rawImage = cat.image || cat.imageUrl || cat.coverImage || cat.banner || cat.thumbnail;
   if (rawImage && typeof rawImage === 'string' && rawImage.trim().length > 5) {
     return formatImageUrl(rawImage.trim());
@@ -72,9 +68,6 @@ const getCategoryThumbnail = (cat) => {
   const slug = String(cat.slug || '').toLowerCase();
   const name = String(cat.name || '').toLowerCase();
 
-  if (slug.includes('jewel') || name.includes('jewel') || slug.includes('kundan') || name.includes('kundan')) {
-    return 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800&auto=format&fit=crop&q=80';
-  }
   if (slug.includes('saree') || name.includes('saree') || slug.includes('women') || name.includes('women') || slug.includes('lehenga') || name.includes('lehenga')) {
     return 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80';
   }
@@ -88,37 +81,32 @@ const getCategoryThumbnail = (cat) => {
 };
 
 // Persistent Cache Key for instant 0ms loads across browser sessions
-const PERSISTENT_CACHE_KEY = '__KVLR_HOME_PERSISTENT_CACHE_V3__';
+const CACHE_KEY = '__KVLR_HOME_PERSISTENT_CACHE_V3__';
 
-// Helper: Load initial cache from localStorage (or fallback sessionStorage) for 0ms instantaneous loading
-const getCachedHomeData = () => {
+const getInitialCache = () => {
   try {
-    const rawLocal = localStorage.getItem(PERSISTENT_CACHE_KEY);
-    if (rawLocal) return JSON.parse(rawLocal);
-  } catch (e) {}
-  try {
-    const rawSession = sessionStorage.getItem('__KVLR_HOME_CACHE__');
-    if (rawSession) return JSON.parse(rawSession);
-  } catch (e) {}
+    const sessionCache = sessionStorage.getItem('__KVLR_HOME_CACHE__');
+    if (sessionCache) return JSON.parse(sessionCache);
+    const persistentCache = localStorage.getItem(CACHE_KEY);
+    if (persistentCache) return JSON.parse(persistentCache);
+  } catch (e) {
+    console.warn('Cache parse error:', e);
+  }
   return null;
 };
 
-const initialCache = getCachedHomeData();
+const initialCache = getInitialCache();
 
-// Skeleton card for instant layout stability on clean browser cache
-const SkeletonCard = () => (
-  <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm animate-pulse flex flex-col">
-    <div className="w-full aspect-[3/4] bg-gray-200 rounded-xl mb-3" />
-    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-    <div className="h-3 bg-gray-100 rounded w-1/2 mb-3" />
-    <div className="h-5 bg-gray-200 rounded w-1/3 mt-auto" />
+const LoadingSkeleton = () => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
   </div>
 );
 
 const Home = () => {
   const prevDataRef = React.useRef(null);
   const [banners, setBanners] = useState(initialCache?.banners?.length > 0 ? initialCache.banners : DEFAULT_HERO_SLIDERS);
-  const [categories, setCategories] = useState(initialCache?.categories?.length > 0 ? initialCache.categories : DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState(Array.isArray(initialCache?.categories) ? initialCache.categories : []);
   const [products, setProducts] = useState(initialCache?.products || {
     featured: [],
     trending: [],
@@ -159,7 +147,7 @@ const Home = () => {
             if (newDataKey !== prevDataRef.current) {
               prevDataRef.current = newDataKey;
               if (bundle.banners?.length > 0) setBanners(bundle.banners);
-              if (bundle.categories?.length > 0) setCategories(bundle.categories);
+              if (Array.isArray(bundle.categories)) setCategories(bundle.categories);
               if (bundle.products) {
                 const bProds = bundle.products;
                 setProducts({

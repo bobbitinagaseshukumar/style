@@ -2,6 +2,7 @@ const prisma = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const slugify = require('slugify');
+const { invalidateHomepageBundleCache } = require('./cmsController');
 
 // ==================== GET ALL CATEGORIES ====================
 exports.getCategories = asyncHandler(async (req, res, next) => {
@@ -97,6 +98,8 @@ exports.createCategory = asyncHandler(async (req, res, next) => {
     }
   });
 
+  invalidateHomepageBundleCache();
+
   res.status(201).json({
     success: true,
     message: 'Category created successfully',
@@ -136,6 +139,8 @@ exports.updateCategory = asyncHandler(async (req, res, next) => {
     data: updateData
   });
 
+  invalidateHomepageBundleCache();
+
   res.status(200).json({
     success: true,
     message: 'Category updated and published successfully',
@@ -162,6 +167,7 @@ exports.deleteCategory = asyncHandler(async (req, res, next) => {
       where: { id },
       data: { status: 'ARCHIVED', isVisible: false, showOnHomepage: false }
     });
+    invalidateHomepageBundleCache();
     return res.status(200).json({ success: true, message: 'Category archived successfully' });
   }
 
@@ -175,6 +181,17 @@ exports.deleteCategory = asyncHandler(async (req, res, next) => {
 
   // Clean up subcategories to prevent foreign key constraint violations
   await prisma.subCategory.deleteMany({ where: { categoryId: id } }).catch(() => {});
+
+  // Clean up any HeaderMenu items pointing to this category to keep navbar in sync
+  await prisma.headerMenu.deleteMany({
+    where: {
+      OR: [
+        { categoryId: id },
+        { slug: category.slug },
+        { link: `/categories/${category.slug}` }
+      ]
+    }
+  }).catch(() => {});
 
   // 2. MOVE_PRODUCTS OR TRANSFER & DELETE
   if (productCount > 0 && targetCategoryId) {
@@ -192,6 +209,7 @@ exports.deleteCategory = asyncHandler(async (req, res, next) => {
       data: { categoryId: targetCategoryId }
     });
     await prisma.category.delete({ where: { id } });
+    invalidateHomepageBundleCache();
     return res.status(200).json({
       success: true,
       message: `Transferred ${productCount} product(s) to "${targetCategory.name}" and removed category successfully!`
@@ -202,11 +220,13 @@ exports.deleteCategory = asyncHandler(async (req, res, next) => {
   if (deleteMode === 'DELETE_ALL') {
     await prisma.product.deleteMany({ where: { categoryId: id } }).catch(() => {});
     await prisma.category.delete({ where: { id } });
+    invalidateHomepageBundleCache();
     return res.status(200).json({ success: true, message: 'Category and all associated products deleted' });
   }
 
   // 4. Clean category with 0 products
   await prisma.category.delete({ where: { id } });
+  invalidateHomepageBundleCache();
 
   res.status(200).json({
     success: true,
