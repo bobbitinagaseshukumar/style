@@ -117,36 +117,22 @@ const Navbar = () => {
 
 
 
-  /* ── Close user menu: ANY click anywhere closes it (except toggle button) ── */
+  /* ── Close user menu on outside click/tap & escape key ─────── */
   const userBtnRef = useRef(null);
   const userDropdownRef = useRef(null);
-  const closeListenerRef = useRef(null);
 
   useEffect(() => {
-    if (!isUserMenuOpen) {
-      // Clean up if somehow still attached
-      if (closeListenerRef.current) {
-        document.removeEventListener('click', closeListenerRef.current, true);
-        closeListenerRef.current = null;
-      }
-      return;
-    }
+    if (!isUserMenuOpen) return;
 
-    // Delay by 1 frame so the opening click doesn't immediately close
-    const raf = requestAnimationFrame(() => {
-      const closeMenu = (e) => {
-        // Only skip if clicking the toggle button itself (so it can toggle)
-        if (userBtnRef.current && userBtnRef.current.contains(e.target)) {
-          return;
-        }
-        // EVERYTHING else closes the menu — menu items, page background, anywhere
-        setIsUserMenuOpen(false);
-        setActiveMegaMenu(null);
-      };
-
-      closeListenerRef.current = closeMenu;
-      document.addEventListener('click', closeMenu, true); // capture phase = fires first
-    });
+    const closeOutside = (e) => {
+      // Skip if clicking the toggle button (it handles its own toggle)
+      if (userBtnRef.current && userBtnRef.current.contains(e.target)) return;
+      // Skip if clicking inside the dropdown (menu items close themselves)
+      if (userDropdownRef.current && userDropdownRef.current.contains(e.target)) return;
+      // Anything else = outside = close now
+      setIsUserMenuOpen(false);
+      setActiveMegaMenu(null);
+    };
 
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
@@ -154,14 +140,15 @@ const Navbar = () => {
         setActiveMegaMenu(null);
       }
     };
+
+    // mousedown + touchstart = works on ALL devices instantly
+    document.addEventListener('mousedown', closeOutside);
+    document.addEventListener('touchstart', closeOutside, { passive: true });
     window.addEventListener('keydown', handleEscape);
 
     return () => {
-      cancelAnimationFrame(raf);
-      if (closeListenerRef.current) {
-        document.removeEventListener('click', closeListenerRef.current, true);
-        closeListenerRef.current = null;
-      }
+      document.removeEventListener('mousedown', closeOutside);
+      document.removeEventListener('touchstart', closeOutside);
       window.removeEventListener('keydown', handleEscape);
     };
   }, [isUserMenuOpen]);
@@ -437,89 +424,95 @@ const Navbar = () => {
                       </motion.button>
                     )}
 
-                    {/* USER PROFILE DROPDOWN MENU */}
-                    <AnimatePresence>
-                      {isAuthenticated && isUserMenuOpen && (
-                        <motion.div
-                          ref={userDropdownRef}
-                          key="user-dropdown"
-                          initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                          transition={{ duration: 0.12 }}
-                          className="absolute right-0 mt-2 w-60 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-50 text-xs"
-                        >
-                          <div className="px-4 py-3 border-b border-white/10 bg-white/5">
-                            <p className="text-sm font-bold text-white truncate">{userName}</p>
-                            <p className="text-xs text-white/50 truncate">{user?.email}</p>
-                            <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-400/10 text-amber-400 border border-amber-400/30">
-                              {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '⚡ ADMIN' : '⭐ CUSTOMER'}
-                            </div>
+                    {/* USER PROFILE DROPDOWN MENU — No AnimatePresence to avoid click blocking */}
+                    {isAuthenticated && isUserMenuOpen && (
+                      <div
+                        ref={userDropdownRef}
+                        className="absolute right-0 mt-2 w-60 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-50 text-xs"
+                        style={{ animation: 'fadeInDropdown 0.12s ease-out' }}
+                      >
+                        <div className="px-4 py-3 border-b border-white/10 bg-white/5">
+                          <p className="text-sm font-bold text-white truncate">{userName}</p>
+                          <p className="text-xs text-white/50 truncate">{user?.email}</p>
+                          <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-400/10 text-amber-400 border border-amber-400/30">
+                            {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '⚡ ADMIN' : '⭐ CUSTOMER'}
                           </div>
+                        </div>
 
-                          <div className="py-1">
-                            {[
-                              { label: 'Dashboard', icon: FiGrid, path: '/dashboard' },
-                              { label: 'My Orders', icon: FiPackage, path: '/orders' },
-                              { label: 'Recently Viewed', icon: FiClock, path: '/recently-viewed' },
-                              { label: 'Address Book', icon: FiMapPin, path: '/address-book' },
-                              { label: 'Wishlist', icon: FiHeart, path: '/wishlist' },
-                              { label: 'Profile Settings', icon: FiUser, path: '/profile' },
-                              { label: 'Notifications', icon: FiBell, path: '/notifications' },
-                            ].map((item) => (
-                              <div
-                                key={item.label}
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => navigate(item.path)}
-                                className="flex items-center gap-3 px-4 py-2.5 text-white/80 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-                              >
-                                <item.icon size={14} className="text-amber-400/80 shrink-0" />
-                                <span className="font-semibold">{item.label}</span>
-                              </div>
-                            ))}
-                          </div>
-
-                          {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.isAdmin) && (
-                            <div className="border-t border-white/10 py-1">
-                              <div
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => navigate('/admin/dashboard')}
-                                className="flex items-center gap-3 px-4 py-2.5 text-amber-400 hover:bg-amber-400/10 font-bold transition-colors cursor-pointer"
-                              >
-                                <FiSettings size={14} className="shrink-0" />
-                                Super Admin Panel
-                              </div>
+                        <div className="py-1">
+                          {[
+                            { label: 'Dashboard', icon: FiGrid, path: '/dashboard' },
+                            { label: 'My Orders', icon: FiPackage, path: '/orders' },
+                            { label: 'Recently Viewed', icon: FiClock, path: '/recently-viewed' },
+                            { label: 'Address Book', icon: FiMapPin, path: '/address-book' },
+                            { label: 'Wishlist', icon: FiHeart, path: '/wishlist' },
+                            { label: 'Profile Settings', icon: FiUser, path: '/profile' },
+                            { label: 'Notifications', icon: FiBell, path: '/notifications' },
+                          ].map((item) => (
+                            <div
+                              key={item.label}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => {
+                                setIsUserMenuOpen(false);
+                                setActiveMegaMenu(null);
+                                navigate(item.path);
+                              }}
+                              className="flex items-center gap-3 px-4 py-2.5 text-white/80 hover:text-white hover:bg-white/5 transition-colors cursor-pointer select-none"
+                            >
+                              <item.icon size={14} className="text-amber-400/80 shrink-0" />
+                              <span className="font-semibold">{item.label}</span>
                             </div>
-                          )}
+                          ))}
+                        </div>
 
-                          <div className="border-t border-white/10 p-1 space-y-1">
+                        {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.isAdmin) && (
+                          <div className="border-t border-white/10 py-1">
                             <div
                               role="button"
                               tabIndex={0}
                               onClick={() => {
-                                logout();
-                                navigate('/login?switch=true');
+                                setIsUserMenuOpen(false);
+                                setActiveMegaMenu(null);
+                                navigate('/admin/dashboard');
                               }}
-                              className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-amber-400 hover:bg-amber-400/10 font-bold text-xs transition-colors cursor-pointer"
+                              className="flex items-center gap-3 px-4 py-2.5 text-amber-400 hover:bg-amber-400/10 font-bold transition-colors cursor-pointer select-none"
                             >
-                              <FiRefreshCw size={14} className="shrink-0" />
-                              Switch Account
-                            </div>
-                            <div
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => logout()}
-                              className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 font-bold text-xs transition-colors cursor-pointer"
-                            >
-                              <FiLogOut size={14} className="shrink-0" />
-                              Sign Out
+                              <FiSettings size={14} className="shrink-0" />
+                              Super Admin Panel
                             </div>
                           </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                        )}
+
+                        <div className="border-t border-white/10 p-1 space-y-1">
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              setIsUserMenuOpen(false);
+                              logout();
+                              navigate('/login?switch=true');
+                            }}
+                            className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-amber-400 hover:bg-amber-400/10 font-bold text-xs transition-colors cursor-pointer select-none"
+                          >
+                            <FiRefreshCw size={14} className="shrink-0" />
+                            Switch Account
+                          </div>
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              setIsUserMenuOpen(false);
+                              logout();
+                            }}
+                            className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 font-bold text-xs transition-colors cursor-pointer select-none"
+                          >
+                            <FiLogOut size={14} className="shrink-0" />
+                            Sign Out
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
