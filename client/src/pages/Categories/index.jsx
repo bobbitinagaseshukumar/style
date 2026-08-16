@@ -95,17 +95,8 @@ const Categories = () => {
 
     fetchProducts();
 
-    // 15-second Polling for Real-time Device Sync
-    const pollInterval = setInterval(fetchProducts, 15000);
-
-    // Refresh when user returns to window tab
-    const handleFocus = () => fetchProducts();
-    window.addEventListener('focus', handleFocus);
-
     return () => {
       isMounted = false;
-      clearInterval(pollInterval);
-      window.removeEventListener('focus', handleFocus);
     };
   }, [selectedCategory, selectedSubcategory, sortOption, filterFeatured, filterTrending, categories]);
 

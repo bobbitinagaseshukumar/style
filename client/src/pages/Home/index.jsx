@@ -317,8 +317,7 @@ const Home = () => {
     };
 
     fetchHomeData();
-    const interval = setInterval(fetchHomeData, 8000); // 8s background sync
-    const handleFocus = () => fetchHomeData();
+
     const handleContentUpdate = () => {
       try {
         localStorage.removeItem(PERSISTENT_CACHE_KEY);
@@ -327,14 +326,11 @@ const Home = () => {
       fetchHomeData();
     };
 
-    window.addEventListener('focus', handleFocus);
     window.addEventListener('kvlr:content-updated', handleContentUpdate);
     window.addEventListener('storage', handleContentUpdate);
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
       window.removeEventListener('kvlr:content-updated', handleContentUpdate);
       window.removeEventListener('storage', handleContentUpdate);
     };
