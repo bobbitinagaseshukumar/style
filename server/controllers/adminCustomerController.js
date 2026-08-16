@@ -458,33 +458,40 @@ exports.updateCustomerDetails = asyncHandler(async (req, res, next) => {
   });
 
   if (address && typeof address === 'object') {
-    const defaultAddr = await prisma.address.findFirst({ where: { userId: id, isDefault: true } });
+    const streetVal = address.street || address.address || '';
+    const cityVal = address.city || '';
+    const stateVal = address.state || '';
+    const postalVal = address.postalCode || address.pinCode || address.zipCode || '';
+    const countryVal = address.country || 'India';
+    const phoneVal = phone || existing.phone || '';
+
+    const defaultAddr = await prisma.address.findFirst({ where: { userId: id, isDefault: true } })
+      || await prisma.address.findFirst({ where: { userId: id } });
+
     if (defaultAddr) {
       await prisma.address.update({
         where: { id: defaultAddr.id },
         data: {
-          name: computedFullName,
-          street: address.street || address.address || defaultAddr.street,
-          city: address.city || defaultAddr.city,
-          district: address.district || defaultAddr.district,
-          state: address.state || defaultAddr.state,
-          country: address.country || defaultAddr.country,
-          pinCode: address.pinCode || defaultAddr.pinCode,
-          phone: phone || defaultAddr.phone
+          fullName: computedFullName,
+          phone: phoneVal || defaultAddr.phone,
+          street: streetVal || defaultAddr.street,
+          city: cityVal || defaultAddr.city,
+          state: stateVal || defaultAddr.state,
+          postalCode: postalVal || defaultAddr.postalCode,
+          country: countryVal || defaultAddr.country,
         }
       });
-    } else if (address.street || address.address) {
+    } else if (streetVal || cityVal || postalVal) {
       await prisma.address.create({
         data: {
           userId: id,
-          name: computedFullName,
-          street: address.street || address.address || '',
-          city: address.city || '',
-          district: address.district || '',
-          state: address.state || '',
-          country: address.country || 'India',
-          pinCode: address.pinCode || '',
-          phone: phone || '',
+          fullName: computedFullName,
+          phone: phoneVal,
+          street: streetVal,
+          city: cityVal,
+          state: stateVal,
+          postalCode: postalVal,
+          country: countryVal,
           isDefault: true
         }
       });

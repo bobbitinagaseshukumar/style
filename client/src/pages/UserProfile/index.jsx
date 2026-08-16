@@ -28,13 +28,15 @@ const checkPasswordStrength = (pass) => {
 };
 
 const UserProfile = () => {
+  const dispatch = useDispatch();
+  const reduxUser = useSelector((s) => s.auth.user);
   const [activeTab, setActiveTab] = useState('profile');
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(reduxUser || null);
   const [addresses, setAddresses] = useState([]);
   const [orders, setOrders] = useState([]);
   const [wishlist, setWishlist] = useState([]);
   const [activityLogs, setActivityLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!reduxUser);
 
   // Address Modal
   const [addressModal, setAddressModal] = useState(false);
@@ -49,7 +51,19 @@ const UserProfile = () => {
     isDefault: false,
   });
 
-
+  // Sync user state whenever Redux user updates
+  useEffect(() => {
+    if (reduxUser) {
+      setUser((prev) => ({
+        ...prev,
+        ...reduxUser,
+        fullName: reduxUser.fullName || prev?.fullName || '',
+        email: reduxUser.email || prev?.email || '',
+        phone: reduxUser.phone || prev?.phone || '',
+        gender: reduxUser.gender || prev?.gender || '',
+      }));
+    }
+  }, [reduxUser]);
 
   const fetchAddresses = async () => {
     try {
@@ -62,7 +76,6 @@ const UserProfile = () => {
 
   const fetchUserData = async () => {
     try {
-      setLoading(true);
       const [userRes, addrRes, orderRes, logRes] = await Promise.allSettled([
         api.get('/users/me'),
         api.get('/users/addresses'),
@@ -70,7 +83,13 @@ const UserProfile = () => {
         api.get('/users/activity-logs'),
       ]);
 
-      if (userRes.status === 'fulfilled') setUser(userRes.value.data?.data);
+      if (userRes.status === 'fulfilled' && userRes.value.data?.data) {
+        const u = userRes.value.data.data;
+        setUser(u);
+        dispatch(updateUser(u));
+      } else if (reduxUser) {
+        setUser(reduxUser);
+      }
       if (addrRes.status === 'fulfilled') setAddresses(addrRes.value.data?.data || []);
       if (orderRes.status === 'fulfilled') setOrders(orderRes.value.data?.data || []);
       if (logRes.status === 'fulfilled') setActivityLogs(logRes.value.data?.data || []);
@@ -87,15 +106,22 @@ const UserProfile = () => {
       fetchAddresses();
       fetchUserData();
     };
+    const handleUserUpdate = (e) => {
+      if (e?.detail) {
+        setUser((prev) => ({ ...prev, ...e.detail }));
+      } else {
+        fetchUserData();
+      }
+    };
     window.addEventListener('addresses_updated', handleSync);
     window.addEventListener('orders_updated', handleSync);
+    window.addEventListener('user_updated', handleUserUpdate);
     return () => {
       window.removeEventListener('addresses_updated', handleSync);
       window.removeEventListener('orders_updated', handleSync);
+      window.removeEventListener('user_updated', handleUserUpdate);
     };
   }, []);
-
-  const dispatch = useDispatch();
 
   const handleProfileSave = async (e) => {
     e.preventDefault();
@@ -103,7 +129,10 @@ const UserProfile = () => {
       const res = await api.put('/users/profile', {
         fullName: user?.fullName || '',
         phone: user?.phone || '',
-        gender: user?.gender || ''
+        alternatePhone: user?.alternatePhone || user?.altPhone || '',
+        gender: user?.gender || '',
+        dob: user?.dob || null,
+        avatar: user?.avatar || '',
       });
       toast.success('Profile details updated successfully!');
       if (res.data?.data) {
@@ -298,10 +327,10 @@ const UserProfile = () => {
         <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm h-fit space-y-2">
           <div className="text-center pb-6 border-b border-gray-100">
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold text-3xl mx-auto shadow-lg mb-3">
-              {(user?.fullName?.trim()?.[0] || 'S').toUpperCase()}
+              {(user?.fullName?.trim()?.[0] || user?.email?.trim()?.[0] || 'U').toUpperCase()}
             </div>
-            <h2 className="font-bold text-charcoal-900 text-lg">{user?.fullName}</h2>
-            <p className="text-xs text-gray-400">{user?.email}</p>
+            <h2 className="font-bold text-charcoal-900 text-lg">{user?.fullName || user?.name || user?.email?.split('@')[0] || 'My Account'}</h2>
+            <p className="text-xs text-gray-400">{user?.email || '—'}</p>
           </div>
 
           <div className="pt-4 space-y-1">
