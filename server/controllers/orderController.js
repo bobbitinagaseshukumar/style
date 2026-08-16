@@ -460,7 +460,8 @@ exports.adminUpdateOrderStatus = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const {
     orderStatus, courierName, trackingNumber, trackingUrl,
-    cancelReason, expectedDeliveryDate, deliveryTimeSlot, internalNotes,
+    cancelReason, expectedDeliveryDate, deliveryDate, deliveryTimeSlot, deliveryTime,
+    packingDate, shippingDate, internalNotes,
     cancellationAllowed, cancellationDuration
   } = req.body;
 
@@ -470,8 +471,12 @@ exports.adminUpdateOrderStatus = asyncHandler(async (req, res, next) => {
   if (trackingNumber !== undefined) updateData.trackingNumber = trackingNumber;
   if (trackingUrl !== undefined) updateData.trackingUrl = trackingUrl;
   if (cancelReason !== undefined) updateData.cancelReason = cancelReason;
-  if (expectedDeliveryDate !== undefined) updateData.expectedDeliveryDate = expectedDeliveryDate;
-  if (deliveryTimeSlot !== undefined) updateData.deliveryTimeSlot = deliveryTimeSlot;
+  if (expectedDeliveryDate !== undefined) updateData.deliveryDate = expectedDeliveryDate;
+  if (deliveryDate !== undefined) updateData.deliveryDate = deliveryDate;
+  if (deliveryTimeSlot !== undefined) updateData.deliveryTime = deliveryTimeSlot;
+  if (deliveryTime !== undefined) updateData.deliveryTime = deliveryTime;
+  if (packingDate !== undefined) updateData.packingDate = packingDate;
+  if (shippingDate !== undefined) updateData.shippingDate = shippingDate;
   if (internalNotes !== undefined) updateData.notes = internalNotes;
   if (orderStatus === 'DELIVERED') updateData.deliveredAt = new Date();
 
@@ -598,7 +603,7 @@ exports.adminUpdateOrderStatus = asyncHandler(async (req, res, next) => {
 exports.adminApproveOrder = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const {
-    deliveryDate, deliveryTime, deliveryNotes,
+    deliveryDate, deliveryTime, packingDate, shippingDate, deliveryNotes,
     cancellationAllowed, cancellationDurationMinutes,
     cancellationStart, cancellationEnd
   } = req.body;
@@ -627,6 +632,8 @@ exports.adminApproveOrder = asyncHandler(async (req, res, next) => {
       approvedBy: req.user.id,
       deliveryDate: deliveryDate || null,
       deliveryTime: deliveryTime || null,
+      packingDate: packingDate || null,
+      shippingDate: shippingDate || null,
       deliveryNotes: deliveryNotes || null,
       cancellationAllowed: !!cancellationAllowed,
       cancellationStart: cStart,

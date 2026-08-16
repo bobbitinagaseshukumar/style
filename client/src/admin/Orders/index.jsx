@@ -527,8 +527,10 @@ const OrderDetail = ({ order, onClose, onStatusUpdate }) => {
 
 /* ─── Admin Order Approval & Cancellation Config Modal ───── */
 const ApproveOrderModal = ({ order, onClose, onApproved }) => {
-  const [deliveryDate, setDeliveryDate] = useState('15 August 2026');
-  const [deliveryTime, setDeliveryTime] = useState('10:00 AM – 1:00 PM');
+  const [deliveryDate, setDeliveryDate] = useState(order?.deliveryDate || '15 August 2026');
+  const [deliveryTime, setDeliveryTime] = useState(order?.deliveryTime || '10:00 AM – 1:00 PM');
+  const [packingDate, setPackingDate] = useState(order?.packingDate || '15 August 2026, 04:00 PM');
+  const [shippingDate, setShippingDate] = useState(order?.shippingDate || '16 August 2026, 10:00 AM');
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [cancellationAllowed, setCancellationAllowed] = useState(true);
   const [durationMinutes, setDurationMinutes] = useState(60);
@@ -541,12 +543,14 @@ const ApproveOrderModal = ({ order, onClose, onApproved }) => {
       const res = await api.put(`/orders/admin/${order.id}/approve`, {
         deliveryDate,
         deliveryTime,
+        packingDate,
+        shippingDate,
         deliveryNotes,
         cancellationAllowed,
         cancellationDurationMinutes: durationMinutes,
       });
 
-      toast.success('Order Approved & Cancellation Window Configured!');
+      toast.success('Order Approved & Delivery Timelines Configured!');
       onApproved(order.id, res.data?.data);
       onClose();
     } catch (err) {
@@ -567,20 +571,45 @@ const ApproveOrderModal = ({ order, onClose, onApproved }) => {
       >
         <div className="bg-charcoal-900 p-5 text-white flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-gold-400">Order Approval</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gold-400">Order Approval & Schedule Control</span>
             <h3 className="font-serif font-bold text-lg">Approve Order #{order.orderNumber}</h3>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-white font-bold">✕</button>
         </div>
 
-        <form onSubmit={handleApprove} className="p-6 space-y-4">
+        <form onSubmit={handleApprove} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+          {/* Packing & Shipping Schedule */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Target Packing Date & Time</label>
+              <input
+                type="text"
+                placeholder="e.g. 15 August 2026, 04:00 PM"
+                value={packingDate}
+                onChange={(e) => setPackingDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Target Shipping Date & Time</label>
+              <input
+                type="text"
+                placeholder="e.g. 16 August 2026, 10:00 AM"
+                value={shippingDate}
+                onChange={(e) => setShippingDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Delivery Date & Time Slot */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Estimated Delivery Date</label>
               <input
                 type="text"
                 required
-                placeholder="e.g. 15 August 2026"
+                placeholder="e.g. 17 August 2026"
                 value={deliveryDate}
                 onChange={(e) => setDeliveryDate(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border text-xs"
@@ -598,7 +627,8 @@ const ApproveOrderModal = ({ order, onClose, onApproved }) => {
             </div>
           </div>
 
-          <div className="p-4 bg-gold-50 border border-gold-200 rounded-2xl space-y-3">
+          {/* Cancellation Window Configuration */}
+          <div className="p-4 bg-gold-50/80 border border-gold-200 rounded-2xl space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-charcoal-900">Allow Customer Cancellation Window</p>
@@ -608,15 +638,33 @@ const ApproveOrderModal = ({ order, onClose, onApproved }) => {
                 type="checkbox"
                 checked={cancellationAllowed}
                 onChange={(e) => setCancellationAllowed(e.target.checked)}
-                className="w-5 h-5 rounded text-gold-500 cursor-pointer"
+                className="w-5 h-5 rounded text-gold-500 cursor-pointer accent-gold-500"
               />
             </div>
 
             {cancellationAllowed && (
-              <div className="space-y-2 pt-2 border-t border-gold-200">
-                <label className="block text-[10px] font-bold text-gray-700 uppercase">Preset Cancellation Window Duration</label>
-                <div className="grid grid-cols-4 gap-1.5">
+              <div className="space-y-2.5 pt-2 border-t border-gold-200">
+                <label className="block text-[10px] font-bold text-gray-700 uppercase">Set Cancellation Window (Type Custom Minutes or Pick Preset)</label>
+                
+                {/* Typable Minutes Input */}
+                <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-gold-300 shadow-sm">
+                  <span className="text-xs font-bold text-gray-700">Custom Duration:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10080"
+                    value={durationMinutes}
+                    onChange={(e) => setDurationMinutes(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-24 px-3 py-1.5 rounded-lg border border-gold-400 text-xs font-bold text-charcoal-900 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                    placeholder="e.g. 13"
+                  />
+                  <span className="text-xs font-bold text-amber-700">Minutes</span>
+                </div>
+
+                {/* Preset Duration Buttons */}
+                <div className="grid grid-cols-4 gap-1.5 pt-1">
                   {[
+                    { label: '13 Mins', value: 13 },
                     { label: '30 Mins', value: 30 },
                     { label: '1 Hour', value: 60 },
                     { label: '2 Hours', value: 120 },
@@ -624,14 +672,13 @@ const ApproveOrderModal = ({ order, onClose, onApproved }) => {
                     { label: '12 Hours', value: 720 },
                     { label: '24 Hours', value: 1440 },
                     { label: '48 Hours', value: 2880 },
-                    { label: '72 Hours', value: 4320 },
                   ].map((p) => (
                     <button
                       key={p.value}
                       type="button"
                       onClick={() => setDurationMinutes(p.value)}
                       className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                        durationMinutes === p.value ? 'bg-gold-500 text-charcoal-900 border-gold-600' : 'bg-white text-gray-700 border-gray-200'
+                        durationMinutes === p.value ? 'bg-gold-500 text-charcoal-900 border-gold-600 shadow-sm' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                       }`}
                     >
                       {p.label}

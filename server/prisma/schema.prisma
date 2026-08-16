@@ -368,6 +368,8 @@ model Order {
   approvedBy           String?
   deliveryDate         String?
   deliveryTime         String?
+  packingDate          String?   // Target / actual packing date & time set by admin
+  shippingDate         String?   // Target / actual shipping date & time set by admin
   deliveryNotes        String?
 
   cancellationAllowed  Boolean   @default(false)

@@ -244,24 +244,58 @@ const Orders = () => {
                     </div>
                   )}
 
+                  {order.orderStatus === 'DELIVERED' && (
+                    <div className="bg-emerald-50 text-emerald-900 p-4 rounded-2xl border border-emerald-200 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs flex items-center gap-1.5 text-emerald-700">
+                          <FiCheckCircle className="w-4 h-4 text-emerald-600" /> 🎉 ORDER DELIVERED
+                        </span>
+                        <span className="text-[11px] text-emerald-600 font-mono">
+                          {formatDate(order.deliveredAt || order.updatedAt)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-emerald-700 font-medium">
+                        Your items have been safely delivered to your address. Thank you for shopping with StyleVerse!
+                      </p>
+                    </div>
+                  )}
+
                   {/* ADMIN SCHEDULED DELIVERY & TRACKING INFO */}
-                  {(order.deliveryDate || order.expectedDeliveryDate || order.courierName || order.trackingNumber) && (
-                    <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-3.5 space-y-2 text-xs text-charcoal-900">
+                  {(order.packingDate || order.shippingDate || order.deliveryDate || order.expectedDeliveryDate || order.courierName || order.trackingNumber) && (
+                    <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 space-y-2.5 text-xs text-charcoal-900">
                       <p className="font-bold text-[11px] text-amber-800 uppercase tracking-widest flex items-center gap-1.5">
-                        <FiTruck className="w-3.5 h-3.5" /> Delivery & Shipping Schedule (Set by Seller)
+                        <FiTruck className="w-4 h-4 text-amber-600" /> Delivery & Timeline Schedule (Set by Admin)
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        {order.packingDate && (
+                          <div className="bg-white/80 p-2 rounded-xl border border-amber-200/60">
+                            📦 Packing Date & Time: <strong>{order.packingDate}</strong>
+                          </div>
+                        )}
+                        {order.shippingDate && (
+                          <div className="bg-white/80 p-2 rounded-xl border border-amber-200/60">
+                            🚚 Shipping Date & Time: <strong>{order.shippingDate}</strong>
+                          </div>
+                        )}
                         {(order.deliveryDate || order.expectedDeliveryDate) && (
-                          <div>📅 Expected Delivery Date: <strong>{order.deliveryDate || order.expectedDeliveryDate}</strong></div>
+                          <div className="bg-white/80 p-2 rounded-xl border border-amber-200/60">
+                            📅 Expected Delivery Date: <strong>{order.deliveryDate || order.expectedDeliveryDate}</strong>
+                          </div>
                         )}
                         {(order.deliveryTime || order.deliveryTimeSlot) && (
-                          <div>⏰ Time Slot: <strong>{order.deliveryTime || order.deliveryTimeSlot}</strong></div>
+                          <div className="bg-white/80 p-2 rounded-xl border border-amber-200/60">
+                            ⏰ Delivery Time Slot: <strong>{order.deliveryTime || order.deliveryTimeSlot}</strong>
+                          </div>
                         )}
                         {order.courierName && (
-                          <div>🚚 Courier: <strong>{order.courierName}</strong></div>
+                          <div className="bg-white/80 p-2 rounded-xl border border-amber-200/60">
+                            🏢 Courier: <strong>{order.courierName}</strong>
+                          </div>
                         )}
                         {order.trackingNumber && (
-                          <div>🔢 Tracking ID: <strong className="font-mono">{order.trackingNumber}</strong></div>
+                          <div className="bg-white/80 p-2 rounded-xl border border-amber-200/60">
+                            🔢 Tracking ID: <strong className="font-mono">{order.trackingNumber}</strong>
+                          </div>
                         )}
                       </div>
                     </div>
