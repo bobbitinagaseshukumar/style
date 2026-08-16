@@ -377,6 +377,9 @@ model Order {
   cancelledBy          String?   // CUSTOMER | ADMIN
   cancellationReason   String?
 
+  deletedByAdmin       Boolean   @default(false)
+  hiddenForAdmin       Boolean   @default(false)
+
   couponCode           String?
   notes                String?   // Customer order notes / WhatsApp order flag
   courierName          String?   // Courier company name when shipped

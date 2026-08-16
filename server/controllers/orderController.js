@@ -418,7 +418,7 @@ exports.adminGetAllOrders = asyncHandler(async (req, res) => {
   const { status, search, page = 1, limit = 50 } = req.query;
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
-  const where = {};
+  const where = { deletedByAdmin: false };
   if (status && status !== 'ALL') where.orderStatus = status;
   if (search) {
     where.OR = [
@@ -780,10 +780,9 @@ exports.getOrderCancellationStatus = asyncHandler(async (req, res, next) => {
   });
 });
 
-// ==================== ADMIN: DELETE ORDER ====================
+// ==================== ADMIN: DELETE / HIDE ORDER ====================
 exports.deleteOrder = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const { hardDelete } = req.query;
 
   const order = await prisma.order.findUnique({
     where: { id },
@@ -794,37 +793,18 @@ exports.deleteOrder = asyncHandler(async (req, res, next) => {
     return next(new ApiError(404, 'Order not found'));
   }
 
-  if (hardDelete === 'true') {
-    // Hard delete: remove order items and order record inside a transaction
-    await prisma.$transaction(async (tx) => {
-      await tx.orderItem.deleteMany({ where: { orderId: id } });
-      try {
-        await tx.notification.deleteMany({ where: { link: { contains: id } } });
-      } catch {
-        // Notification cleanup optional
-      }
-      await tx.order.delete({ where: { id } });
-    });
+  // Soft delete for Admin view ONLY: set deletedByAdmin = true & hiddenForAdmin = true
+  // Preserves database record 100% and keeps order fully visible in customer account!
+  await prisma.order.update({
+    where: { id },
+    data: {
+      deletedByAdmin: true,
+      hiddenForAdmin: true,
+    },
+  });
 
-    res.status(200).json({
-      success: true,
-      message: `Order #${order.orderNumber || id} permanently deleted from database`,
-    });
-  } else {
-    // Soft delete / cancel order
-    await prisma.order.update({
-      where: { id },
-      data: {
-        orderStatus: 'CANCELLED',
-        cancellationAllowed: false,
-        cancelledAt: new Date(),
-        cancellationReason: 'Cancelled & Soft Removed by Admin',
-      },
-    });
-
-    res.status(200).json({
-      success: true,
-      message: `Order #${order.orderNumber || id} cancelled and soft removed`,
-    });
-  }
+  res.status(200).json({
+    success: true,
+    message: `Order #${order.orderNumber || id} removed from Admin Panel (preserved in customer account & database)`,
+  });
 });
