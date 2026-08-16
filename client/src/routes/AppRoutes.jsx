@@ -125,6 +125,7 @@ const AppRoutes = () => {
           <Route path="/categories" element={<Categories />} />
           <Route path="/categories/:slug" element={<Categories />} />
           <Route path="/product/:slug" element={<ProductDetails />} />
+          <Route path="/products/:slug" element={<ProductDetails />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/search" element={<Search />} />
           <Route path="/compare" element={<Compare />} />
