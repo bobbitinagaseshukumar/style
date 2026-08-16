@@ -21,15 +21,11 @@ const PLATFORM_ICONS = {
   CUSTOM: FiShare2
 };
 
-const InstagramGallery = ({ initialButtons }) => {
-  const [buttons, setButtons] = useState(initialButtons?.length > 0 ? initialButtons : []);
+const InstagramGallery = () => {
+  const [buttons, setButtons] = useState([]);
   const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
-    if (initialButtons && initialButtons.length > 0) {
-      setButtons(initialButtons);
-      return;
-    }
     const fetchData = async () => {
       try {
         const [socRes, setRes] = await Promise.allSettled([
@@ -53,7 +49,7 @@ const InstagramGallery = ({ initialButtons }) => {
       }
     };
     fetchData();
-  }, [initialButtons]);
+  }, []);
 
   if (!enabled || buttons.length === 0) return null;
 

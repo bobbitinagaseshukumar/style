@@ -10,15 +10,11 @@ const DEFAULT_BRANDS = [
   { id: 'b5', name: 'Imperial Jewels', logoUrl: '🏆' },
 ];
 
-const BrandShowcase = ({ initialBrands }) => {
-  const [brands, setBrands] = useState(initialBrands?.length > 0 ? initialBrands : []);
+const BrandShowcase = () => {
+  const [brands, setBrands] = useState([]);
   const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
-    if (initialBrands && initialBrands.length > 0) {
-      setBrands(initialBrands);
-      return;
-    }
     const fetchData = async () => {
       try {
         const [brandRes, setRes] = await Promise.allSettled([
@@ -42,7 +38,7 @@ const BrandShowcase = ({ initialBrands }) => {
       }
     };
     fetchData();
-  }, [initialBrands]);
+  }, []);
 
   if (!enabled || brands.length === 0) return null;
 

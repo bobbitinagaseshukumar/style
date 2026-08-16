@@ -12,6 +12,7 @@ import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatImageUrl } from '../../utils/formatImageUrl';
 import ProductCard from '../../components/common/ProductCard';
+import PersonalizedSections from '../../components/common/PersonalizedSections';
 import RecentlyViewedSection from '../../components/home/RecentlyViewedSection';
 import FlashSaleSection from '../../components/home/FlashSaleSection';
 import CollectionShowcase from '../../components/home/CollectionShowcase';
@@ -84,11 +85,11 @@ const getCategoryThumbnail = (cat) => {
 };
 
 // Persistent Cache Key for instant 0ms loads across browser sessions
-const CACHE_KEY = '__KVLR_HOME_PERSISTENT_CACHE_V6__';
+const CACHE_KEY = '__KVLR_HOME_PERSISTENT_CACHE_V3__';
 
 const getInitialCache = () => {
   try {
-    const sessionCache = sessionStorage.getItem(CACHE_KEY);
+    const sessionCache = sessionStorage.getItem('__KVLR_HOME_CACHE__');
     if (sessionCache) return JSON.parse(sessionCache);
     const persistentCache = localStorage.getItem(CACHE_KEY);
     if (persistentCache) return JSON.parse(persistentCache);
@@ -129,15 +130,6 @@ const Home = () => {
   const [trendingData, setTrendingData] = useState(initialCache?.trendingData || null);
   const [enableTrending, setEnableTrending] = useState(true);
   const [dynamicSections, setDynamicSections] = useState(initialCache?.dynamicSections || []);
-  const [bundleExtras, setBundleExtras] = useState({
-    flashSale: initialCache?.flashSale || null,
-    collections: initialCache?.collections || [],
-    heritageBrands: initialCache?.heritageBrands || [],
-    testimonials: initialCache?.testimonials || [],
-    socialFeed: initialCache?.socialFeed || [],
-    faqList: initialCache?.faqList || []
-  });
-
   // If cache exists with any products or categories, start with isLoading = false for 0ms instant display!
   const hasCachedContent = Boolean(
     initialCache &&
@@ -152,98 +144,182 @@ const Home = () => {
 
     const fetchHomeData = async () => {
       try {
-        // Consolidated homepage bundle in 1 single high-speed cached request
-        const bundleRes = await api.get('/cms/homepage-bundle');
-        if (bundleRes.data?.success && bundleRes.data?.data) {
-          const bundle = bundleRes.data.data;
-          if (!isMounted) return;
+        // Fast path: Fetch consolidated homepage bundle in 1 single optimized request
+        let bundleSuccess = false;
+        try {
+          const bundleRes = await api.get('/cms/homepage-bundle');
+          if (bundleRes.data?.success && bundleRes.data?.data) {
+            const bundle = bundleRes.data.data;
+            if (!isMounted) return;
 
-          if (bundle.banners?.length > 0) setBanners(bundle.banners);
-          if (Array.isArray(bundle.categories) && bundle.categories.length > 0) setCategories(bundle.categories);
-          if (bundle.products) {
-            const bProds = bundle.products;
-            setProducts({
-              featured: bProds.featured || [],
-              trending: bProds.trending || [],
-              newArrivals: bProds.newArrivals || [],
-              todaysDeals: bProds.todaysDeals || [],
-              allPublished: bProds.allPublished || []
+            const newDataKey = JSON.stringify({
+              b: (bundle.banners || []).map(b => b.id),
+              c: (bundle.categories || []).map(c => c.id),
+              p: (bundle.products?.allPublished || []).map(p => p.id)
             });
+            if (newDataKey !== prevDataRef.current) {
+              prevDataRef.current = newDataKey;
+              if (bundle.banners?.length > 0) setBanners(bundle.banners);
+              if (Array.isArray(bundle.categories) && bundle.categories.length > 0) setCategories(bundle.categories);
+              if (bundle.products) {
+                const bProds = bundle.products;
+                setProducts({
+                  featured: bProds.featured || [],
+                  trending: bProds.trending || [],
+                  newArrivals: bProds.newArrivals || [],
+                  todaysDeals: bProds.todaysDeals || [],
+                  allPublished: bProds.allPublished || []
+                });
+              }
+            }
+            if (bundle.trendingData !== undefined) setTrendingData(bundle.trendingData);
+            if (bundle.dynamicSections) setDynamicSections(bundle.dynamicSections);
+            if (bundle.settings?.enableTrendingProducts === false) setEnableTrending(false);
+
+            setIsLoading(false);
+            bundleSuccess = true;
+
+            // Persist for 0ms instant loading on next app boot / back navigation
+            try {
+              const cachePayload = JSON.stringify({
+                banners: bundle.banners || [],
+                categories: bundle.categories || [],
+                products: bundle.products || {},
+                trendingData: bundle.trendingData || null,
+                dynamicSections: bundle.dynamicSections || [],
+                savedAt: Date.now()
+              });
+              localStorage.setItem(PERSISTENT_CACHE_KEY, cachePayload);
+              sessionStorage.setItem('__KVLR_HOME_CACHE__', cachePayload);
+            } catch (e) {}
           }
-
-          if (bundle.trendingData !== undefined) setTrendingData(bundle.trendingData);
-          if (bundle.dynamicSections) setDynamicSections(bundle.dynamicSections);
-          if (bundle.settings?.enableTrendingProducts === false) setEnableTrending(false);
-
-          setBundleExtras({
-            flashSale: bundle.flashSale || null,
-            collections: bundle.collections || [],
-            heritageBrands: bundle.heritageBrands || [],
-            testimonials: bundle.testimonials || [],
-            socialFeed: bundle.socialFeed || [],
-            faqList: bundle.faqList || []
-          });
-
-          setIsLoading(false);
-
-          // Persist for 0ms instant loading on all subsequent visits
-          try {
-            const cachePayload = JSON.stringify({
-              banners: bundle.banners || [],
-              categories: bundle.categories || [],
-              products: bundle.products || {},
-              trendingData: bundle.trendingData || null,
-              dynamicSections: bundle.dynamicSections || [],
-              flashSale: bundle.flashSale || null,
-              collections: bundle.collections || [],
-              heritageBrands: bundle.heritageBrands || [],
-              testimonials: bundle.testimonials || [],
-              socialFeed: bundle.socialFeed || [],
-              faqList: bundle.faqList || [],
-              savedAt: Date.now()
-            });
-            localStorage.setItem(CACHE_KEY, cachePayload);
-            sessionStorage.setItem(CACHE_KEY, cachePayload);
-          } catch (e) {}
+        } catch (bundleErr) {
+          bundleSuccess = false;
         }
-      } catch (bundleErr) {
-        console.warn('Fast bundle fallback:', bundleErr.message);
-      }
 
-      // Always fetch live products as guarantee
-      try {
-        const [bannersRes, categoriesRes, allProductsRes] = await Promise.allSettled([
+        // Always fetch direct live products endpoint to guarantee every published product renders 100%
+        try {
+          const directProdsRes = await api.get('/products?limit=50&sort=newest');
+          const liveProds = directProdsRes.data?.data?.products || directProdsRes.data?.data || [];
+          if (Array.isArray(liveProds) && liveProds.length > 0 && isMounted) {
+            setProducts(prev => {
+              const feat = liveProds.filter(p => p.featured);
+              const newArr = liveProds.filter(p => p.newArrival || p.isNew);
+              const trend = liveProds.filter(p => p.trending);
+              const deals = liveProds.filter(p => p.todaysDeal || p.bestSeller);
+              const nextProds = {
+                featured: feat.length > 0 ? feat : prev.featured || [],
+                trending: trend.length > 0 ? trend : prev.trending || [],
+                newArrivals: newArr.length > 0 ? newArr : prev.newArrivals || [],
+                todaysDeals: deals.length > 0 ? deals : prev.todaysDeals || [],
+                allPublished: liveProds
+              };
+              // Persist live products to cache
+              try {
+                const currentCache = getCachedHomeData() || {};
+                localStorage.setItem(PERSISTENT_CACHE_KEY, JSON.stringify({
+                  ...currentCache,
+                  products: nextProds,
+                  savedAt: Date.now()
+                }));
+              } catch (e) {}
+              return nextProds;
+            });
+            setIsLoading(false);
+          }
+        } catch (directErr) {}
+
+        if (bundleSuccess || !isMounted) return;
+
+        // Fallback parallel requests
+        const [bannersRes, categoriesRes, allProductsRes, featuredRes, trendingRes, newArrivalsRes, bestSellerRes, trendSelRes, settingsRes, dynSecRes] = await Promise.allSettled([
           api.get('/cms/banners?activeOnly=true'),
-          api.get('/categories?includeAll=true'),
-          api.get('/products?limit=100&sort=newest'),
+          api.get('/categories?showOnHomepage=true&limit=8'),
+          api.get('/products?limit=50&sort=newest'),
+          api.get('/products?featured=true&limit=12'),
+          api.get('/products?trending=true&limit=12'),
+          api.get('/products?newArrival=true&limit=12'),
+          api.get('/products?bestSeller=true&limit=12'),
+          api.get('/cms/trending-selection/public'),
+          api.get('/cms/settings'),
+          api.get('/cms/homepage/sections/public'),
         ]);
 
         if (!isMounted) return;
 
+        let nextDynamicSections = [];
+        if (dynSecRes.status === 'fulfilled' && dynSecRes.value.data?.data) {
+          nextDynamicSections = dynSecRes.value.data.data;
+          setDynamicSections(nextDynamicSections);
+        }
+
+        if (settingsRes.status === 'fulfilled') {
+          const cfg = settingsRes.value.data?.data || {};
+          if (cfg.enableTrendingProducts === false) setEnableTrending(false);
+        }
+
+        let nextTrendingData = null;
+        if (trendSelRes.status === 'fulfilled' && trendSelRes.value.data?.data) {
+          nextTrendingData = trendSelRes.value.data.data;
+          setTrendingData(nextTrendingData);
+        }
+
+        let nextBanners = DEFAULT_HERO_SLIDERS;
+        if (bannersRes.status === 'fulfilled' && bannersRes.value.data?.data?.length > 0) {
+          nextBanners = bannersRes.value.data.data;
+          setBanners(nextBanners);
+        }
+
+        let nextCategories = DEFAULT_CATEGORIES;
         if (categoriesRes.status === 'fulfilled' && categoriesRes.value.data?.data?.length > 0) {
-          setCategories(categoriesRes.value.data.data);
+          nextCategories = categoriesRes.value.data.data;
+          setCategories(nextCategories);
         }
-        if (allProductsRes.status === 'fulfilled' && allProductsRes.value.data?.data) {
-          const prods = allProductsRes.value.data.data.products || allProductsRes.value.data.data || [];
-          if (Array.isArray(prods) && prods.length > 0) {
-            setProducts(prev => {
-              const feat = prods.filter(p => p.featured);
-              const newArr = prods.filter(p => p.newArrival || p.isNew);
-              const trend = prods.filter(p => p.trending);
-              const deals = prods.filter(p => p.todaysDeal || p.bestSeller);
-              return {
-                featured: feat.length > 0 ? feat : prods.slice(0, 12),
-                trending: trend.length > 0 ? trend : prods.slice(0, 12),
-                newArrivals: newArr.length > 0 ? newArr : prods.slice(0, 16),
-                todaysDeals: deals.length > 0 ? deals : prods.slice(0, 12),
-                allPublished: prods
-              };
-            });
-          }
-        }
+
+        // Extract products helper
+        const extractProducts = (res) => {
+          if (res.status !== 'fulfilled') return [];
+          const d = res.value?.data;
+          if (Array.isArray(d?.data?.products)) return d.data.products;
+          if (Array.isArray(d?.data)) return d.data;
+          if (Array.isArray(d?.products)) return d.products;
+          if (Array.isArray(d)) return d;
+          return [];
+        };
+
+        const allProductsList = extractProducts(allProductsRes);
+        let featuredList = extractProducts(featuredRes);
+        let trendingList = extractProducts(trendingRes);
+        let newArrivalsList = extractProducts(newArrivalsRes);
+        let bestSellerList = extractProducts(bestSellerRes);
+
+        const resolvedProducts = {
+          featured: featuredList,
+          trending: trendingList,
+          newArrivals: newArrivalsList,
+          todaysDeals: bestSellerList,
+          allPublished: allProductsList
+        };
+
+        setProducts(resolvedProducts);
         setIsLoading(false);
+
+        // Save to cache
+        try {
+          const cachePayload = JSON.stringify({
+            banners: nextBanners,
+            categories: nextCategories,
+            products: resolvedProducts,
+            trendingData: nextTrendingData,
+            dynamicSections: nextDynamicSections,
+            savedAt: Date.now()
+          });
+          localStorage.setItem(PERSISTENT_CACHE_KEY, cachePayload);
+          sessionStorage.setItem('__KVLR_HOME_CACHE__', cachePayload);
+        } catch (e) {}
       } catch (err) {
-        if (isMounted) setIsLoading(false);
+        console.error('Home page data fetch error:', err);
+        setIsLoading(false);
       }
     };
 
@@ -251,16 +327,19 @@ const Home = () => {
 
     const handleContentUpdate = () => {
       try {
-        localStorage.removeItem(CACHE_KEY);
-        sessionStorage.removeItem(CACHE_KEY);
+        localStorage.removeItem(PERSISTENT_CACHE_KEY);
+        sessionStorage.removeItem('__KVLR_HOME_CACHE__');
       } catch (e) {}
       fetchHomeData();
     };
 
     window.addEventListener('kvlr:content-updated', handleContentUpdate);
+    window.addEventListener('storage', handleContentUpdate);
+
     return () => {
       isMounted = false;
       window.removeEventListener('kvlr:content-updated', handleContentUpdate);
+      window.removeEventListener('storage', handleContentUpdate);
     };
   }, []);
 
@@ -367,6 +446,11 @@ const Home = () => {
         </section>
       )}
 
+      {/* AI PERSONALIZED RECOMMENDATIONS */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4">
+        <PersonalizedSections />
+      </div>
+
       {/* 6. MAIN PUBLISHED PRODUCTS CATALOG — Renders immediately below Categories */}
       {(() => {
         const allList = products.allPublished || [];
@@ -395,7 +479,7 @@ const Home = () => {
       })()}
 
       {/* 6. FLASH SALE */}
-      <FlashSaleSection initialData={bundleExtras.flashSale} />
+      <FlashSaleSection />
 
       {/* 7. FEATURED PRODUCTS & PUBLISHED CATALOG */}
       {isLoading ? (
@@ -561,16 +645,16 @@ const Home = () => {
       })}
 
       {/* 16. BRAND SHOWCASE */}
-      <BrandShowcase initialBrands={bundleExtras.heritageBrands} />
+      <BrandShowcase />
 
       {/* 17. CUSTOMER TESTIMONIALS */}
-      <TestimonialsSection initialReviews={bundleExtras.testimonials} />
+      <TestimonialsSection />
 
       {/* 18. INSTAGRAM GALLERY */}
-      <InstagramGallery initialButtons={bundleExtras.socialFeed} />
+      <InstagramGallery />
 
       {/* 21. FAQ PREVIEW */}
-      <FAQPreview initialFaqs={bundleExtras.faqList} />
+      <FAQPreview />
 
       {/* 22. RECENTLY VIEWED PRODUCTS (PLACED AT THE BOTTOM OF HOMEPAGE) */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4">
