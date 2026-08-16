@@ -126,16 +126,14 @@ const Navbar = () => {
     if (!isUserMenuOpen) return;
 
     const handleOutsideClick = (e) => {
-      // If clicking the toggle button itself, let the button's onClick handle toggle
+      // If clicking/tapping the user toggle button, let button handle toggle
       if (userBtnRef.current && userBtnRef.current.contains(e.target)) {
         return;
       }
-      // If clicking inside the dropdown menu, let the link/button handle it
-      if (userDropdownRef.current && userDropdownRef.current.contains(e.target)) {
-        return;
+      // If clicking/tapping outside both the user button and the dropdown menu -> close immediately!
+      if (userDropdownRef.current && !userDropdownRef.current.contains(e.target)) {
+        setIsUserMenuOpen(false);
       }
-      // Clicked ANYWHERE else on the website -> close immediately!
-      setIsUserMenuOpen(false);
     };
 
     const handleEscape = (e) => {
@@ -145,16 +143,13 @@ const Navbar = () => {
       }
     };
 
-    // Use capture phase (true) to intercept any click across the page
-    window.addEventListener('click', handleOutsideClick, true);
-    window.addEventListener('pointerdown', handleOutsideClick, true);
-    window.addEventListener('touchstart', handleOutsideClick, true);
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick, { passive: true });
     window.addEventListener('keydown', handleEscape);
 
     return () => {
-      window.removeEventListener('click', handleOutsideClick, true);
-      window.removeEventListener('pointerdown', handleOutsideClick, true);
-      window.removeEventListener('touchstart', handleOutsideClick, true);
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
       window.removeEventListener('keydown', handleEscape);
     };
   }, [isUserMenuOpen]);
@@ -462,7 +457,11 @@ const Navbar = () => {
                                 <Link
                                   key={item.label}
                                   to={item.path}
-                                  onClick={() => setIsUserMenuOpen(false)}
+                                  onClick={() => {
+                                    setIsUserMenuOpen(false);
+                                    setActiveMegaMenu(null);
+                                  }}
+                                  onPointerDown={() => setIsUserMenuOpen(false)}
                                   className="flex items-center gap-3 px-4 py-2.5 text-white/80 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                                 >
                                   <item.icon size={14} className="text-amber-400/80 shrink-0" />
@@ -475,7 +474,11 @@ const Navbar = () => {
                               <div className="border-t border-white/10 py-1">
                                 <Link
                                   to="/admin/dashboard"
-                                  onClick={() => setIsUserMenuOpen(false)}
+                                  onClick={() => {
+                                    setIsUserMenuOpen(false);
+                                    setActiveMegaMenu(null);
+                                  }}
+                                  onPointerDown={() => setIsUserMenuOpen(false)}
                                   className="flex items-center gap-3 px-4 py-2.5 text-amber-400 hover:bg-amber-400/10 font-bold transition-colors cursor-pointer"
                                 >
                                   <FiSettings size={14} className="shrink-0" />
@@ -491,6 +494,7 @@ const Navbar = () => {
                                   logout();
                                   navigate('/login?switch=true');
                                 }}
+                                onPointerDown={() => setIsUserMenuOpen(false)}
                                 className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-amber-400 hover:bg-amber-400/10 font-bold text-xs transition-colors cursor-pointer"
                               >
                                 <FiRefreshCw size={14} className="shrink-0" />
@@ -501,6 +505,7 @@ const Navbar = () => {
                                   setIsUserMenuOpen(false);
                                   logout();
                                 }}
+                                onPointerDown={() => setIsUserMenuOpen(false)}
                                 className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 font-bold text-xs transition-colors cursor-pointer"
                               >
                                 <FiLogOut size={14} className="shrink-0" />
