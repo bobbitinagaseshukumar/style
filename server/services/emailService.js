@@ -31,23 +31,34 @@ async function getStoreMetadata() {
 }
 
 // Helper: Ensure full absolute HTTPS image URLs for email clients with smart fallbacks
-function formatEmailImageUrl(url, productName = '') {
+function formatEmailImageUrl(url, productName = '', imgId = '', productId = '') {
+  const serverBase = (process.env.RENDER_EXTERNAL_URL || 'https://style-q21b.onrender.com').replace(/\/$/, '');
+
+  if (imgId) {
+    return `${serverBase}/api/v1/products/render-image?imgId=${imgId}`;
+  }
+
   if (!url || typeof url !== 'string' || url.trim() === '') {
+    if (productId) {
+      return `${serverBase}/api/v1/products/render-image?productId=${productId}`;
+    }
     return getFallbackImageUrl(productName);
   }
 
   const clean = url.trim();
 
-  // Filter out Base64 Data URIs — Email clients (Gmail, Outlook) block base64 URIs or render raw text
+  // If base64 data URI, route through image-render endpoint so Gmail & Outlook load actual binary image!
   if (clean.startsWith('data:image/')) {
-    return getFallbackImageUrl(productName);
+    if (productId) {
+      return `${serverBase}/api/v1/products/render-image?productId=${productId}`;
+    }
+    return `${serverBase}/api/v1/products/render-image?url=${encodeURIComponent(clean)}`;
   }
 
   if (clean.startsWith('http://') || clean.startsWith('https://')) {
     return clean;
   }
 
-  const serverBase = process.env.RENDER_EXTERNAL_URL || 'https://style-q21b.onrender.com';
   const cleanPath = clean.startsWith('/') ? clean : `/${clean}`;
   return `${serverBase}${cleanPath}`;
 }
@@ -329,7 +340,7 @@ class EmailService {
     const goldAccent = primaryColor || '#D4AF37';
 
     const itemsListHtml = (orderData.items || []).map((item) => {
-      const prodImg = formatEmailImageUrl(item.image || item.imageUrl, item.name);
+      const prodImg = formatEmailImageUrl(item.image || item.imageUrl, item.name, item.imgId, item.productId);
       const pSlug = item.slug || item.productId || item.id;
       const pUrl = `${clientUrl}/product/${pSlug}`;
 
@@ -420,7 +431,7 @@ class EmailService {
     const goldAccent = primaryColor || '#D4AF37';
 
     const itemsListHtml = (orderData.items || []).map((item) => {
-      const prodImg = formatEmailImageUrl(item.image || item.imageUrl, item.name);
+      const prodImg = formatEmailImageUrl(item.image || item.imageUrl, item.name, item.imgId, item.productId);
       const pSlug = item.slug || item.productId || item.id;
       const pUrl = `${clientUrl}/product/${pSlug}`;
 

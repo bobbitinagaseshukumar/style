@@ -5,6 +5,51 @@ const slugify = require('slugify');
 const emailService = require('../services/emailService');
 const { invalidateHomepageBundleCache } = require('./cmsController');
 
+// ==================== RENDER IMAGE (DECODE BASE64 & SERVE HIGH COMPATIBILITY BINARY) ====================
+exports.renderImage = asyncHandler(async (req, res) => {
+  const { url, imgId, productId } = req.query;
+
+  let targetUrl = url;
+  if (!targetUrl && imgId) {
+    const imgRecord = await prisma.productImage.findUnique({ where: { id: imgId } });
+    if (imgRecord) targetUrl = imgRecord.url;
+  }
+  if (!targetUrl && productId) {
+    const imgRecord = await prisma.productImage.findFirst({
+      where: { productId },
+      orderBy: { isPrimary: 'desc' }
+    });
+    if (imgRecord) targetUrl = imgRecord.url;
+  }
+
+  if (!targetUrl || typeof targetUrl !== 'string') {
+    return res.redirect('https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80');
+  }
+
+  const clean = targetUrl.trim();
+
+  // If Base64 Data URI, decode into binary image buffer so Gmail & Outlook render actual image!
+  if (clean.startsWith('data:image/')) {
+    const matches = clean.match(/^data:(image\/[a-zA-Z0-9+\-+.]+);base64,(.*)$/);
+    if (matches && matches.length === 3) {
+      const mimeType = matches[1];
+      const base64Data = matches[2];
+      const imgBuffer = Buffer.from(base64Data, 'base64');
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.status(200).send(imgBuffer);
+    }
+  }
+
+  if (clean.startsWith('http://') || clean.startsWith('https://')) {
+    return res.redirect(clean);
+  }
+
+  const serverBase = process.env.RENDER_EXTERNAL_URL || 'https://style-q21b.onrender.com';
+  const cleanPath = clean.startsWith('/') ? clean : `/${clean}`;
+  return res.redirect(`${serverBase}${cleanPath}`);
+});
+
 // ==================== GET ALL PRODUCTS ====================
 const isUUID = (str) =>
   typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str.trim());

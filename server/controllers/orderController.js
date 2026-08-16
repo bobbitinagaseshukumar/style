@@ -175,15 +175,21 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
         customerEmail: order.user?.email || '',
         customerPhone: order.user?.phone || order.address?.phone || 'N/A',
         paymentMethod: order.paymentMethod || 'Online Payment',
-        items: order.items.map(i => ({
-          slug: i.product?.slug || i.productId || i.id,
-          name: i.product?.name || 'Product Item',
-          price: i.price,
-          quantity: i.quantity,
-          color: i.color,
-          size: i.size,
-          image: i.product?.images?.[0]?.url || i.product?.images?.[0],
-        })),
+        items: order.items.map(i => {
+          const primaryImg = i.product?.images?.find(img => img.isPrimary) || i.product?.images?.[0];
+          const imgUrl = primaryImg?.url || i.product?.images?.[0]?.url || (typeof i.product?.images?.[0] === 'string' ? i.product?.images?.[0] : null);
+          return {
+            slug: i.product?.slug || i.productId || i.id,
+            name: i.product?.name || 'Product Item',
+            price: i.price,
+            quantity: i.quantity,
+            color: i.color,
+            size: i.size,
+            image: imgUrl,
+            imgId: primaryImg?.id,
+            productId: i.productId || i.product?.id,
+          };
+        }),
         subtotal: order.subtotal,
         discount: order.discountAmount,
         shippingCharge: order.shippingFee,

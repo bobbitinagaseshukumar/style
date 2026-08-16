@@ -5,6 +5,7 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 
 // Public routes
 router.get('/', productController.getAllProducts);
+router.get('/render-image', productController.renderImage);
 router.get('/:slug', productController.getProductBySlug);
 
 // Admin-only routes — MUST be protected
