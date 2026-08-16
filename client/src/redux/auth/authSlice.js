@@ -56,6 +56,10 @@ const authSlice = createSlice({
       if (action.payload.token) {
         localStorage.setItem('token', action.payload.token);
       }
+      try {
+        localStorage.removeItem('persist:auth');
+        localStorage.removeItem('__KVLR_HOME_PERSISTENT_CACHE_V3__');
+      } catch (e) {}
     },
     logoutUser: (state) => {
       state.user = null;
@@ -63,8 +67,13 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       try {
         localStorage.removeItem('token');
+        localStorage.removeItem('persist:auth');
+        localStorage.removeItem('persist:cart');
+        localStorage.removeItem('persist:wishlist');
         localStorage.removeItem('styleverse_cart');
         localStorage.removeItem('styleverse_wishlist');
+        localStorage.removeItem('__KVLR_HOME_PERSISTENT_CACHE_V3__');
+        if (typeof window !== 'undefined') sessionStorage.clear();
       } catch (e) {}
     },
     clearError: (state) => {
@@ -79,7 +88,13 @@ const authSlice = createSlice({
         state.user = action.payload.data?.user;
         state.token = action.payload.data?.token;
         state.isAuthenticated = true;
-        if (action.payload.data?.token) localStorage.setItem('token', action.payload.data.token);
+        if (action.payload.data?.token) {
+          localStorage.setItem('token', action.payload.data.token);
+        }
+        try {
+          localStorage.removeItem('persist:auth');
+          localStorage.removeItem('__KVLR_HOME_PERSISTENT_CACHE_V3__');
+        } catch (e) {}
       })
       .addCase(loginUser.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
       .addCase(registerUser.pending, (state) => { state.loading = true; state.error = null; })
@@ -91,7 +106,13 @@ const authSlice = createSlice({
         state.user = action.payload.data?.user;
         state.token = action.payload.data?.token;
         state.isAuthenticated = true;
-        if (action.payload.data?.token) localStorage.setItem('token', action.payload.data.token);
+        if (action.payload.data?.token) {
+          localStorage.setItem('token', action.payload.data.token);
+        }
+        try {
+          localStorage.removeItem('persist:auth');
+          localStorage.removeItem('__KVLR_HOME_PERSISTENT_CACHE_V3__');
+        } catch (e) {}
       })
       .addCase(verifyOTP.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
       .addCase(getMe.fulfilled, (state, action) => {
@@ -102,7 +123,10 @@ const authSlice = createSlice({
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
-        localStorage.removeItem('token');
+        try {
+          localStorage.removeItem('token');
+          localStorage.removeItem('persist:auth');
+        } catch (e) {}
       });
   }
 });

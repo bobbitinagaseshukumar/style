@@ -276,17 +276,28 @@ const Login = ({ initialMode }) => {
   const { isAuthenticated, user, token: reduxToken } = useSelector((state) => state.auth);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const isSwitching = params.get('switch') === 'true' || params.get('logout') === 'true';
+
+    if (isSwitching) {
+      dispatch(logoutUser());
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('persist:auth');
+        sessionStorage.clear();
+      } catch (e) {}
+      return;
+    }
+
     const storedToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (isAuthenticated || reduxToken || storedToken) {
+    if ((isAuthenticated || reduxToken || storedToken) && !isSwitching) {
       if (user) {
         const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
         const targetPath = isAdmin ? '/admin/dashboard' : '/';
         navigate(targetPath, { replace: true });
-      } else {
-        navigate('/', { replace: true });
       }
     }
-  }, [isAuthenticated, reduxToken, user, navigate]);
+  }, [isAuthenticated, reduxToken, user, navigate, dispatch]);
 
   const handleMouseMove = (e) => {
     if (mouseRef.current) {

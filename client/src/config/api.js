@@ -22,7 +22,9 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
 
-    const authHeader = (isAdminPath && adminToken) ? adminToken : (adminToken || token);
+    // On Admin panel routes (/admin/*), use adminToken (fallback to token)
+    // On Customer storefront routes, use token (fallback to adminToken only if token absent)
+    const authHeader = isAdminPath ? (adminToken || token) : (token || adminToken);
     if (authHeader) {
       config.headers.Authorization = `Bearer ${authHeader}`;
     }

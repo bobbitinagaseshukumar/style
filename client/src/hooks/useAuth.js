@@ -15,6 +15,12 @@ export const useAuth = () => {
       dispatch(logoutUser());
       dispatch(clearCartLocal());
       dispatch(clearWishlist());
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('persist:auth');
+        localStorage.removeItem('__KVLR_HOME_PERSISTENT_CACHE_V3__');
+        if (typeof window !== 'undefined') sessionStorage.clear();
+      } catch (e) {}
     },
     verifyOTP: (data) => dispatch(verifyOTP(data)),
     getMe: () => dispatch(getMe()),

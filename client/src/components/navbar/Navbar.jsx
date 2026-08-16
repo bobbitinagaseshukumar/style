@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiShoppingBag, FiHeart, FiUser, FiMenu, FiSearch,
   FiBell, FiChevronDown, FiX, FiLogOut, FiSettings,
-  FiPackage, FiGrid, FiMapPin, FiStar, FiGift, FiBookmark, FiClock
+  FiPackage, FiGrid, FiMapPin, FiStar, FiGift, FiBookmark, FiClock, FiRefreshCw
 } from 'react-icons/fi';
 import { useSelector } from 'react-redux';
 import { useAuth } from '../../hooks/useAuth';
@@ -484,13 +484,24 @@ const Navbar = () => {
                               </div>
                             )}
 
-                            <div className="border-t border-white/10 p-1">
+                            <div className="border-t border-white/10 p-1 space-y-1">
+                              <button
+                                onClick={() => {
+                                  setIsUserMenuOpen(false);
+                                  logout();
+                                  navigate('/login?switch=true');
+                                }}
+                                className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-amber-400 hover:bg-amber-400/10 font-bold text-xs transition-colors cursor-pointer"
+                              >
+                                <FiRefreshCw size={14} className="shrink-0" />
+                                Switch Account
+                              </button>
                               <button
                                 onClick={() => {
                                   setIsUserMenuOpen(false);
                                   logout();
                                 }}
-                                className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 font-bold transition-colors cursor-pointer"
+                                className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 font-bold text-xs transition-colors cursor-pointer"
                               >
                                 <FiLogOut size={14} className="shrink-0" />
                                 Sign Out
