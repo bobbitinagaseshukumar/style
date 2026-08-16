@@ -396,15 +396,17 @@ model Order {
 }
 
 model OrderItem {
-  id        String   @id @default(uuid())
-  orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id])
-  price     Float
-  quantity  Int
-  size      String?
-  color     String?
+  id           String   @id @default(uuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String?
+  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName  String?  // Snapshot of product name at order time
+  productImage String?  // Snapshot of product image at order time
+  price        Float
+  quantity     Int
+  size         String?
+  color        String?
 }
 
 model Coupon {

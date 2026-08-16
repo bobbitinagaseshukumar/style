@@ -63,15 +63,21 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
   const orderItemsData = [];
 
   for (const item of items) {
-    const product = await prisma.product.findUnique({ where: { id: item.productId || item.id } });
+    const product = await prisma.product.findUnique({
+      where: { id: item.productId || item.id },
+      include: { images: true }
+    });
     if (!product) return next(new ApiError(404, `Product '${item.name}' not found`));
     if (product.stock < item.quantity) {
       return next(new ApiError(400, `Insufficient stock for '${product.name}'. Available: ${product.stock}`));
     }
     const itemPrice = product.discountPrice || product.price;
     subtotal += itemPrice * item.quantity;
+    const primaryImg = product.images?.find(img => img.isPrimary)?.url || product.images?.[0]?.url || (typeof product.images?.[0] === 'string' ? product.images?.[0] : null);
     orderItemsData.push({
       productId: product.id,
+      productName: product.name,
+      productImage: primaryImg || null,
       price: itemPrice,
       quantity: item.quantity,
       size: item.size || null,
@@ -248,12 +254,18 @@ exports.createWhatsappOrder = asyncHandler(async (req, res, next) => {
   const orderItemsData = [];
 
   for (const item of items) {
-    const product = await prisma.product.findUnique({ where: { id: item.productId || item.id } });
+    const product = await prisma.product.findUnique({
+      where: { id: item.productId || item.id },
+      include: { images: true }
+    });
     if (!product) return next(new ApiError(404, `Product '${item.name}' not found`));
     const itemPrice = product.discountPrice || product.price;
     subtotal += itemPrice * item.quantity;
+    const primaryImg = product.images?.find(img => img.isPrimary)?.url || product.images?.[0]?.url || (typeof product.images?.[0] === 'string' ? product.images?.[0] : null);
     orderItemsData.push({
       productId: product.id,
+      productName: product.name,
+      productImage: primaryImg || null,
       price: itemPrice,
       quantity: item.quantity,
       size: item.size || null,

@@ -227,21 +227,33 @@ const Login = ({ initialMode }) => {
     }
   };
 
+  const [storeSettings, setStoreSettings] = useState(null);
+  const storeName = storeSettings?.storeName || 'KVLR styles';
+
   useEffect(() => {
-    if (isGoogleMode) {
-      const stored = sessionStorage.getItem('googleProfile');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          setGoogleProfile(parsed);
-          setForm((prev) => ({
-            ...prev,
-            fullName: parsed.name || '',
-            email: parsed.email || '',
-          }));
-        } catch (e) {
-          console.error('Error parsing googleProfile from sessionStorage', e);
+    const fetchStoreSettings = async () => {
+      try {
+        const res = await api.get('/settings/public');
+        if (res.data?.success && res.data.data) {
+          setStoreSettings(res.data.data);
         }
+      } catch (err) {}
+    };
+    fetchStoreSettings();
+
+    // Parse Google profile from session storage if redirected from OAuth callback
+    const cachedGoogle = sessionStorage.getItem('googleProfile');
+    if (cachedGoogle) {
+      try {
+        const parsed = JSON.parse(cachedGoogle);
+        setGoogleProfile(parsed);
+        setForm((prev) => ({
+          ...prev,
+          fullName: parsed.fullName || '',
+          email: parsed.email || '',
+        }));
+      } catch (e) {
+        console.error('Error parsing googleProfile from sessionStorage', e);
       }
     }
 
@@ -414,7 +426,21 @@ const Login = ({ initialMode }) => {
         setError(res.data?.message || 'Authentication failed');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Server connection error. Please try again.');
+      const errMsg = err.response?.data?.message || 'Server connection error. Please try again.';
+      const isUserNotFound = !isRegister && (
+        err.response?.status === 404 ||
+        errMsg.toLowerCase().includes('not found') ||
+        errMsg.toLowerCase().includes('no account') ||
+        errMsg.toLowerCase().includes('unregistered')
+      );
+
+      if (isUserNotFound) {
+        setIsRegister(true);
+        setError(`Email ${form.email} is new to ${storeName}. We've switched you to Create Account so you can complete your details!`);
+        toast.info(`✨ Welcome to ${storeName}! Please complete your details below to create your account.`, { autoClose: 7000 });
+      } else {
+        setError(errMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -720,7 +746,7 @@ const Login = ({ initialMode }) => {
                     <FiUser className="w-6 h-6" />
                   </div>
                   <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Create Account</h2>
-                  <p className="text-xs text-gray-400">Join KVLR Styles to unlock VIP deals and instant order tracking.</p>
+                  <p className="text-xs text-gray-400">Join {storeName} to unlock VIP deals and instant order tracking.</p>
                 </div>
 
                 {isGoogleMode && googleProfile && (

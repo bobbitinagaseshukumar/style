@@ -134,7 +134,24 @@ const Orders = () => {
 
   const filteredOrders = filterStatus === 'ALL'
     ? orders
-    : orders.filter(o => o.orderStatus === filterStatus);
+    : orders.filter(o => {
+        if (filterStatus === 'PENDING_APPROVAL') {
+          return ['PENDING', 'PENDING_APPROVAL', 'PROCESSING'].includes(o.orderStatus);
+        }
+        if (filterStatus === 'CONFIRMED') {
+          return ['CONFIRMED', 'PACKED'].includes(o.orderStatus);
+        }
+        if (filterStatus === 'SHIPPED') {
+          return ['SHIPPED', 'OUT_FOR_DELIVERY'].includes(o.orderStatus);
+        }
+        if (filterStatus === 'DELIVERED') {
+          return o.orderStatus === 'DELIVERED';
+        }
+        if (filterStatus === 'CANCELLED') {
+          return ['CANCELLED', 'REJECTED'].includes(o.orderStatus);
+        }
+        return o.orderStatus === filterStatus;
+      });
 
   return (
     <div className="min-h-screen bg-white py-8 lg:py-12">
@@ -338,24 +355,28 @@ const Orders = () => {
 
                   {/* ITEMS LIST */}
                   <div className="divide-y divide-gray-100 border rounded-2xl overflow-hidden bg-gray-50/50">
-                    {order.items?.map((item, idx) => (
-                      <div key={idx} className="p-4 flex gap-4 items-center">
-                        <img
-                          src={item.product?.images?.[0]?.url || 'https://via.placeholder.com/80'}
-                          alt=""
-                          className="w-14 h-18 object-cover rounded-xl shrink-0 bg-white"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-xs text-charcoal-900 truncate">{item.product?.name || 'StyleVerse Item'}</h4>
-                          <div className="flex gap-2 text-[10px] text-gray-500 mt-1">
-                            {item.size && <span>Size: {item.size}</span>}
-                            {item.color && <span>Color: {item.color}</span>}
-                            <span>Qty: {item.quantity}</span>
+                    {order.items?.map((item, idx) => {
+                      const itemName = item.productName || item.product?.name || 'Ordered Product';
+                      const itemImg = item.productImage || item.product?.images?.find(i => i.isPrimary)?.url || item.product?.images?.[0]?.url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400';
+                      return (
+                        <div key={idx} className="p-4 flex gap-4 items-center">
+                          <img
+                            src={itemImg}
+                            alt={itemName}
+                            className="w-14 h-18 object-cover rounded-xl shrink-0 bg-white border border-gray-100"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-xs text-charcoal-900 truncate">{itemName}</h4>
+                            <div className="flex gap-2 text-[10px] text-gray-500 mt-1">
+                              {item.size && <span>Size: {item.size}</span>}
+                              {item.color && <span>Color: {item.color}</span>}
+                              <span>Qty: {item.quantity}</span>
+                            </div>
                           </div>
+                          <span className="font-bold text-xs text-charcoal-900">{formatCurrency(item.price * item.quantity)}</span>
                         </div>
-                        <span className="font-bold text-xs text-charcoal-900">{formatCurrency(item.price * item.quantity)}</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* BOTTOM TOTAL */}
