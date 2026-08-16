@@ -15,7 +15,7 @@ const AddressTab = () => {
   const [deleting, setDeleting] = useState(null);
 
   const load = () => {
-    api.get('/address').then(({ data }) => setAddresses(data.data || [])).catch(() => {}).finally(() => setLoading(false));
+    api.get('/users/addresses').then(({ data }) => setAddresses(data.data || [])).catch(() => {}).finally(() => setLoading(false));
   };
   useEffect(load, []);
 
@@ -23,7 +23,7 @@ const AddressTab = () => {
     e.preventDefault();
     try {
       setSaving(true);
-      await api.post('/address', form);
+      await api.post('/users/addresses', form);
       toast.success('Address saved!');
       setShowForm(false);
       setForm(BLANK);
@@ -35,7 +35,7 @@ const AddressTab = () => {
   const handleDelete = async (id) => {
     try {
       setDeleting(id);
-      await api.delete(`/address/${id}`);
+      await api.delete(`/users/addresses/${id}`);
       toast.success('Address removed.');
       load();
     } catch { toast.error('Failed to delete.'); }
