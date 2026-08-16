@@ -83,60 +83,21 @@ const getCategoryThumbnail = (cat) => {
   return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80';
 };
 
-// Persistent Cache Key for instant 0ms loads across browser sessions
-const CACHE_KEY = '__KVLR_HOME_PERSISTENT_CACHE_V3__';
-
-const getInitialCache = () => {
-  try {
-    const sessionCache = sessionStorage.getItem('__KVLR_HOME_CACHE__');
-    if (sessionCache) return JSON.parse(sessionCache);
-    const persistentCache = localStorage.getItem(CACHE_KEY);
-    if (persistentCache) return JSON.parse(persistentCache);
-  } catch (e) {
-    console.warn('Cache parse error:', e);
-  }
-  return null;
-};
-
-const initialCache = getInitialCache();
-
-const LoadingSkeleton = () => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
-  </div>
-);
-
-const SkeletonCard = () => (
-  <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm animate-pulse flex flex-col">
-    <div className="w-full aspect-[3/4] bg-gray-200 rounded-xl mb-3" />
-    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-    <div className="h-3 bg-gray-100 rounded w-1/2 mb-3" />
-    <div className="h-5 bg-gray-200 rounded w-1/3 mt-auto" />
-  </div>
-);
-
 const Home = () => {
   const prevDataRef = React.useRef(null);
-  const [banners, setBanners] = useState(initialCache?.banners?.length > 0 ? initialCache.banners : DEFAULT_HERO_SLIDERS);
-  const [categories, setCategories] = useState(initialCache?.categories?.length > 0 ? initialCache.categories : DEFAULT_CATEGORIES);
-  const [products, setProducts] = useState(initialCache?.products || {
+  const [banners, setBanners] = useState(DEFAULT_HERO_SLIDERS);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [products, setProducts] = useState({
     featured: [],
     trending: [],
     newArrivals: [],
     todaysDeals: [],
     allPublished: []
   });
-  const [trendingData, setTrendingData] = useState(initialCache?.trendingData || null);
+  const [trendingData, setTrendingData] = useState(null);
   const [enableTrending, setEnableTrending] = useState(true);
-  const [dynamicSections, setDynamicSections] = useState(initialCache?.dynamicSections || []);
-  // If cache exists with any products or categories, start with isLoading = false for 0ms instant display!
-  const hasCachedContent = Boolean(
-    initialCache &&
-    (initialCache.products?.allPublished?.length > 0 ||
-     initialCache.products?.featured?.length > 0 ||
-     initialCache.categories?.length > 0)
-  );
-  const [isLoading, setIsLoading] = useState(!hasCachedContent);
+  const [dynamicSections, setDynamicSections] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;

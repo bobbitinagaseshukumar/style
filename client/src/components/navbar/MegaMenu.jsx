@@ -12,17 +12,6 @@ const fetchGlobalMegaData = async () => {
   if (megaMenuCache) return megaMenuCache;
   if (inflightMegaFetch) return inflightMegaFetch;
 
-  // Try sessionStorage first
-  try {
-    const sessionData = sessionStorage.getItem('__KVLR_MEGA_CACHE__');
-    if (sessionData) {
-      megaMenuCache = JSON.parse(sessionData);
-      return megaMenuCache;
-    }
-  } catch {
-    // sessionStorage not available
-  }
-
   inflightMegaFetch = (async () => {
     try {
       const [catsRes, subsRes] = await Promise.allSettled([
@@ -34,11 +23,6 @@ const fetchGlobalMegaData = async () => {
       const allSubs = subsRes.status === 'fulfilled' ? (subsRes.value.data?.data || []) : [];
 
       megaMenuCache = { allCats, allSubs };
-      try {
-        sessionStorage.setItem('__KVLR_MEGA_CACHE__', JSON.stringify(megaMenuCache));
-      } catch {
-        // ignore storage errors
-      }
       return megaMenuCache;
     } catch (err) {
       console.warn('Mega menu fetch warning:', err);
@@ -50,6 +34,13 @@ const fetchGlobalMegaData = async () => {
 
   return inflightMegaFetch;
 };
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('kvlr:content-updated', () => {
+    megaMenuCache = null;
+    inflightMegaFetch = null;
+  });
+}
 
 // Strict Category Matcher to avoid substring collisions like 'women'.includes('men')
 const findMatchingCategory = (allCats, targetKey) => {

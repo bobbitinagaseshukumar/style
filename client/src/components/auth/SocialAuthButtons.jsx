@@ -59,16 +59,27 @@ const SocialAuthButtons = ({ mode = 'login', onSuccess }) => {
       }
     } catch (error) {
       console.error('[GOOGLE AUTH ERROR]:', error);
-      // Handle popup closed by user
+      const code = error?.code || '';
+      const msg = error?.message || '';
+
+      // Ignore user-initiated popup cancellations or duplicate popup requests silently
       if (
-        error?.code === 'auth/popup-closed-by-user' ||
-        error?.message?.includes('popup-closed-by-user')
+        code === 'auth/popup-closed-by-user' ||
+        code === 'auth/cancelled-popup-request' ||
+        msg.includes('popup-closed-by-user') ||
+        msg.includes('cancelled-popup-request')
       ) {
-        return; // Silent — user intentionally closed
+        return; // Silent — user intentionally closed or opened new popup
       }
+
+      if (code === 'auth/popup-blocked' || msg.includes('popup-blocked')) {
+        toast.warn('Google sign-in popup was blocked by browser. Please allow popups for this site.');
+        return;
+      }
+
       toast.error(
         error.response?.data?.message ||
-        error.message ||
+        msg ||
         'Google login failed. Please try again.'
       );
     } finally {
