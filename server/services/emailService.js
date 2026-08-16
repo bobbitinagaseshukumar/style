@@ -584,19 +584,36 @@ class EmailService {
     });
   }
 
-  // ==================== 8. ORDER CANCELLED EMAIL ====================
+  // ==================== 8. ORDER CANCELLED & APOLOGY EMAIL ====================
   async sendOrderCancelledEmail(email, fullName, orderData) {
     const { storeName, storeTagline, primaryColor, clientUrl } = await getStoreMetadata();
 
     const description = `
-      <p style="margin-bottom: 12px;">Hello <strong>${fullName}</strong>,</p>
-      <p style="margin-bottom: 20px;">Your order <strong>#${orderData.orderNumber}</strong> has been cancelled. If any payment was made, your refund is being processed.</p>
-      ${orderData.reason ? `<p style="color: #aaa; font-size: 13px;">Reason: ${orderData.reason}</p>` : ''}
+      <p style="margin-bottom: 12px; font-size: 15px;">Dear <strong>${fullName || 'Valued Customer'}</strong>,</p>
+      <p style="margin-bottom: 16px; line-height: 1.6;">We are writing to sincerely apologize and inform you that your order <strong>#${orderData.orderNumber}</strong> could not be fulfilled and has been cancelled by our store management team.</p>
+      
+      ${orderData.reason ? `
+      <div style="background: rgba(239, 68, 68, 0.08); border-left: 4px solid #ef4444; padding: 14px 16px; border-radius: 8px; margin: 16px 0;">
+        <p style="margin: 0 0 4px 0; font-weight: bold; color: #ef4444; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Reason & Store Apology Note:</p>
+        <p style="margin: 0; color: #ffffff; font-size: 14px; font-style: italic; line-height: 1.5;">"${orderData.reason}"</p>
+      </div>
+      ` : ''}
+
+      <div style="background: rgba(255, 255, 255, 0.04); padding: 14px 16px; border-radius: 8px; margin: 16px 0; border: 1px solid rgba(255,255,255,0.08);">
+        <p style="margin: 0; font-size: 13px; color: #d1d5db; line-height: 1.5;">
+          💳 <strong>Refund Status:</strong> If any online payment was made for this order (₹${(orderData.total || 0).toLocaleString('en-IN')}), a full refund has been initiated immediately and will reflect in your source account within 3–5 business days.
+        </p>
+      </div>
+
+      <p style="margin-top: 16px; font-size: 13px; color: #9ca3af; line-height: 1.5;">We deeply regret any inconvenience this may have caused you. If you have any questions or need assistance, our support team is always here for you.</p>
     `;
 
     const htmlContent = wrapTemplate({
       headline: `❌ Order Cancelled (#${orderData.orderNumber})`,
       description,
+      products: orderData.items || [],
+      buttonText: 'View My Orders →',
+      buttonUrl: `${clientUrl}/orders`,
       storeName,
       storeTagline,
       primaryColor,
@@ -605,7 +622,7 @@ class EmailService {
 
     return sendEmailViaBrevo({
       to: email,
-      subject: `Order Cancelled #${orderData.orderNumber} - ${storeName}`,
+      subject: `Order Cancellation & Sincere Apology #${orderData.orderNumber} - ${storeName}`,
       htmlContent,
       senderName: storeName,
     });

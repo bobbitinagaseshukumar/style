@@ -913,8 +913,116 @@ exports.deleteOrder = asyncHandler(async (req, res, next) => {
     },
   });
 
+// ==================== ADMIN: GET PENDING ORDERS COUNT FOR SIDEBAR BADGE ====================
+exports.adminGetPendingCount = asyncHandler(async (req, res) => {
+  const pendingCount = await prisma.order.count({
+    where: {
+      deletedByAdmin: false,
+      orderStatus: { in: ['PENDING_APPROVAL', 'PENDING', 'WHATSAPP_PENDING'] }
+    }
+  });
+
   res.status(200).json({
     success: true,
-    message: `Order #${order.orderNumber || id} removed from Admin Panel (preserved in customer account & database)`,
+    data: {
+      pendingCount,
+      hasPending: pendingCount > 0
+    }
   });
 });
+
+// ==================== ADMIN: CANCEL ORDER WITH APOLOGY & EMAIL NOTIFICATION ====================
+exports.adminCancelOrder = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: {
+      items: { include: { product: { include: { images: true } } } },
+      user: true,
+      address: true
+    }
+  });
+
+  if (!order) {
+    return next(new ApiError(404, 'Order not found'));
+  }
+
+  if (order.orderStatus === 'CANCELLED') {
+    return next(new ApiError(400, 'Order is already cancelled'));
+  }
+
+  const apologyReason = reason && reason.trim() ? reason.trim() : 'Cancelled by store administration';
+
+  // 1. Update Order Status
+  const updatedOrder = await prisma.order.update({
+    where: { id },
+    data: {
+      orderStatus: 'CANCELLED',
+      cancelledBy: 'ADMIN',
+      cancelledAt: new Date(),
+      cancellationAllowed: false,
+      cancellationReason: apologyReason,
+    },
+    include: {
+      items: { include: { product: { include: { images: true } } } },
+      user: { select: { id: true, fullName: true, email: true, phone: true, whatsappNumber: true } },
+      address: true
+    }
+  });
+
+  // 2. Restore Product Inventory Stock
+  for (const item of order.items) {
+    if (item.productId) {
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: { stock: { increment: item.quantity } }
+      }).catch(() => {});
+    }
+  }
+
+  // 3. Create In-App Notification for Customer with polite apology
+  await prisma.notification.create({
+    data: {
+      userId: order.userId,
+      title: `❌ Order Cancelled: Apology from Store (#${order.orderNumber})`,
+      message: `We sincerely apologize, but your order #${order.orderNumber} was cancelled. Message from store: "${apologyReason}". Any payment made will be refunded immediately.`,
+      type: 'ORDER',
+      link: '/orders',
+    }
+  }).catch(() => {});
+
+  // 4. Send Apology Email to Customer
+  const orderData = {
+    orderNumber: order.orderNumber,
+    orderId: order.id,
+    items: order.items.map(i => ({
+      name: i.product?.name || i.productName || 'Item',
+      price: i.price,
+      quantity: i.quantity,
+      color: i.color,
+      size: i.size,
+      image: i.product?.images?.[0]?.url || i.productImage,
+    })),
+    total: order.totalAmount,
+    reason: apologyReason,
+  };
+
+  setImmediate(async () => {
+    try {
+      if (order.user?.email) {
+        await emailService.sendOrderCancelledEmail(order.user.email, order.user.fullName || 'Valued Customer', orderData);
+      }
+    } catch (e) {
+      console.warn('Failed to send apology email:', e.message);
+    }
+  });
+
+  res.status(200).json({
+    success: true,
+    message: `Order #${order.orderNumber} cancelled successfully and apology email/notification dispatched to customer.`,
+    data: updatedOrder
+  });
+});
+

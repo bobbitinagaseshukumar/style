@@ -32,15 +32,16 @@ const STATUS_CONFIG = {
 const ALL_STATUSES = Object.keys(STATUS_CONFIG);
 
 const TRANSITIONS = {
-  PENDING_APPROVAL: ['CONFIRMED', 'REJECTED'],
+  PENDING_APPROVAL: ['CONFIRMED', 'CANCELLED', 'REJECTED'],
   PENDING:          ['CONFIRMED', 'CANCELLED'],
   WHATSAPP_PENDING: ['CONFIRMED', 'CANCELLED'],
   CONFIRMED:        ['PACKED', 'CANCELLED'],
-  PACKED:           ['SHIPPED'],
-  SHIPPED:          ['OUT_FOR_DELIVERY'],
-  OUT_FOR_DELIVERY: ['DELIVERED'],
+  PACKED:           ['SHIPPED', 'CANCELLED'],
+  SHIPPED:          ['OUT_FOR_DELIVERY', 'CANCELLED'],
+  OUT_FOR_DELIVERY: ['DELIVERED', 'CANCELLED'],
   DELIVERED:        [],
   CANCELLED:        [],
+  REJECTED:         [],
 };
 
 const StatusBadge = ({ status }) => {
@@ -54,7 +55,7 @@ const StatusBadge = ({ status }) => {
 };
 
 /* ─── Order Detail Side Panel ─────────────────────────────── */
-const OrderDetail = ({ order, onClose, onStatusUpdate }) => {
+const OrderDetail = ({ order, onClose, onStatusUpdate, onOpenCancelModal }) => {
   const [updating, setUpdating] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('');
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState(order?.expectedDeliveryDate || '');
@@ -520,6 +521,22 @@ const OrderDetail = ({ order, onClose, onStatusUpdate }) => {
               </p>
             </div>
           )}
+
+          {/* Admin Direct Cancellation with Apology */}
+          {order.orderStatus !== 'CANCELLED' && order.orderStatus !== 'DELIVERED' && (
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenCancelModal(order);
+                }}
+                className="w-full py-3 rounded-2xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-sm active:scale-[0.99]"
+              >
+                <FiXCircle size={15} /> Cancel Order & Send Apology to Customer
+              </button>
+            </div>
+          )}
         </div>
       </motion.div>
     </motion.div>
@@ -718,6 +735,34 @@ const AdminOrders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deletingOrder, setDeletingOrder] = useState(false);
+  const [cancelModalOrder, setCancelModalOrder] = useState(null);
+  const [cancellingOrder, setCancellingOrder] = useState(false);
+  const [apologyReason, setApologyReason] = useState('');
+
+  const handleAdminCancelSubmit = async () => {
+    if (!cancelModalOrder) return;
+    if (!apologyReason.trim()) {
+      toast.error('Please provide an apology reason for the customer');
+      return;
+    }
+    try {
+      setCancellingOrder(true);
+      await api.post(`/orders/admin/${cancelModalOrder.id}/cancel`, {
+        reason: apologyReason.trim()
+      });
+      toast.success(`Order #${cancelModalOrder.orderNumber || cancelModalOrder.id.substring(0,8)} cancelled & apology email dispatched!`);
+      setCancelModalOrder(null);
+      setApologyReason('');
+      fetchOrders();
+      try {
+        window.dispatchEvent(new Event('kvlr:content-updated'));
+      } catch (e) {}
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel order');
+    } finally {
+      setCancellingOrder(false);
+    }
+  };
 
   const handleRejectOrder = async (orderId) => {
     if (!window.confirm('Are you sure you want to reject this order? Stock will be restored.')) return;
@@ -725,6 +770,9 @@ const AdminOrders = () => {
       await api.put(`/orders/admin/${orderId}/reject`, { reason: 'Rejected by Admin' });
       toast.success('Order rejected');
       fetchOrders();
+      try {
+        window.dispatchEvent(new Event('kvlr:content-updated'));
+      } catch (e) {}
     } catch (err) {
       toast.error('Failed to reject order');
     }
@@ -738,6 +786,9 @@ const AdminOrders = () => {
       toast.success(hardDelete ? `Order #${deleteTarget.orderNumber || deleteTarget.id.substring(0,8)} permanently deleted` : `Order removed from admin panel`);
       setDeleteTarget(null);
       fetchOrders();
+      try {
+        window.dispatchEvent(new Event('kvlr:content-updated'));
+      } catch (e) {}
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete order');
     } finally {
@@ -934,6 +985,15 @@ const AdminOrders = () => {
                           >
                             <FiEye size={12} /> View
                           </button>
+                          {order.orderStatus !== 'CANCELLED' && order.orderStatus !== 'DELIVERED' && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setCancelModalOrder(order); setApologyReason(''); }}
+                              className="p-1.5 rounded-lg text-amber-700 hover:bg-amber-100 transition cursor-pointer"
+                              title="Cancel Order & Send Apology Email"
+                            >
+                              <FiXCircle size={14} />
+                            </button>
+                          )}
                           <button
                             onClick={e => { e.stopPropagation(); setDeleteTarget(order); }}
                             className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition cursor-pointer"
@@ -959,6 +1019,10 @@ const AdminOrders = () => {
             order={selectedOrder}
             onClose={() => setSelectedOrder(null)}
             onStatusUpdate={handleStatusUpdate}
+            onOpenCancelModal={(order) => {
+              setCancelModalOrder(order);
+              setApologyReason('');
+            }}
           />
         )}
         {approvalModalOrder && (
@@ -967,6 +1031,110 @@ const AdminOrders = () => {
             onClose={() => setApprovalModalOrder(null)}
             onApproved={handleStatusUpdate}
           />
+        )}
+      </AnimatePresence>
+
+      {/* CANCEL ORDER & SEND APOLOGY MODAL */}
+      <AnimatePresence>
+        {cancelModalOrder && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-red-100 flex items-center justify-center shrink-0">
+                    <FiXCircle className="text-red-600 w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-base">Cancel Order & Send Apology</h3>
+                    <p className="text-xs text-gray-500">#{cancelModalOrder.orderNumber || cancelModalOrder.id.substring(0, 8)} · {formatCurrency(cancelModalOrder.totalAmount)}</p>
+                  </div>
+                </div>
+                <button onClick={() => setCancelModalOrder(null)} className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 transition cursor-pointer">
+                  <FiX size={16} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5">
+                  <p className="text-xs text-amber-900 leading-relaxed font-medium">
+                    💡 <strong>Apology Notification:</strong> Cancelling will restore product inventory, refund online payments, and automatically dispatch a respectful apology email and in-app notification to <strong>{cancelModalOrder.user?.fullName || 'the customer'}</strong> ({cancelModalOrder.user?.email || 'Registered Email'}).
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Quick Apology Presets (Click to Select)
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      'Item out of stock following strict quality & artisan inspection',
+                      'Logistics partner unreachable in delivery service area',
+                      'Handloom artisan weaving delay; unable to fulfill in promised timeframe',
+                      'Payment processing discrepancy on order checkout',
+                      'Customer requested cancellation via customer care communication'
+                    ].map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setApologyReason(preset)}
+                        className={`text-[11px] px-2.5 py-1 rounded-xl border transition text-left cursor-pointer ${
+                          apologyReason === preset
+                            ? 'bg-amber-500 text-black font-bold border-amber-500 shadow-sm'
+                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-amber-300'
+                        }`}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Custom Apology Message / Reason (Sent to Customer Email)
+                  </label>
+                  <textarea
+                    value={apologyReason}
+                    onChange={(e) => setApologyReason(e.target.value)}
+                    rows={4}
+                    placeholder="Type your polite explanation and apology to the customer here..."
+                    className="w-full p-3 rounded-2xl border border-gray-200 text-xs text-gray-900 focus:ring-2 focus:ring-amber-400 focus:outline-none font-medium leading-relaxed"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setCancelModalOrder(null)}
+                    disabled={cancellingOrder}
+                    className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 transition cursor-pointer"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAdminCancelSubmit}
+                    disabled={cancellingOrder || !apologyReason.trim()}
+                    className="flex-2 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {cancellingOrder ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        Cancelling & Notifying...
+                      </>
+                    ) : (
+                      'Confirm Cancellation & Send Apology'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

@@ -7,7 +7,7 @@ import {
   FiBarChart2, FiMenu, FiX, FiLogOut, FiChevronRight, FiMail,
   FiZap, FiLayers, FiShield, FiUser, FiSliders, FiCheckCircle,
   FiCpu, FiLock, FiExternalLink, FiChevronDown, FiBell, FiSearch,
-  FiArchive, FiStar, FiEdit3, FiCheck, FiInfo, FiAlertCircle
+  FiArchive, FiStar, FiEdit3, FiCheck, FiInfo, FiAlertCircle, FiTrash2
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
@@ -79,33 +79,66 @@ const AdminLayout = () => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [storeName, setStoreName] = useState('');
 
+  const fetchSettings = async () => {
+    try {
+      const { data } = await api.get('/cms/settings');
+      if (data?.success && data.data) {
+        setStoreName(data.data.storeName);
+      }
+    } catch (err) {
+      console.error('Failed to fetch store settings', err);
+    }
+  };
+
+  const fetchAdminNotifications = async () => {
+    try {
+      const { data } = await api.get('/notifications/admin-notifications');
+      if (data?.success && Array.isArray(data.data?.notifications)) {
+        setNotifications(data.data.notifications);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch admin notifications', err.message);
+    }
+  };
+
+  const fetchPendingOrdersCount = async () => {
+    try {
+      const { data } = await api.get('/orders/admin/pending-count');
+      if (data?.success && typeof data.data?.pendingCount === 'number') {
+        setPendingOrdersCount(data.data.pendingCount);
+      }
+    } catch (err) {
+      // fallback
+    }
+  };
+
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const { data } = await api.get('/cms/settings');
-        if (data?.success && data.data) {
-          setStoreName(data.data.storeName);
-        }
-      } catch (err) {
-        console.error('Failed to fetch store settings', err);
-      }
-    };
-    const fetchAdminNotifications = async () => {
-      try {
-        const { data } = await api.get('/notifications/admin-notifications');
-        if (data?.success && Array.isArray(data.data?.notifications)) {
-          setNotifications(data.data.notifications);
-        }
-      } catch (err) {
-        console.warn('Failed to fetch admin notifications', err.message);
-      }
-    };
     fetchSettings();
     fetchAdminNotifications();
+    fetchPendingOrdersCount();
+
+    const interval = setInterval(() => {
+      fetchAdminNotifications();
+      fetchPendingOrdersCount();
+    }, 20000);
+
+    const handleContentUpdate = () => {
+      fetchAdminNotifications();
+      fetchPendingOrdersCount();
+    };
+
+    window.addEventListener('kvlr:content-updated', handleContentUpdate);
+    window.addEventListener('focus', handleContentUpdate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('kvlr:content-updated', handleContentUpdate);
+      window.removeEventListener('focus', handleContentUpdate);
+    };
   }, []);
 
   const location = useLocation();
@@ -205,9 +238,38 @@ const AdminLayout = () => {
     setSearchOpen(false);
   };
 
-  const markAllNotificationsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
-    toast.success('All notifications marked as read');
+  const markAllNotificationsRead = async () => {
+    try {
+      await api.put('/notifications/read-all');
+      setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+      toast.success('All notifications marked as read');
+    } catch (e) {
+      toast.error('Failed to mark read');
+    }
+  };
+
+  const handleDeleteNotification = async (id, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    try {
+      await api.delete(`/notifications/${id}`);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      toast.success('Notification permanently removed');
+    } catch (e) {
+      toast.error('Failed to delete notification');
+    }
+  };
+
+  const handleClearAllNotifications = async () => {
+    try {
+      await api.delete('/notifications/clear-all');
+      setNotifications([]);
+      toast.success('All notifications permanently cleared');
+    } catch (e) {
+      toast.error('Failed to clear notifications');
+    }
   };
 
   const unreadNotificationCount = notifications.filter(n => n.unread).length;
@@ -259,6 +321,9 @@ const AdminLayout = () => {
               {group.links.map((link) => {
                 const Icon = link.icon;
                 const isActive = location.pathname === link.path || (link.path === '/admin/dashboard' && location.pathname === '/admin');
+                const isOrdersLink = link.path === '/admin/orders';
+                const showOrderBadge = isOrdersLink && pendingOrdersCount > 0;
+
                 return (
                   <NavLink
                     key={link.label}
@@ -269,7 +334,15 @@ const AdminLayout = () => {
                         : 'text-gray-400 hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-gold-400' : 'text-gray-500 group-hover:text-gold-400'}`} />
+                    <div className="relative flex items-center justify-center">
+                      <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-gold-400' : 'text-gray-500 group-hover:text-gold-400'}`} />
+                      {showOrderBadge && !sidebarOpen && (
+                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600 border-2 border-[#0D0D12]"></span>
+                        </span>
+                      )}
+                    </div>
                     <AnimatePresence>
                       {sidebarOpen && (
                         <motion.span
@@ -282,7 +355,13 @@ const AdminLayout = () => {
                         </motion.span>
                       )}
                     </AnimatePresence>
-                    {isActive && sidebarOpen && (
+                    {showOrderBadge && sidebarOpen && (
+                      <span className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white shadow-md animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                        {pendingOrdersCount} NEW
+                      </span>
+                    )}
+                    {isActive && sidebarOpen && !showOrderBadge && (
                       <FiChevronRight className="ml-auto w-4 h-4 text-gold-400" />
                     )}
                   </NavLink>
@@ -350,6 +429,9 @@ const AdminLayout = () => {
                   {group.links.map((link) => {
                     const Icon = link.icon;
                     const isActive = location.pathname === link.path || (link.path === '/admin/dashboard' && location.pathname === '/admin');
+                    const isOrdersLink = link.path === '/admin/orders';
+                    const showOrderBadge = isOrdersLink && pendingOrdersCount > 0;
+
                     return (
                       <Link
                         key={link.label}
@@ -365,6 +447,12 @@ const AdminLayout = () => {
                       >
                         <Icon className="w-5 h-5 shrink-0 text-amber-400/90 pointer-events-none" />
                         <span className="text-xs font-semibold pointer-events-none">{link.label}</span>
+                        {showOrderBadge && (
+                          <span className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white shadow-md animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                            {pendingOrdersCount} NEW
+                          </span>
+                        )}
                       </Link>
                     );
                   })}
@@ -469,7 +557,7 @@ const AdminLayout = () => {
               >
                 <FiBell className="w-5 h-5" />
                 {unreadNotificationCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 border-2 border-[#0A0A0E] rounded-full"></span>
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-amber-500 border-2 border-[#0A0A0E] rounded-full"></span>
                 )}
               </button>
 
@@ -487,48 +575,76 @@ const AdminLayout = () => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl p-3.5 z-50 text-xs space-y-2 text-gray-900"
+                      className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-96 bg-white border border-gray-200 rounded-2xl shadow-2xl p-3.5 z-50 text-xs space-y-2 text-gray-900"
                     >
                       <div className="flex items-center justify-between px-2 pb-2 border-b border-gray-100">
                         <div className="flex items-center gap-1.5 font-bold text-gray-900">
                           <FiBell className="w-4 h-4 text-amber-600" />
                           <span>System Notifications</span>
+                          {notifications.length > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-gray-100 text-gray-600 font-bold">
+                              {notifications.length}
+                            </span>
+                          )}
                         </div>
-                        {unreadNotificationCount > 0 && (
-                          <button
-                            onClick={markAllNotificationsRead}
-                            className="text-[10px] font-bold text-amber-700 hover:text-amber-800 transition cursor-pointer"
-                          >
-                            Mark all as read
-                          </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {unreadNotificationCount > 0 && (
+                            <button
+                              onClick={markAllNotificationsRead}
+                              className="text-[10px] font-bold text-amber-700 hover:text-amber-800 transition cursor-pointer"
+                            >
+                              Mark read
+                            </button>
+                          )}
+                          {notifications.length > 0 && (
+                            <button
+                              onClick={handleClearAllNotifications}
+                              className="text-[10px] font-bold text-red-600 hover:text-red-700 transition cursor-pointer flex items-center gap-1"
+                              title="Permanently delete all notifications"
+                            >
+                              <FiTrash2 size={11} /> Clear all
+                            </button>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                      <div className="space-y-1.5 max-h-72 overflow-y-auto pr-0.5">
                         {notifications.length > 0 ? (
                           notifications.map((item) => (
-                            <Link
+                            <div
                               key={item.id}
-                              to={item.link || '/admin/orders'}
-                              onClick={() => setNotificationOpen(false)}
-                              className={`block p-2.5 rounded-xl border transition cursor-pointer hover:border-amber-400 active:scale-[0.99] ${
+                              className={`group relative flex items-start justify-between gap-2 p-2.5 rounded-xl border transition hover:border-amber-400 ${
                                 item.unread ? 'bg-amber-50/60 border-amber-200/80' : 'bg-gray-50 border-gray-100'
                               }`}
                             >
-                              <div className="flex items-center justify-between mb-0.5">
-                                <p className="font-bold text-gray-900 text-xs">{item.title}</p>
-                                <span className="text-[10px] text-gray-400">
-                                  {item.time ? new Date(item.time).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
-                                </span>
-                              </div>
-                              <p className="text-[11px] text-gray-600 leading-tight">{item.text}</p>
-                            </Link>
+                              <Link
+                                to={item.link || '/admin/orders'}
+                                onClick={() => setNotificationOpen(false)}
+                                className="flex-1 min-w-0 cursor-pointer"
+                              >
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <p className="font-bold text-gray-900 text-xs truncate">{item.title}</p>
+                                  <span className="text-[10px] text-gray-400 shrink-0 ml-2">
+                                    {item.time ? new Date(item.time).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-gray-600 leading-tight">{item.text}</p>
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteNotification(item.id, e)}
+                                className="p-1 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer shrink-0"
+                                title="Permanently delete notification"
+                              >
+                                <FiTrash2 size={13} />
+                              </button>
+                            </div>
                           ))
                         ) : (
                           <div className="py-6 text-center text-gray-500 space-y-1">
                             <FiBell className="w-6 h-6 mx-auto text-gray-300 opacity-60" />
-                            <p className="font-semibold text-xs text-gray-600">No new notifications</p>
-                            <p className="text-[10px] text-gray-400">Real customer orders & stock alerts will show here</p>
+                            <p className="font-semibold text-xs text-gray-600">No notifications</p>
+                            <p className="text-[10px] text-gray-400">Notifications cleared from database</p>
                           </div>
                         )}
                       </div>
