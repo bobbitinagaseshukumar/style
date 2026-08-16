@@ -1,54 +1,78 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { FiBell, FiShield, FiLock, FiCheck } from 'react-icons/fi';
-import { useSelector } from 'react-redux';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiBell, FiShield, FiLock, FiCheck, FiKey, FiSmartphone } from 'react-icons/fi';
+import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import Modal from '../../components/common/Modal';
+import Button from '../../components/common/Button';
+import { updateUser, getMe } from '../../redux/auth/authSlice';
 
 const Toggle = ({ value, onChange, disabled }) => (
   <button
     type="button"
     onClick={() => !disabled && onChange(!value)}
     disabled={disabled}
-    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? 'bg-gold-500' : 'bg-white/10'} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? 'bg-yellow-400' : 'bg-white/10'} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
   >
     <motion.span
       layout
-      className={`inline-block h-4 w-4 rounded-full bg-white shadow-md transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`}
+      className={`inline-block h-4 w-4 rounded-full bg-charcoal-900 shadow-md transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`}
     />
   </button>
 );
 
 const SettingsTab = () => {
+  const dispatch = useDispatch();
   const user = useSelector((s) => s.auth.user);
+
   const [prefs, setPrefs] = useState({
-    emailNotifications: user?.emailNotifications ?? true,
-    smsNotifications: user?.smsNotifications ?? true,
-    orderUpdates: true,
-    offerAlerts: true,
-    newsletterEmails: false,
+    emailNotifications: true,
+    smsNotifications: true,
+    promoNotifications: true,
   });
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (user) {
+      setPrefs({
+        emailNotifications: user.emailNotifications !== undefined ? Boolean(user.emailNotifications) : true,
+        smsNotifications: user.smsNotifications !== undefined ? Boolean(user.smsNotifications) : true,
+        promoNotifications: user.promoNotifications !== undefined ? Boolean(user.promoNotifications) : true,
+      });
+    }
+  }, [user]);
+
   // Password Change State
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
-  const [changingPass, setChangingPass] = useState(false);
+  const [requestingOtp, setRequestingOtp] = useState(false);
+  const [otpModal, setOtpModal] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
 
-  const toggle = (key) => setPrefs((p) => ({ ...p, [key]: !p[key] }));
+  const togglePref = (key) => setPrefs((p) => ({ ...p, [key]: !p[key] }));
 
   const savePrefs = async () => {
     try {
       setSaving(true);
-      await api.put('/auth/me', prefs);
-      toast.success('Notification preferences saved!');
-    } catch {
-      toast.error('Failed to save preferences.');
+      const res = await api.put('/users/profile', {
+        emailNotifications: prefs.emailNotifications,
+        smsNotifications: prefs.smsNotifications,
+        promoNotifications: prefs.promoNotifications,
+      });
+      toast.success('Notification preferences updated!');
+      if (res.data?.data) {
+        dispatch(updateUser(res.data.data));
+        dispatch(getMe());
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save preferences.');
     } finally {
       setSaving(false);
     }
   };
 
-  const handlePasswordChange = async (e) => {
+  const handleRequestPasswordOTP = async (e) => {
     e.preventDefault();
     if (!passwords.currentPassword || !passwords.newPassword) {
       return toast.error('Please enter current and new password');
@@ -56,23 +80,46 @@ const SettingsTab = () => {
     if (passwords.newPassword !== passwords.confirmPassword) {
       return toast.error('New passwords do not match');
     }
-    if (passwords.newPassword.length < 6) {
-      return toast.error('Password must be at least 6 characters long');
+    if (passwords.newPassword.length < 8) {
+      return toast.error('Password must be at least 8 characters long');
     }
 
     try {
-      setChangingPass(true);
-      await api.post('/auth/change-password', {
+      setRequestingOtp(true);
+      const res = await api.post('/users/password-otp/request', {
         currentPassword: passwords.currentPassword,
         newPassword: passwords.newPassword,
       });
-      toast.success('Password updated successfully!');
+      toast.success(res.data?.message || 'Verification OTP code sent to your registered email!');
+      setOtpModal(true);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send OTP for password change');
+    } finally {
+      setRequestingOtp(false);
+    }
+  };
+
+  const handleVerifyPasswordOTP = async (e) => {
+    e.preventDefault();
+    if (!otpCode || otpCode.trim().length !== 6) {
+      toast.error('Please enter a valid 6-digit OTP code');
+      return;
+    }
+    try {
+      setVerifyingOtp(true);
+      const res = await api.post('/users/password-otp/verify', {
+        currentPassword: passwords.currentPassword,
+        newPassword: passwords.newPassword,
+        otpCode: otpCode.trim(),
+      });
+      toast.success(res.data?.message || 'Password changed successfully!');
+      setOtpModal(false);
+      setOtpCode('');
       setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (err) {
-      console.error('Password change error:', err);
-      toast.error(err.response?.data?.message || 'Failed to update password');
+      toast.error(err.response?.data?.message || 'Invalid or expired OTP code');
     } finally {
-      setChangingPass(false);
+      setVerifyingOtp(false);
     }
   };
 
@@ -84,52 +131,56 @@ const SettingsTab = () => {
       </div>
 
       {/* Password Change Form */}
-      <div className="space-y-4 bg-white/5 p-5 rounded-2xl border border-white/10">
-        <div className="flex items-center gap-2 mb-2">
-          <FiLock className="text-gold-400 w-4 h-4" />
-          <h3 className="text-xs font-bold text-white uppercase tracking-widest">Change Password</h3>
+      <div className="space-y-4 bg-white/5 p-6 rounded-2xl border border-white/10 shadow-sm">
+        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/5">
+          <FiLock className="text-yellow-400 w-4 h-4" />
+          <div>
+            <h3 className="text-xs font-bold text-white uppercase tracking-widest">Change Security Password</h3>
+            <p className="text-[11px] text-white/40 mt-0.5">A security verification OTP will be sent to your email</p>
+          </div>
         </div>
 
-        <form onSubmit={handlePasswordChange} className="space-y-3 max-w-md">
+        <form onSubmit={handleRequestPasswordOTP} className="space-y-4 max-w-md">
           <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Current Password</label>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Current Password *</label>
             <input
               type="password"
               required
               value={passwords.currentPassword}
               onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-gold-500"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-yellow-400 transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">New Password</label>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">New Password *</label>
             <input
               type="password"
               required
               value={passwords.newPassword}
               onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-gold-500"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-yellow-400 transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Confirm New Password</label>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Confirm New Password *</label>
             <input
               type="password"
               required
               value={passwords.confirmPassword}
               onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-gold-500"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-yellow-400 transition-all"
             />
           </div>
 
           <button
             type="submit"
-            disabled={changingPass}
-            className="px-5 py-2 rounded-xl bg-gold-500 text-charcoal-900 font-extrabold text-xs hover:bg-gold-400 transition cursor-pointer disabled:opacity-50"
+            disabled={requestingOtp}
+            className="px-5 py-2.5 rounded-xl bg-yellow-400 text-charcoal-900 font-extrabold text-xs hover:bg-yellow-300 transition cursor-pointer disabled:opacity-50 shadow-md flex items-center gap-2"
           >
-            {changingPass ? 'Updating...' : 'Update Password'}
+            <FiKey size={14} />
+            {requestingOtp ? 'Sending Security OTP...' : 'Send Security OTP for Verification'}
           </button>
         </form>
       </div>
@@ -137,22 +188,22 @@ const SettingsTab = () => {
       {/* Notification Preferences */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-2">
-          <FiBell className="text-gold-400 w-4 h-4" />
+          <FiBell className="text-yellow-400 w-4 h-4" />
           <h3 className="text-xs font-bold text-white uppercase tracking-widest">Notification Preferences</h3>
         </div>
 
         <div className="space-y-3">
           {[
-            { key: 'emailNotifications', label: 'Email Notifications', desc: 'Receive order status updates via email' },
-            { key: 'smsNotifications', label: 'SMS / WhatsApp Alerts', desc: 'Receive dispatch & tracking alerts' },
-            { key: 'offerAlerts', label: 'Flash Sale & Offer Alerts', desc: 'Exclusive VIP sales and promo codes' },
+            { key: 'emailNotifications', label: 'Email Notifications', desc: 'Receive order status updates and account alerts via email' },
+            { key: 'smsNotifications', label: 'SMS / WhatsApp Alerts', desc: 'Receive dispatch & tracking alerts on your mobile phone' },
+            { key: 'promoNotifications', label: 'Flash Sale & Offer Alerts', desc: 'Exclusive VIP sales, festival discounts, and promo codes' },
           ].map((item) => (
             <div key={item.key} className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
               <div>
                 <p className="text-xs font-bold text-white">{item.label}</p>
                 <p className="text-[10px] text-white/40 mt-0.5">{item.desc}</p>
               </div>
-              <Toggle value={prefs[item.key]} onChange={() => toggle(item.key)} />
+              <Toggle value={prefs[item.key]} onChange={() => togglePref(item.key)} />
             </div>
           ))}
         </div>
@@ -160,11 +211,38 @@ const SettingsTab = () => {
         <button
           onClick={savePrefs}
           disabled={saving}
-          className="px-6 py-2.5 rounded-xl border border-gold-500/30 text-gold-400 text-xs font-bold hover:bg-gold-500/10 transition cursor-pointer disabled:opacity-50"
+          className="px-6 py-2.5 rounded-xl border border-yellow-400/40 text-yellow-400 text-xs font-bold hover:bg-yellow-400/10 transition cursor-pointer disabled:opacity-50"
         >
-          {saving ? 'Saving...' : 'Save Notification Preferences'}
+          {saving ? 'Saving Preferences...' : 'Save Notification Preferences'}
         </button>
       </div>
+
+      {/* Modal: Security OTP Verification for Password Change */}
+      <Modal isOpen={otpModal} onClose={() => setOtpModal(false)} title="Security OTP Verification">
+        <form onSubmit={handleVerifyPasswordOTP} className="space-y-4">
+          <p className="text-xs text-gray-600">
+            A 6-digit security code was sent to your registered email address ({user?.email}). Please enter it below to confirm your new password.
+          </p>
+          <div>
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">6-Digit OTP Code *</label>
+            <input
+              type="text"
+              maxLength={6}
+              required
+              value={otpCode}
+              onChange={e => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="123456"
+              className="w-full text-center text-2xl tracking-[0.5em] font-mono py-3 border border-gray-300 rounded-xl focus:border-amber-600 outline-none"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={() => setOtpModal(false)}>Cancel</Button>
+            <Button type="submit" disabled={verifyingOtp}>
+              {verifyingOtp ? 'Verifying OTP...' : 'Verify OTP & Save Password'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
