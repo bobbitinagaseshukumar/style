@@ -228,18 +228,41 @@ const Login = ({ initialMode }) => {
   };
 
   const [storeSettings, setStoreSettings] = useState(null);
-  const storeName = storeSettings?.storeName || 'KVLR styles';
+  const [authSettings, setAuthSettings] = useState(null);
+  const storeName = storeSettings?.storeName || 'KVLR Styles';
 
   useEffect(() => {
-    const fetchStoreSettings = async () => {
+    const fetchConfigs = async () => {
       try {
-        const res = await api.get('/settings/public');
-        if (res.data?.success && res.data.data) {
-          setStoreSettings(res.data.data);
+        const [settingsRes, authRes] = await Promise.allSettled([
+          api.get('/cms/settings'),
+          api.get('/auth/settings/public'),
+        ]);
+        if (settingsRes.status === 'fulfilled' && settingsRes.value.data?.data) {
+          setStoreSettings(settingsRes.value.data.data);
         }
-      } catch (err) {}
+        if (authRes.status === 'fulfilled' && authRes.value.data?.data) {
+          const authData = authRes.value.data.data;
+          setAuthSettings(authData);
+          if (authData.formFields) {
+            try {
+              const fields = typeof authData.formFields === 'string'
+                ? JSON.parse(authData.formFields)
+                : authData.formFields;
+              if (Array.isArray(fields) && fields.length > 0) setDynamicFields(fields);
+            } catch (e) {}
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
     };
-    fetchStoreSettings();
+    fetchConfigs();
+
+    const handleUpdate = () => fetchConfigs();
+    window.addEventListener('settings_updated', handleUpdate);
+    window.addEventListener('auth_settings_updated', handleUpdate);
+    window.addEventListener('kvlr:content-updated', handleUpdate);
 
     // Parse Google profile from session storage if redirected from OAuth callback
     const cachedGoogle = sessionStorage.getItem('googleProfile');
@@ -257,18 +280,14 @@ const Login = ({ initialMode }) => {
       }
     }
 
-    const fetchDynamicFields = async () => {
-      try {
-        const res = await api.get('/auth-form/form-fields?formType=REGISTER');
-        if (res.data?.success && Array.isArray(res.data.data)) {
-          setDynamicFields(res.data.data);
-        }
-      } catch (err) {}
-    };
-    fetchDynamicFields();
-
     // Always clear remembered email to keep login form fresh and blank
     localStorage.removeItem('remembered_email');
+
+    return () => {
+      window.removeEventListener('settings_updated', handleUpdate);
+      window.removeEventListener('auth_settings_updated', handleUpdate);
+      window.removeEventListener('kvlr:content-updated', handleUpdate);
+    };
   }, []);
 
   const cardRef = useRef(null);

@@ -17,10 +17,27 @@ export const fetchStoreSettings = createAsyncThunk(
   }
 );
 
+// Async thunk: Fetch auth manager settings for dynamic login/registration forms
+export const fetchAuthSettings = createAsyncThunk(
+  'settings/fetchAuthSettings',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get('/auth/settings/public');
+      if (data?.success && data.data) {
+        return data.data;
+      }
+      return {};
+    } catch (err) {
+      return rejectWithValue(err?.response?.data?.message || 'Failed to fetch auth settings');
+    }
+  }
+);
+
 const settingsSlice = createSlice({
   name: 'settings',
   initialState: {
     storeSettings: {},
+    authSettings: {},
     banners: [],
     homepageSections: [],
     cmsPages: [],
@@ -30,6 +47,9 @@ const settingsSlice = createSlice({
   reducers: {
     setStoreSettings: (state, action) => {
       state.storeSettings = { ...state.storeSettings, ...action.payload };
+    },
+    setAuthSettings: (state, action) => {
+      state.authSettings = { ...state.authSettings, ...action.payload };
     }
   },
   extraReducers: (builder) => {
@@ -43,9 +63,12 @@ const settingsSlice = createSlice({
       })
       .addCase(fetchStoreSettings.rejected, (state) => {
         state.loading = false;
+      })
+      .addCase(fetchAuthSettings.fulfilled, (state, action) => {
+        state.authSettings = action.payload;
       });
   }
 });
 
-export const { setStoreSettings } = settingsSlice.actions;
+export const { setStoreSettings, setAuthSettings } = settingsSlice.actions;
 export default settingsSlice.reducer;

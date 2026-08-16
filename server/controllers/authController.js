@@ -151,25 +151,51 @@ exports.verifyOTP = asyncHandler(async (req, res, next) => {
 
 // ==================== LOGIN (MULTI-DEVICE & AUTO-ACCOUNT PROVISIONING) ====================
 exports.login = asyncHandler(async (req, res, next) => {
-  const { email, password, loginType } = req.body;
+  const { identifier, email, phone, username, password, loginType } = req.body;
+  const rawInput = (identifier || email || phone || username || '').trim();
 
-  if (!email) {
-    return next(new ApiError(400, 'Please provide email address'));
+  if (!rawInput) {
+    return next(new ApiError(400, 'Please provide email, mobile number, or username'));
   }
 
-  const normalizedEmail = email.toLowerCase().trim();
-  let user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  // Find user by email, phone, or username
+  let user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: rawInput.toLowerCase() },
+        { phone: rawInput },
+        { phone: rawInput.replace(/\D/g, '') },
+        { username: rawInput }
+      ]
+    }
+  });
 
-  // Account must exist — do NOT auto-create accounts
+  // Account must exist
   if (!user) {
-    return next(new ApiError(401, 'No account found with this email. Please register first.'));
+    return next(new ApiError(401, 'No account found with these credentials. Please register first.'));
   }
 
   if (user.status === 'SUSPENDED') {
-    return next(new ApiError(403, 'Your account has been suspended. Please contact support.'));
+    return next(new ApiError(403, 'Your account has been suspended. Please contact customer support.'));
   }
 
-  // Verify Password & Trigger Mandatory 2FA OTP
+  // 1. Passwordless OTP Login flow
+  if (loginType === 'OTP' || loginType === 'MOBILE_OTP' || loginType === 'EMAIL_OTP') {
+    const otp = await createOTP(user.id);
+    try {
+      await sendOTPEmail(user.email, user.fullName, otp);
+      console.log(`[LOGIN OTP] 6-digit OTP (${otp}) generated for ${user.email}`);
+    } catch (mailErr) {
+      console.warn('[LOGIN OTP EMAIL FAILED]', mailErr.message);
+    }
+    return res.status(200).json({
+      success: true,
+      message: `Login OTP code sent to ${user.email}. Enter the 6-digit code to complete sign in.`,
+      data: { userId: user.id, email: user.email, requiresOTP: true }
+    });
+  }
+
+  // 2. Standard Password Login flow
   if (!password) {
     return next(new ApiError(400, 'Password is required'));
   }
