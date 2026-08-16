@@ -1,5 +1,13 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  OAuthProvider,
+  FacebookAuthProvider,
+  GithubAuthProvider,
+  signInWithPopup,
+  signOut
+} from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDxSYJ0C1PUxWLvagPoQVOHjo0-Ft7QOLw",
@@ -15,12 +23,25 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 
-const provider = new GoogleAuthProvider();
-provider.setCustomParameters({
+// Google Auth Provider
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
   prompt: "select_account",
 });
 
-export const signInWithGoogle = () => signInWithPopup(auth, provider);
+// Apple Auth Provider
+export const appleProvider = new OAuthProvider('apple.com');
+appleProvider.addScope('email');
+appleProvider.addScope('name');
+
+// Facebook & GitHub Providers
+export const facebookProvider = new FacebookAuthProvider();
+export const githubProvider = new GithubAuthProvider();
+
+export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
+export const signInWithApple = () => signInWithPopup(auth, appleProvider);
+export const signInWithFacebook = () => signInWithPopup(auth, facebookProvider);
+export const signInWithGithub = () => signInWithPopup(auth, githubProvider);
 
 export const logoutFirebase = () => signOut(auth);
 

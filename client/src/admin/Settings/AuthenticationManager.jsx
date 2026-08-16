@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiLock, FiUserCheck, FiShield, FiSliders, FiCheck,
-  FiSmartphone, FiMail, FiUser, FiEye, FiSave, FiAlertCircle, FiSettings, FiPlus, FiTrash2, FiKey
+  FiSmartphone, FiMail, FiUser, FiEye, FiSave, FiAlertCircle, FiSettings, FiPlus, FiTrash2, FiKey, FiGlobe
 } from 'react-icons/fi';
-import { FaWhatsapp } from 'react-icons/fa';
+import { FaWhatsapp, FaGoogle, FaApple, FaFacebook, FaGithub, FaTwitter } from 'react-icons/fa';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
@@ -71,6 +71,10 @@ const AuthenticationManager = () => {
   // Modal State for Adding Custom Password Rule
   const [showAddRuleModal, setShowAddRuleModal] = useState(false);
   const [newRule, setNewRule] = useState({ name: '', pattern: '', message: '', enabled: true });
+
+  // Modal State for Adding Custom Social Login
+  const [showAddSocialModal, setShowAddSocialModal] = useState(false);
+  const [newSocial, setNewSocial] = useState({ key: '', label: '' });
 
   const fetchAuthSettings = async () => {
     setLoading(true);
@@ -251,6 +255,34 @@ const AuthenticationManager = () => {
       ...prev,
       customRules: (prev.customRules || []).map(r => r.id === id ? { ...r, enabled: !r.enabled } : r)
     }));
+  };
+
+  const handleAddSocialLogin = (e) => {
+    e.preventDefault();
+    const cleanKey = newSocial.key.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!cleanKey || !newSocial.label) {
+      return toast.error('Please enter a Provider Key and Display Title');
+    }
+    setSocialLogins(prev => ({
+      ...prev,
+      [cleanKey]: true,
+      _custom: [...(prev._custom || []), { key: cleanKey, label: newSocial.label.trim(), enabled: true }]
+    }));
+    setShowAddSocialModal(false);
+    setNewSocial({ key: '', label: '' });
+    toast.success(`Custom social login "${newSocial.label}" added! Click "Save Settings" to persist.`);
+  };
+
+  const removeSocialLogin = (key) => {
+    setSocialLogins(prev => {
+      const next = { ...prev };
+      delete next[key];
+      if (Array.isArray(next._custom)) {
+        next._custom = next._custom.filter(c => c.key !== key);
+      }
+      return next;
+    });
+    toast.info('Social login removed');
   };
 
   const removeField = (name) => {
@@ -634,26 +666,102 @@ const AuthenticationManager = () => {
 
           {/* TAB 5: SOCIAL LOGINS */}
           {activeTab === 'SOCIAL' && (
-            <div className="space-y-4">
-              <h3 className="text-base font-bold text-charcoal-900">Enable Third-Party Social Logins</h3>
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4">
+                <div>
+                  <h3 className="text-base font-bold text-charcoal-900 mb-1">Third-Party Social Logins & SSO</h3>
+                  <p className="text-xs text-gray-500">Enable or disable social authentication providers. When enabled, their respective branded logo and instant login buttons will appear on customer login forms and drawers.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddSocialModal(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-charcoal-900 hover:bg-black text-gold-400 font-bold text-xs shadow transition cursor-pointer self-start sm:self-auto"
+                >
+                  <FiPlus className="w-4 h-4" /> Add Social Provider
+                </button>
+              </div>
+
+              {/* Standard Providers */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  { key: 'google', label: 'Google OAuth Login' },
-                  { key: 'facebook', label: 'Facebook Login' },
-                  { key: 'apple', label: 'Sign in with Apple' },
-                  { key: 'github', label: 'GitHub Login' },
-                ].map((s) => (
-                  <label key={s.key} className="flex items-center justify-between p-4 rounded-2xl border border-gray-200 bg-gray-50/50 cursor-pointer">
-                    <span className="text-xs font-bold text-charcoal-900">{s.label}</span>
-                    <input
-                      type="checkbox"
-                      checked={!!socialLogins[s.key]}
-                      onChange={(e) => setSocialLogins({ ...socialLogins, [s.key]: e.target.checked })}
-                      className="w-5 h-5 rounded text-gold-500"
-                    />
-                  </label>
-                ))}
+                  { key: 'google', label: 'Google OAuth Login', desc: 'Allow customers to sign in with their Google account', icon: FaGoogle, iconColor: 'text-red-500' },
+                  { key: 'apple', label: 'Sign in with Apple', desc: 'Allow Apple users to sign in with Apple ID on iOS, Mac & Web', icon: FaApple, iconColor: 'text-black' },
+                  { key: 'facebook', label: 'Facebook Login', desc: 'Sign in via Facebook OAuth account', icon: FaFacebook, iconColor: 'text-blue-600' },
+                  { key: 'github', label: 'GitHub Login', desc: 'Sign in with GitHub Developer / OAuth ID', icon: FaGithub, iconColor: 'text-gray-900' },
+                  { key: 'twitter', label: 'Twitter / X Login', desc: 'Sign in with Twitter / X OAuth account', icon: FaTwitter, iconColor: 'text-sky-500' },
+                ].map((s) => {
+                  const Icon = s.icon;
+                  return (
+                    <label
+                      key={s.key}
+                      className={`flex items-center justify-between p-4 rounded-2xl border-2 transition cursor-pointer ${
+                        socialLogins[s.key]
+                          ? 'border-gold-500 bg-gold-50/40 shadow-sm'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center ${s.iconColor}`}>
+                          <Icon className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-charcoal-900 block">{s.label}</span>
+                          <span className="text-[11px] text-gray-500">{s.desc}</span>
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={!!socialLogins[s.key]}
+                        onChange={(e) => setSocialLogins({ ...socialLogins, [s.key]: e.target.checked })}
+                        className="w-5 h-5 rounded text-gold-500 cursor-pointer"
+                      />
+                    </label>
+                  );
+                })}
               </div>
+
+              {/* Custom Social Providers List */}
+              {Array.isArray(socialLogins._custom) && socialLogins._custom.length > 0 && (
+                <div className="space-y-3 pt-4 border-t">
+                  <h4 className="text-xs font-bold text-charcoal-900 uppercase tracking-wide">Custom Social SSO Providers</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {socialLogins._custom.map((cust) => (
+                      <div key={cust.key} className="flex items-center justify-between p-4 rounded-2xl border border-gray-200 bg-gray-50">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-gold-100 text-gold-800 flex items-center justify-center font-bold text-xs">
+                            <FiGlobe className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold text-charcoal-900 block">{cust.label}</span>
+                            <span className="text-[10px] font-mono text-gray-400">Key: {cust.key}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSocialLogins(prev => ({
+                              ...prev,
+                              [cust.key]: !prev[cust.key]
+                            }))}
+                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold cursor-pointer ${
+                              socialLogins[cust.key] ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'
+                            }`}
+                          >
+                            {socialLogins[cust.key] ? 'Enabled' : 'Disabled'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeSocialLogin(cust.key)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -961,6 +1069,75 @@ const AuthenticationManager = () => {
                     className="px-5 py-2 rounded-xl text-xs font-extrabold bg-gold-500 hover:bg-gold-400 text-charcoal-900 shadow cursor-pointer"
                   >
                     Add Password Rule
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* MODAL: ADD CUSTOM SOCIAL LOGIN */}
+        {showAddSocialModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-gray-100 space-y-4"
+            >
+              <div className="flex items-center justify-between border-b pb-3">
+                <h3 className="font-serif font-bold text-lg text-charcoal-900">Add Custom Social Login Provider</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAddSocialModal(false)}
+                  className="text-gray-400 hover:text-gray-600 font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleAddSocialLogin} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-charcoal-900 uppercase mb-1">
+                    Provider Key *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. linkedin, discord, microsoft, telegram"
+                    value={newSocial.key}
+                    onChange={(e) => setNewSocial({ ...newSocial, key: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border text-xs font-mono lowercase bg-gray-50 focus:bg-white focus:outline-none focus:border-gold-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-charcoal-900 uppercase mb-1">
+                    Display Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. LinkedIn Login, Microsoft Account, Discord SSO"
+                    value={newSocial.label}
+                    onChange={(e) => setNewSocial({ ...newSocial, label: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border text-xs bg-gray-50 focus:bg-white focus:outline-none focus:border-gold-500"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSocialModal(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl text-xs font-extrabold bg-gold-500 hover:bg-gold-400 text-charcoal-900 shadow cursor-pointer"
+                  >
+                    Add Social Provider
                   </button>
                 </div>
               </form>

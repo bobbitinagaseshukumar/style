@@ -10,6 +10,7 @@ import { fetchAuthSettings } from '../../redux/settings/settingsSlice';
 import api from '../../config/api';
 import { toast } from 'react-toastify';
 import PasswordPolicyChecklist, { validatePasswordPolicy } from './PasswordPolicyChecklist';
+import SocialAuthButtons from './SocialAuthButtons';
 
 /**
  * Premium Luxury Auth Drawer — Sign In & Register Overlay
@@ -519,6 +520,13 @@ const AuthDrawer = ({ isOpen, onClose }) => {
                     )}
                   </button>
                 </form>
+              )}
+
+              {/* Dynamic Social Login Options (Google, Apple, Facebook, GitHub) */}
+              {!otpStep && (
+                <div className="px-6 pb-4">
+                  <SocialAuthButtons mode={mode} onSuccess={onClose} />
+                </div>
               )}
             </div>
 
