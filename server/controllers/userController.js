@@ -123,8 +123,7 @@ exports.verifyPasswordOTP = asyncHandler(async (req, res, next) => {
   await prisma.user.update({
     where: { id: req.user.id },
     data: {
-      previousPassword: user.password, // store previous hashed password
-      password: hashedNewPassword,     // store new hashed password
+      password: hashedNewPassword,
       otpCode: null,
       otpExpiresAt: null,
     },
