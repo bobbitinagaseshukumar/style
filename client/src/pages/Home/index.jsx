@@ -155,32 +155,50 @@ const Home = () => {
 
             if (bundle.banners?.length > 0) setBanners(bundle.banners);
             if (bundle.categories?.length > 0) setCategories(bundle.categories);
-            if (bundle.products) setProducts(bundle.products);
+            if (bundle.products) {
+              const bProds = bundle.products;
+              const allPub = bProds.allPublished || [];
+              setProducts({
+                featured: (bProds.featured && bProds.featured.length > 0) ? bProds.featured : allPub.slice(0, 12),
+                trending: (bProds.trending && bProds.trending.length > 0) ? bProds.trending : allPub.slice(0, 12),
+                newArrivals: (bProds.newArrivals && bProds.newArrivals.length > 0) ? bProds.newArrivals : allPub.slice(0, 12),
+                todaysDeals: (bProds.todaysDeals && bProds.todaysDeals.length > 0) ? bProds.todaysDeals : allPub.slice(0, 12),
+                allPublished: allPub
+              });
+            }
             if (bundle.trendingData !== undefined) setTrendingData(bundle.trendingData);
             if (bundle.dynamicSections) setDynamicSections(bundle.dynamicSections);
             if (bundle.settings?.enableTrendingProducts === false) setEnableTrending(false);
 
             setIsLoading(false);
             bundleSuccess = true;
-
-            // Persist to localStorage for 0ms loads across tabs, windows, and phone app restarts
-            try {
-              const cachePayload = JSON.stringify({
-                banners: bundle.banners || [],
-                categories: bundle.categories || [],
-                products: bundle.products || {},
-                trendingData: bundle.trendingData || null,
-                dynamicSections: bundle.dynamicSections || [],
-                savedAt: Date.now()
-              });
-              localStorage.setItem(PERSISTENT_CACHE_KEY, cachePayload);
-              sessionStorage.setItem('__KVLR_HOME_CACHE__', cachePayload);
-            } catch (e) {}
           }
         } catch (bundleErr) {
-          // If bundle fails, fall back to individual endpoints
           bundleSuccess = false;
         }
+
+        // Always fetch direct live products endpoint to guarantee every published product renders 100%
+        try {
+          const directProdsRes = await api.get('/products?limit=50&sort=newest');
+          const liveProds = directProdsRes.data?.data?.products || directProdsRes.data?.data || [];
+          if (Array.isArray(liveProds) && liveProds.length > 0 && isMounted) {
+            setProducts(prev => {
+              const allPub = liveProds;
+              const feat = (prev.featured && prev.featured.length > 0) ? prev.featured : allPub.slice(0, 12);
+              const newArr = (prev.newArrivals && prev.newArrivals.length > 0) ? prev.newArrivals : allPub.slice(0, 12);
+              const trend = (prev.trending && prev.trending.length > 0) ? prev.trending : allPub.slice(0, 12);
+              const deals = (prev.todaysDeals && prev.todaysDeals.length > 0) ? prev.todaysDeals : allPub.slice(0, 12);
+              return {
+                featured: feat,
+                trending: trend,
+                newArrivals: newArr,
+                todaysDeals: deals,
+                allPublished: allPub
+              };
+            });
+            setIsLoading(false);
+          }
+        } catch (directErr) {}
 
         if (bundleSuccess || !isMounted) return;
 
