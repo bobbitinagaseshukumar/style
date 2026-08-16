@@ -103,6 +103,15 @@ const LoadingSkeleton = () => (
   </div>
 );
 
+const SkeletonCard = () => (
+  <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm animate-pulse flex flex-col">
+    <div className="w-full aspect-[3/4] bg-gray-200 rounded-xl mb-3" />
+    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+    <div className="h-3 bg-gray-100 rounded w-1/2 mb-3" />
+    <div className="h-5 bg-gray-200 rounded w-1/3 mt-auto" />
+  </div>
+);
+
 const Home = () => {
   const prevDataRef = React.useRef(null);
   const [banners, setBanners] = useState(initialCache?.banners?.length > 0 ? initialCache.banners : DEFAULT_HERO_SLIDERS);
