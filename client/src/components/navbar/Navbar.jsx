@@ -167,9 +167,10 @@ const Navbar = () => {
   const announcementText = headerSettings?.announcementText;
   const announcementEnabled = Boolean(headerSettings?.announcementEnabled && announcementText && announcementText.trim() && showAnnouncement);
 
-  const userName = user?.fullName || user?.name || user?.email?.split('@')[0] || 'Valued Customer';
+  const userName = (user?.fullName || user?.name || user?.email?.split('@')[0] || 'Customer').trim();
+  const firstWord = userName.split(' ')[0] || userName;
   const userAvatar = user?.avatar || user?.photo;
-  const userInitial = userName.charAt(0).toUpperCase();
+  const userInitial = firstWord.charAt(0).toUpperCase() || 'C';
 
   return (
     <>
@@ -407,7 +408,7 @@ const Navbar = () => {
                           </div>
                         )}
                         <span className="hidden md:inline text-xs font-bold text-white/90 max-w-[80px] truncate">
-                          {userName.split(' ')[0]}
+                          {firstWord}
                         </span>
                         <FiChevronDown size={13} className={`hidden sm:block text-white/60 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                       </motion.button>

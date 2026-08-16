@@ -69,6 +69,8 @@ const Dashboard = () => {
   const [mobileNav, setMobileNav] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const displayName = (user?.fullName || user?.name || user?.email?.split('@')[0] || 'Customer').trim();
+  const displayInitial = displayName.charAt(0).toUpperCase() || 'C';
 
   const mobileNavRef = useRef(null);
   const mobileDrawerScrollPos = useRef(0);
@@ -142,10 +144,10 @@ const Dashboard = () => {
             <div className="h-16 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-black font-bold text-base shadow">
-                  {user?.fullName?.[0]?.toUpperCase() || 'C'}
+                  {displayInitial}
                 </div>
                 <div className="overflow-hidden">
-                  <p className="text-sm font-bold text-white truncate max-w-[150px]">{user?.fullName || 'Customer'}</p>
+                  <p className="text-sm font-bold text-white truncate max-w-[150px]">{displayName}</p>
                   <p className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider">Customer Portal</p>
                 </div>
               </div>
@@ -238,10 +240,10 @@ const Dashboard = () => {
               <div className="p-4 border-b border-white/5 bg-gradient-to-r from-yellow-400/10 via-transparent to-transparent">
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-black font-bold text-base shadow">
-                    {user?.fullName?.[0]?.toUpperCase() || 'C'}
+                    {displayInitial}
                   </div>
                   <div className="overflow-hidden">
-                    <p className="font-bold text-white text-sm truncate">{user?.fullName || 'Customer'}</p>
+                    <p className="font-bold text-white text-sm truncate">{displayName}</p>
                     <p className="text-white/40 text-xs truncate">{user?.email}</p>
                   </div>
                 </div>
