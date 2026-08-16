@@ -8,6 +8,8 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import api from '../../config/api';
 import { setCredentials } from '../../redux/auth/authSlice';
+import { fetchServerCart } from '../../redux/cart/cartSlice';
+import { fetchServerWishlist } from '../../redux/wishlist/wishlistSlice';
 import { toast } from 'react-toastify';
 import SocialAuthButtons from '../../components/auth/SocialAuthButtons';
 import LoginScene from './LoginScene';
@@ -210,6 +212,8 @@ const Login = ({ initialMode }) => {
       if (res.data?.success && token && user) {
         setAuthSuccess(true);
         dispatch(setCredentials({ user, token }));
+        dispatch(fetchServerCart());
+        dispatch(fetchServerWishlist());
         toast.success('🎉 Login successful! Welcome back.');
         const targetPath = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/dashboard';
         navigate(targetPath, { replace: true });
@@ -390,6 +394,8 @@ const Login = ({ initialMode }) => {
         }
         setAuthSuccess(true);
         dispatch(setCredentials({ user, token }));
+        dispatch(fetchServerCart());
+        dispatch(fetchServerWishlist());
         toast.success(isRegister ? '🎉 Account created successfully!' : '✨ Welcome back!');
         const targetPath = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/';
         navigate(targetPath, { replace: true });

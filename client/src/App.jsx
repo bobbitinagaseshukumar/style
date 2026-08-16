@@ -4,6 +4,8 @@ import AppRoutes from './routes/AppRoutes';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { getMe } from './redux/auth/authSlice';
 import { fetchStoreSettings } from './redux/settings/settingsSlice';
+import { fetchServerCart } from './redux/cart/cartSlice';
+import { fetchServerWishlist } from './redux/wishlist/wishlistSlice';
 
 const App = () => {
   const dispatch = useDispatch();
@@ -12,6 +14,8 @@ const App = () => {
   useEffect(() => {
     if (token) {
       dispatch(getMe());
+      dispatch(fetchServerCart());
+      dispatch(fetchServerWishlist());
     }
   }, [dispatch, token]);
 

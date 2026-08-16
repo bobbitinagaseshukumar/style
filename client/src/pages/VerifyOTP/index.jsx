@@ -5,6 +5,8 @@ import { FiCheckCircle, FiClock, FiRefreshCw, FiArrowRight, FiArrowLeft, FiShiel
 import { useDispatch } from 'react-redux';
 import api from '../../config/api';
 import { setCredentials } from '../../redux/auth/authSlice';
+import { fetchServerCart } from '../../redux/cart/cartSlice';
+import { fetchServerWishlist } from '../../redux/wishlist/wishlistSlice';
 import { toast } from 'react-toastify';
 
 const VerifyOTP = () => {
@@ -104,6 +106,8 @@ const VerifyOTP = () => {
 
       if (data?.success) {
         dispatch(setCredentials(data.data));
+        dispatch(fetchServerCart());
+        dispatch(fetchServerWishlist());
         sessionStorage.removeItem('pendingCustomerOTPAuth');
         toast.success('Email verified successfully! Welcome to StyleVerse.');
         navigate('/');

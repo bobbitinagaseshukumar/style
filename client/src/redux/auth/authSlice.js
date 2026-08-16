@@ -61,7 +61,11 @@ const authSlice = createSlice({
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
-      localStorage.removeItem('token');
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('styleverse_cart');
+        localStorage.removeItem('styleverse_wishlist');
+      } catch (e) {}
     },
     clearError: (state) => {
       state.error = null;
