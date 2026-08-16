@@ -356,18 +356,142 @@ exports.resendAdminOTP = asyncHandler(async (req, res, next) => {
   });
 });
 
+// Smart device parser helper
+const parseDeviceInfo = (userAgent = '', rawDeviceName = '') => {
+  let os = 'Unknown OS';
+  let deviceType = 'desktop'; // 'mobile' | 'tablet' | 'desktop'
+  let browser = 'Web Browser';
+  let friendlyName = 'Desktop Workstation';
+
+  const ua = (userAgent || '').toLowerCase();
+  const rawDev = (rawDeviceName || '').toLowerCase();
+
+  // OS & Device Type detection
+  if (ua.includes('android') || rawDev.includes('android') || rawDev.includes('armv') || rawDev.includes('linux arm')) {
+    os = 'Android';
+    deviceType = 'mobile';
+    if (ua.includes('samsung') || rawDev.includes('samsung')) friendlyName = 'Samsung Galaxy (Android)';
+    else if (ua.includes('pixel') || rawDev.includes('pixel')) friendlyName = 'Google Pixel (Android)';
+    else if (ua.includes('oneplus') || rawDev.includes('oneplus')) friendlyName = 'OnePlus Smartphone';
+    else if (ua.includes('redmi') || ua.includes('xiaomi') || rawDev.includes('redmi') || rawDev.includes('xiaomi')) friendlyName = 'Xiaomi / Redmi Smartphone';
+    else if (ua.includes('vivo') || rawDev.includes('vivo')) friendlyName = 'Vivo Smartphone';
+    else if (ua.includes('oppo') || rawDev.includes('oppo')) friendlyName = 'Oppo Smartphone';
+    else if (ua.includes('realme') || rawDev.includes('realme')) friendlyName = 'Realme Smartphone';
+    else friendlyName = 'Android Smartphone';
+  } else if (ua.includes('iphone') || rawDev.includes('iphone')) {
+    os = 'iOS';
+    deviceType = 'mobile';
+    friendlyName = 'Apple iPhone';
+  } else if (ua.includes('ipad') || rawDev.includes('ipad')) {
+    os = 'iPadOS';
+    deviceType = 'tablet';
+    friendlyName = 'Apple iPad';
+  } else if (ua.includes('windows phone') || rawDev.includes('windows phone')) {
+    os = 'Windows Phone';
+    deviceType = 'mobile';
+    friendlyName = 'Windows Mobile';
+  } else if (ua.includes('windows nt 10.0') || ua.includes('windows 10') || ua.includes('windows 11') || rawDev.includes('win32') || rawDev.includes('windows')) {
+    os = 'Windows 11 / 10';
+    deviceType = 'desktop';
+    friendlyName = 'Windows PC / Laptop';
+  } else if (ua.includes('windows')) {
+    os = 'Windows';
+    deviceType = 'desktop';
+    friendlyName = 'Windows PC';
+  } else if (ua.includes('macintosh') || ua.includes('mac os x') || rawDev.includes('mac')) {
+    os = 'macOS';
+    deviceType = 'desktop';
+    friendlyName = 'Apple Mac / MacBook';
+  } else if (ua.includes('linux')) {
+    os = 'Linux';
+    deviceType = 'desktop';
+    friendlyName = 'Linux Workstation';
+  }
+
+  // Browser detection
+  if (ua.includes('edg/') || ua.includes('edge/')) {
+    browser = 'Microsoft Edge';
+  } else if (ua.includes('chrome/') || ua.includes('crios/')) {
+    browser = deviceType === 'mobile' ? 'Chrome Mobile' : 'Google Chrome';
+  } else if (ua.includes('safari/') && !ua.includes('chrome')) {
+    browser = deviceType === 'mobile' ? 'Mobile Safari' : 'Apple Safari';
+  } else if (ua.includes('firefox/') || ua.includes('fxios/')) {
+    browser = 'Mozilla Firefox';
+  } else if (ua.includes('opera') || ua.includes('opr/')) {
+    browser = 'Opera Browser';
+  }
+
+  return {
+    os,
+    deviceType,
+    browser,
+    friendlyName,
+    displayLabel: `${friendlyName} • ${browser}`
+  };
+};
+
 // ==================== GET ACTIVE ADMIN SESSIONS & TRUSTED DEVICES ====================
 exports.getAdminSessions = asyncHandler(async (req, res) => {
   const adminId = req.user.id;
+  const currentIp = String(req.ip || req.headers['x-forwarded-for'] || '127.0.0.1');
+  const currentUa = req.headers['user-agent'] || '';
 
-  const trustedDevices = await prisma.adminTrustedDevice.findMany({
-    where: { adminId, trustedUntil: { gt: new Date() } },
-    orderBy: { createdAt: 'desc' }
-  });
+  const [trustedDevices, userSessions] = await Promise.all([
+    prisma.adminTrustedDevice.findMany({
+      where: { adminId, trustedUntil: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.userSession.findMany({
+      where: { userId: adminId },
+      orderBy: { lastActiveAt: 'desc' }
+    })
+  ]);
+
+  const sessionsMap = new Map();
+
+  for (const s of userSessions) {
+    const info = parseDeviceInfo(s.browser || '', s.deviceName || '');
+    const isCurrent = s.ipAddress === currentIp || (currentUa && s.browser && s.browser.includes(currentUa.substring(0, 25)));
+    sessionsMap.set(s.id, {
+      id: s.id,
+      type: 'user_session',
+      deviceName: info.friendlyName,
+      browserName: info.browser,
+      osName: info.os,
+      deviceType: info.deviceType,
+      displayLabel: info.displayLabel,
+      ipAddress: s.ipAddress || '127.0.0.1',
+      lastActiveAt: s.lastActiveAt || s.createdAt,
+      createdAt: s.createdAt,
+      isCurrent: Boolean(isCurrent)
+    });
+  }
+
+  for (const td of trustedDevices) {
+    if (!sessionsMap.has(td.id)) {
+      const info = parseDeviceInfo(td.browser || '', td.deviceName || '');
+      const isCurrent = td.ipAddress === currentIp;
+      sessionsMap.set(td.id, {
+        id: td.id,
+        type: 'trusted_device',
+        deviceName: info.friendlyName,
+        browserName: info.browser,
+        osName: info.os,
+        deviceType: info.deviceType,
+        displayLabel: info.displayLabel,
+        ipAddress: td.ipAddress || '127.0.0.1',
+        lastActiveAt: td.createdAt,
+        createdAt: td.createdAt,
+        isCurrent: Boolean(isCurrent)
+      });
+    }
+  }
+
+  const result = Array.from(sessionsMap.values()).sort((a, b) => new Date(b.lastActiveAt) - new Date(a.lastActiveAt));
 
   res.status(200).json({
     success: true,
-    data: trustedDevices
+    data: result
   });
 });
 
@@ -375,11 +499,14 @@ exports.getAdminSessions = asyncHandler(async (req, res) => {
 exports.revokeAdminSession = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  await prisma.adminTrustedDevice.delete({ where: { id } }).catch(() => {});
+  await Promise.all([
+    prisma.adminTrustedDevice.delete({ where: { id } }).catch(() => {}),
+    prisma.userSession.delete({ where: { id } }).catch(() => {})
+  ]);
 
   res.status(200).json({
     success: true,
-    message: 'Device session revoked. OTP will be required on next login from that device.'
+    message: 'Device session revoked and removed from database.'
   });
 });
 
@@ -387,12 +514,61 @@ exports.revokeAdminSession = asyncHandler(async (req, res) => {
 exports.getAdminLoginHistory = asyncHandler(async (req, res) => {
   const history = await prisma.adminLoginHistory.findMany({
     orderBy: { createdAt: 'desc' },
-    take: 50
+    take: 100
+  });
+
+  const formattedHistory = history.map(h => {
+    const info = parseDeviceInfo(h.browser || '', h.device || '');
+    return {
+      ...h,
+      parsedDevice: info.friendlyName,
+      parsedBrowser: info.browser,
+      deviceType: info.deviceType,
+      displayDevice: `${info.friendlyName} (${info.browser})`
+    };
   });
 
   res.status(200).json({
     success: true,
-    data: history
+    data: formattedHistory
+  });
+});
+
+// ==================== DELETE SINGLE ADMIN LOGIN HISTORY RECORD ====================
+exports.deleteAdminLoginHistoryItem = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  await prisma.adminLoginHistory.delete({ where: { id } }).catch(() => {});
+  res.status(200).json({
+    success: true,
+    message: 'Login history record permanently deleted from database.'
+  });
+});
+
+// ==================== PURGE / CLEAR ALL ADMIN LOGIN HISTORY ====================
+exports.clearAllAdminLoginHistory = asyncHandler(async (req, res) => {
+  await prisma.adminLoginHistory.deleteMany({});
+  res.status(200).json({
+    success: true,
+    message: 'All login history permanently purged from database.'
+  });
+});
+
+// ==================== DELETE SINGLE SECURITY AUDIT LOG ====================
+exports.deleteSecurityLogItem = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  await prisma.adminActionLog.delete({ where: { id } }).catch(() => {});
+  res.status(200).json({
+    success: true,
+    message: 'Security log record permanently deleted from database.'
+  });
+});
+
+// ==================== PURGE / CLEAR ALL SECURITY AUDIT LOGS ====================
+exports.clearAllSecurityLogs = asyncHandler(async (req, res) => {
+  await prisma.adminActionLog.deleteMany({});
+  res.status(200).json({
+    success: true,
+    message: 'All security audit logs permanently purged from database.'
   });
 });
 
@@ -659,9 +835,9 @@ exports.requestPasswordChangeOTP = asyncHandler(async (req, res, next) => {
   }
 
   // Password rules complexity check
-  const passRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  const passRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
   if (!passRegex.test(newPassword)) {
-    return next(new ApiError(400, 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character (@$!%*?&)'));
+    return next(new ApiError(400, 'Password must be at least 8 characters long and include uppercase, lowercase, number, and a special character'));
   }
 
   const admin = await prisma.user.findUnique({ where: { id: req.user.id } });

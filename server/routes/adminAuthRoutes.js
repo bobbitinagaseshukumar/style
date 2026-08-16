@@ -38,7 +38,12 @@ router.post('/revoke-all-sessions', ...adminOnly, adminAuthController.revokeAllO
 
 // Login History & Security Audit Logs
 router.get('/history', ...adminOnly, adminAuthController.getAdminLoginHistory);
+router.delete('/history/:id', ...adminOnly, adminAuthController.deleteAdminLoginHistoryItem);
+router.delete('/history', ...adminOnly, adminAuthController.clearAllAdminLoginHistory);
+
 router.get('/security-logs', ...adminOnly, adminAuthController.getAdminSecurityLogs);
+router.delete('/security-logs/:id', ...adminOnly, adminAuthController.deleteSecurityLogItem);
+router.delete('/security-logs', ...adminOnly, adminAuthController.clearAllSecurityLogs);
 
 // Super Admin Team & RBAC Management
 router.post('/create-admin', ...superAdminOnly, adminAuthController.createAdminAccount);

@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useSelector, useDispatch } from 'react-redux';
 import { setCredentials } from '../../redux/auth/authSlice';
 import {
-  FiUser, FiShield, FiSmartphone, FiMonitor, FiLogOut, FiTrash2,
+  FiUser, FiShield, FiSmartphone, FiMonitor, FiTablet, FiLogOut, FiTrash2,
   FiClock, FiCheck, FiRefreshCw, FiKey, FiLock, FiGlobe, FiMail,
   FiEdit2, FiCamera, FiAlertTriangle, FiCheckCircle, FiXCircle,
   FiLayers, FiActivity, FiEye, FiEyeOff, FiRotateCw, FiZoomIn
@@ -279,7 +279,7 @@ export default function AdminProfile() {
     try {
       setActionLoading(true);
       await api.delete(`/admin/auth/sessions/${id}`);
-      toast.success('Session revoked.');
+      toast.success('Session revoked and removed from database.');
       fetchAdminData();
     } catch (err) {
       toast.error('Failed to revoke session');
@@ -290,16 +290,78 @@ export default function AdminProfile() {
 
   /* ── 5. Revoke All Other Sessions ── */
   const handleRevokeAllSessions = async () => {
+    if (!window.confirm('Log out from all other active trusted devices & browser sessions?')) return;
     try {
       setActionLoading(true);
       const res = await api.post('/admin/auth/revoke-all-sessions');
       toast.success(res.data.message);
       if (res.data.data?.token) {
         localStorage.setItem('adminToken', res.data.data.token);
+        localStorage.setItem('token', res.data.data.token);
       }
       fetchAdminData();
     } catch (err) {
       toast.error('Failed to revoke sessions');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  /* ── 6. Delete Single Login History Item ── */
+  const handleDeleteLoginHistory = async (id) => {
+    if (!window.confirm('Permanently delete this login history record from the database?')) return;
+    try {
+      setActionLoading(true);
+      await api.delete(`/admin/auth/history/${id}`);
+      toast.success('Login record permanently deleted from database.');
+      setLoginHistory(prev => prev.filter(h => h.id !== id));
+    } catch (err) {
+      toast.error('Failed to delete login history item');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  /* ── 6. Clear All Login History ── */
+  const handleClearAllLoginHistory = async () => {
+    if (!window.confirm('⚠️ Are you sure you want to permanently delete ALL login history records from the database? This action cannot be undone.')) return;
+    try {
+      setActionLoading(true);
+      await api.delete('/admin/auth/history');
+      toast.success('All login audit history permanently purged from database.');
+      setLoginHistory([]);
+    } catch (err) {
+      toast.error('Failed to clear login history');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  /* ── 7. Delete Single Security Log Item ── */
+  const handleDeleteSecurityLog = async (id) => {
+    if (!window.confirm('Permanently delete this security log record from the database?')) return;
+    try {
+      setActionLoading(true);
+      await api.delete(`/admin/auth/security-logs/${id}`);
+      toast.success('Security log record permanently deleted from database.');
+      setSecurityLogs(prev => prev.filter(l => l.id !== id));
+    } catch (err) {
+      toast.error('Failed to delete security log');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  /* ── 7. Clear All Security Logs ── */
+  const handleClearAllSecurityLogs = async () => {
+    if (!window.confirm('⚠️ Are you sure you want to permanently clear ALL security audit logs from the database? This action cannot be undone.')) return;
+    try {
+      setActionLoading(true);
+      await api.delete('/admin/auth/security-logs');
+      toast.success('All security audit logs permanently purged from database.');
+      setSecurityLogs([]);
+    } catch (err) {
+      toast.error('Failed to clear security logs');
     } finally {
       setActionLoading(false);
     }
@@ -317,6 +379,7 @@ export default function AdminProfile() {
     input: { width: '100%', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 14px', fontSize: 13, outline: 'none', background: '#fafafa' },
     btnGold: { padding: '10px 22px', borderRadius: 10, border: 'none', background: '#D4AF37', color: '#111', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
     btnOutline: { padding: '10px 20px', borderRadius: 10, border: '1px solid #e5e7eb', background: '#fff', color: '#555', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+    btnDanger: { padding: '8px 16px', borderRadius: 10, border: 'none', background: '#DC2626', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 },
     badge: (bg, color) => ({ padding: '4px 10px', borderRadius: 20, background: bg, color, fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }),
   };
 
@@ -629,31 +692,66 @@ export default function AdminProfile() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
             <div>
               <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>Active Sessions & Trusted Devices</h2>
-              <p style={{ fontSize: 13, color: '#666' }}>Manage devices that have active access to your admin account.</p>
+              <p style={{ fontSize: 13, color: '#666' }}>Manage mobile phones, laptops, and browser sessions with active access to your admin account.</p>
             </div>
-            <button onClick={handleRevokeAllSessions} disabled={actionLoading} style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: '#DC2626', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-              🚫 Logout All Other Devices
-            </button>
+            {sessions.length > 0 && (
+              <button onClick={handleRevokeAllSessions} disabled={actionLoading} style={S.btnDanger}>
+                <FiLogOut style={{ width: 14, height: 14 }} /> Logout All Other Devices
+              </button>
+            )}
           </div>
 
           {sessions.length === 0 ? (
             <p style={{ fontSize: 13, color: '#aaa', textAlign: 'center', padding: '30px 0' }}>No other active trusted device sessions found.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {sessions.map(s => (
-                <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 14, border: '1px solid #eee', borderRadius: 12, background: '#fafafa' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <FiMonitor style={{ width: 20, height: 20, color: '#4F46E5' }} />
-                    <div>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{s.deviceName || 'Browser Session'}</p>
-                      <p style={{ fontSize: 11, color: '#777' }}>IP: {s.ipAddress} • {s.browser?.slice(0, 40)}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {sessions.map((s, idx) => {
+                const isMobile = s.deviceType === 'mobile' || s.deviceName?.toLowerCase().includes('phone') || s.deviceName?.toLowerCase().includes('android') || s.deviceName?.toLowerCase().includes('iphone');
+                const isTablet = s.deviceType === 'tablet' || s.deviceName?.toLowerCase().includes('ipad') || s.deviceName?.toLowerCase().includes('tablet');
+
+                return (
+                  <div key={s.id || idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, border: s.isCurrent ? '2px solid #10B981' : '1px solid #e5e7eb', borderRadius: 14, background: s.isCurrent ? '#F0FDF4' : '#fafafa', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 260 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 12, background: isMobile ? '#ECFDF5' : isTablet ? '#FEF3C7' : '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {isMobile ? (
+                          <FiSmartphone style={{ width: 22, height: 22, color: '#059669' }} />
+                        ) : isTablet ? (
+                          <FiTablet style={{ width: 22, height: 22, color: '#D97706' }} />
+                        ) : (
+                          <FiMonitor style={{ width: 22, height: 22, color: '#4F46E5' }} />
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <p style={{ fontSize: 14, fontWeight: 800, color: '#111' }}>
+                            {s.deviceName || (isMobile ? 'Mobile Smartphone' : 'Desktop Workstation')}
+                          </p>
+                          {s.isCurrent ? (
+                            <span style={S.badge('#DCFCE7', '#15803D')}>
+                              🟢 This Device (Current Session)
+                            </span>
+                          ) : (
+                            <span style={S.badge('#F3F4F6', '#4B5563')}>
+                              {isMobile ? '📱 Mobile' : isTablet ? '📟 Tablet' : '💻 PC'}
+                            </span>
+                          )}
+                        </div>
+                        <p style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+                          IP: <strong style={{ fontFamily: 'monospace', color: '#111' }}>{s.ipAddress}</strong>
+                          {s.browserName && ` • ${s.browserName}`}
+                          {s.lastActiveAt && ` • Last Active: ${fmtDateTime(s.lastActiveAt)}`}
+                        </p>
+                      </div>
                     </div>
+
+                    {!s.isCurrent && (
+                      <button onClick={() => handleRevokeSession(s.id)} disabled={actionLoading} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #DC2626', background: '#fff', color: '#DC2626', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all .15s' }}>
+                        Revoke Access
+                      </button>
+                    )}
                   </div>
-                  <button onClick={() => handleRevokeSession(s.id)} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #DC2626', background: '#fff', color: '#DC2626', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                    Revoke
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -662,64 +760,138 @@ export default function AdminProfile() {
       {/* ══════════════════ TAB 6: LOGIN HISTORY ══════════════════ */}
       {activeTab === 'history' && (
         <div style={S.card}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111', marginBottom: 16 }}>Login Audit History</h2>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead>
-                <tr style={{ background: '#fafafa', borderBottom: '1px solid #eee', textAlign: 'left', color: '#888', textTransform: 'uppercase', fontSize: 10 }}>
-                  <th style={{ padding: 10 }}>Date & Time</th>
-                  <th style={{ padding: 10 }}>Device / Browser</th>
-                  <th style={{ padding: 10 }}>IP Address</th>
-                  <th style={{ padding: 10 }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loginHistory.map(h => (
-                  <tr key={h.id} style={{ borderBottom: '1px solid #f7f7f7' }}>
-                    <td style={{ padding: 10, fontWeight: 600 }}>{fmtDateTime(h.createdAt)}</td>
-                    <td style={{ padding: 10, color: '#555' }}>{h.device} ({h.browser?.slice(0, 30)})</td>
-                    <td style={{ padding: 10, fontFamily: 'monospace', color: '#4F46E5' }}>{h.ipAddress}</td>
-                    <td style={{ padding: 10 }}>
-                      <span style={S.badge(h.status === 'SUCCESS' ? '#ECFDF5' : '#FEF2F2', h.status === 'SUCCESS' ? '#059669' : '#DC2626')}>
-                        {h.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+            <div>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>Login Audit History</h2>
+              <p style={{ fontSize: 13, color: '#666' }}>Full chronological record of admin login attempts, authentication status, and device details.</p>
+            </div>
+            {loginHistory.length > 0 && (
+              <button onClick={handleClearAllLoginHistory} disabled={actionLoading} style={S.btnDanger}>
+                <FiTrash2 style={{ width: 14, height: 14 }} /> Clear All Login History
+              </button>
+            )}
           </div>
+
+          {loginHistory.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: '#888' }}>
+              <FiClock style={{ width: 32, height: 32, margin: '0 auto 8px', color: '#ccc' }} />
+              <p style={{ fontSize: 14, fontWeight: 600 }}>No login history records found in database.</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: '#fafafa', borderBottom: '1px solid #eee', textAlign: 'left', color: '#888', textTransform: 'uppercase', fontSize: 10 }}>
+                    <th style={{ padding: 12 }}>Date & Time</th>
+                    <th style={{ padding: 12 }}>Device / Browser</th>
+                    <th style={{ padding: 12 }}>IP Address</th>
+                    <th style={{ padding: 12 }}>Status</th>
+                    <th style={{ padding: 12, textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loginHistory.map(h => {
+                    const isMob = h.deviceType === 'mobile' || h.device?.toLowerCase().includes('mobile') || h.browser?.toLowerCase().includes('android') || h.browser?.toLowerCase().includes('iphone');
+
+                    return (
+                      <tr key={h.id} style={{ borderBottom: '1px solid #f7f7f7' }}>
+                        <td style={{ padding: 12, fontWeight: 600 }}>{fmtDateTime(h.createdAt)}</td>
+                        <td style={{ padding: 12, color: '#333' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {isMob ? (
+                              <FiSmartphone style={{ color: '#059669', flexShrink: 0 }} />
+                            ) : (
+                              <FiMonitor style={{ color: '#4F46E5', flexShrink: 0 }} />
+                            )}
+                            <span style={{ fontWeight: 600 }}>{h.displayDevice || h.parsedDevice || (isMob ? 'Mobile Smartphone' : 'Desktop PC')}</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: 12, fontFamily: 'monospace', color: '#4F46E5', fontWeight: 600 }}>{h.ipAddress}</td>
+                        <td style={{ padding: 12 }}>
+                          <span style={S.badge(
+                            h.status === 'SUCCESS' ? '#ECFDF5' : h.status === 'OTP_REQUIRED' ? '#FEF3C7' : '#FEF2F2',
+                            h.status === 'SUCCESS' ? '#059669' : h.status === 'OTP_REQUIRED' ? '#D97706' : '#DC2626'
+                          )}>
+                            {h.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: 12, textAlign: 'right' }}>
+                          <button
+                            onClick={() => handleDeleteLoginHistory(h.id)}
+                            disabled={actionLoading}
+                            style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
+                            title="Delete this record permanently from database"
+                          >
+                            <FiTrash2 style={{ display: 'inline', marginRight: 2 }} /> Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
       {/* ══════════════════ TAB 7: SECURITY AUDIT LOGS ══════════════════ */}
       {activeTab === 'logs' && (
         <div style={S.card}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111', marginBottom: 16 }}>Security Activity Audit Logs</h2>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead>
-                <tr style={{ background: '#fafafa', borderBottom: '1px solid #eee', textAlign: 'left', color: '#888', textTransform: 'uppercase', fontSize: 10 }}>
-                  <th style={{ padding: 10 }}>Date & Time</th>
-                  <th style={{ padding: 10 }}>Action</th>
-                  <th style={{ padding: 10 }}>Reason / Details</th>
-                  <th style={{ padding: 10 }}>IP Address</th>
-                </tr>
-              </thead>
-              <tbody>
-                {securityLogs.map(l => (
-                  <tr key={l.id} style={{ borderBottom: '1px solid #f7f7f7' }}>
-                    <td style={{ padding: 10, fontWeight: 600 }}>{fmtDateTime(l.createdAt)}</td>
-                    <td style={{ padding: 10 }}>
-                      <span style={S.badge('#EEF2FF', '#4F46E5')}>{l.action}</span>
-                    </td>
-                    <td style={{ padding: 10, color: '#555' }}>{l.reason} {l.details ? `(${l.details})` : ''}</td>
-                    <td style={{ padding: 10, fontFamily: 'monospace', color: '#888' }}>{l.ipAddress}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+            <div>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>Security Activity Audit Logs</h2>
+              <p style={{ fontSize: 13, color: '#666' }}>Administrative changes, permission modifications, password resets, and session revocations.</p>
+            </div>
+            {securityLogs.length > 0 && (
+              <button onClick={handleClearAllSecurityLogs} disabled={actionLoading} style={S.btnDanger}>
+                <FiTrash2 style={{ width: 14, height: 14 }} /> Clear All Security Logs
+              </button>
+            )}
           </div>
+
+          {securityLogs.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: '#888' }}>
+              <FiActivity style={{ width: 32, height: 32, margin: '0 auto 8px', color: '#ccc' }} />
+              <p style={{ fontSize: 14, fontWeight: 600 }}>No security audit logs found in database.</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: '#fafafa', borderBottom: '1px solid #eee', textAlign: 'left', color: '#888', textTransform: 'uppercase', fontSize: 10 }}>
+                    <th style={{ padding: 12 }}>Date & Time</th>
+                    <th style={{ padding: 12 }}>Action</th>
+                    <th style={{ padding: 12 }}>Reason / Details</th>
+                    <th style={{ padding: 12 }}>IP Address</th>
+                    <th style={{ padding: 12, textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {securityLogs.map(l => (
+                    <tr key={l.id} style={{ borderBottom: '1px solid #f7f7f7' }}>
+                      <td style={{ padding: 12, fontWeight: 600 }}>{fmtDateTime(l.createdAt)}</td>
+                      <td style={{ padding: 12 }}>
+                        <span style={S.badge('#EEF2FF', '#4F46E5')}>{l.action}</span>
+                      </td>
+                      <td style={{ padding: 12, color: '#555' }}>{l.reason} {l.details ? `(${l.details})` : ''}</td>
+                      <td style={{ padding: 12, fontFamily: 'monospace', color: '#888' }}>{l.ipAddress}</td>
+                      <td style={{ padding: 12, textAlign: 'right' }}>
+                        <button
+                          onClick={() => handleDeleteSecurityLog(l.id)}
+                          disabled={actionLoading}
+                          style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
+                          title="Delete this log record permanently from database"
+                        >
+                          <FiTrash2 style={{ display: 'inline', marginRight: 2 }} /> Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

@@ -10,6 +10,7 @@ import {
 } from 'react-icons/fi';
 import api from '../../config/api';
 import LoginScene from '../../pages/Login/LoginScene';
+import { getClientDeviceInfo } from '../../utils/deviceUtils';
 
 /**
  * KVLR STYLES - Luxury Admin Authentication Portal
@@ -43,8 +44,9 @@ const AdminLogin = () => {
 
     try {
       setLoading(true);
-      const deviceFingerprint = `browser-${window.navigator.userAgent.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30)}`;
-      const deviceName = `${window.navigator.platform} (${window.navigator.appName})`;
+      const deviceInfo = getClientDeviceInfo();
+      const deviceFingerprint = deviceInfo.fingerprint || `browser-${window.navigator.userAgent.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30)}`;
+      const deviceName = deviceInfo.deviceName;
 
       const res = await api.post('/admin/auth/login', {
         email,
