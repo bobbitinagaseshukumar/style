@@ -395,9 +395,8 @@ const Home = () => {
         </section>
       )}
 
-      {/* AI PERSONALIZED RECOMMENDATIONS & RECENTLY VIEWED */}
+      {/* AI PERSONALIZED RECOMMENDATIONS */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4">
-        <RecentlyViewedSection />
         <PersonalizedSections />
       </div>
 
@@ -602,6 +601,11 @@ const Home = () => {
 
       {/* 21. FAQ PREVIEW */}
       <FAQPreview />
+
+      {/* 22. RECENTLY VIEWED PRODUCTS (PLACED AT THE BOTTOM OF HOMEPAGE) */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4">
+        <RecentlyViewedSection />
+      </div>
 
       {/* 19. NEWSLETTER SECTION */}
       <section className="py-14 lg:py-20 bg-[#0c0c10] border-t border-white/5 relative overflow-hidden">

@@ -38,6 +38,7 @@ const lazyRetry = (componentImport) =>
 const Cart = lazyRetry(() => import('../pages/Cart'));
 const Checkout = lazyRetry(() => import('../pages/Checkout'));
 const Wishlist = lazyRetry(() => import('../pages/Wishlist'));
+const RecentlyViewed = lazyRetry(() => import('../pages/RecentlyViewed'));
 const Orders = lazyRetry(() => import('../pages/Orders'));
 const UserProfile = lazyRetry(() => import('../pages/UserProfile'));
 const AddressBook = lazyRetry(() => import('../pages/AddressBook'));
@@ -127,6 +128,8 @@ const AppRoutes = () => {
           <Route path="/product/:slug" element={<ProductDetails />} />
           <Route path="/products/:slug" element={<ProductDetails />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/wishlist" element={<Wishlist />} />
+          <Route path="/recently-viewed" element={<RecentlyViewed />} />
           <Route path="/search" element={<Search />} />
           <Route path="/compare" element={<Compare />} />
           <Route path="/vendor-register" element={<VendorRegister />} />

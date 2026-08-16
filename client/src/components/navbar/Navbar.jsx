@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiShoppingBag, FiHeart, FiUser, FiMenu, FiSearch,
   FiBell, FiChevronDown, FiX, FiLogOut, FiSettings,
-  FiPackage, FiGrid, FiMapPin, FiStar, FiGift, FiBookmark
+  FiPackage, FiGrid, FiMapPin, FiStar, FiGift, FiBookmark, FiClock
 } from 'react-icons/fi';
 import { useSelector } from 'react-redux';
 import { useAuth } from '../../hooks/useAuth';
@@ -453,6 +453,7 @@ const Navbar = () => {
                               {[
                                 { label: 'Dashboard', icon: FiGrid, path: '/dashboard' },
                                 { label: 'My Orders', icon: FiPackage, path: '/orders' },
+                                { label: 'Recently Viewed', icon: FiClock, path: '/recently-viewed' },
                                 { label: 'Address Book', icon: FiMapPin, path: '/address-book' },
                                 { label: 'Wishlist', icon: FiHeart, path: '/wishlist' },
                                 { label: 'Profile Settings', icon: FiUser, path: '/profile' },

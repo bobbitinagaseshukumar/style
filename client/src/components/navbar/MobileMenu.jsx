@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiChevronRight, FiHome, FiGrid, FiUser, FiShoppingBag, FiHeart, FiLogOut, FiPackage } from 'react-icons/fi';
+import { FiX, FiChevronRight, FiHome, FiGrid, FiUser, FiShoppingBag, FiHeart, FiLogOut, FiPackage, FiClock } from 'react-icons/fi';
 import { useSelector } from 'react-redux';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -38,6 +38,7 @@ const MobileMenu = ({ isOpen, onClose }) => {
   const mainLinks = [
     { name: 'Home', path: '/', icon: FiHome },
     { name: 'All Categories', path: '/categories', icon: FiGrid },
+    { name: 'Recently Viewed', path: '/recently-viewed', icon: FiClock },
     { name: 'Wishlist', path: '/wishlist', icon: FiHeart },
     { name: 'Cart', path: '/cart', icon: FiShoppingBag },
   ];
