@@ -145,9 +145,9 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
       },
     });
 
-    // Admin notification
+    // Admin & Super Admin notification
     const admins = await tx.user.findMany({
-      where: { role: 'ADMIN' },
+      where: { role: { in: ['ADMIN', 'SUPER_ADMIN'] } },
       select: { id: true },
     });
     for (const admin of admins) {
@@ -155,7 +155,7 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
         data: {
           userId: admin.id,
           title: `🛍️ New Order #${orderNumber}`,
-          message: `${created.user.fullName} placed an order for ₹${totalAmount.toLocaleString('en-IN')}`,
+          message: `${created.user?.fullName || 'Customer'} placed an order for ₹${totalAmount.toLocaleString('en-IN')}`,
           type: 'ADMIN_ORDER',
           link: '/admin/orders',
         },
@@ -199,23 +199,28 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
         emailService.sendOrderPlacedEmail(order.user.email, order.user.fullName, orderPayload);
       }
 
-      // 2. Send New Order Alert Email to Super Admin(s)
+      // 2. Send New Order Alert Email to Super Admin(s) & Admin(s)
       try {
         const admins = await prisma.user.findMany({
-          where: { role: 'ADMIN' },
+          where: { role: { in: ['ADMIN', 'SUPER_ADMIN'] } },
           select: { email: true },
         });
 
-        const adminEmails = admins.map(a => a.email).filter(Boolean);
-        if (adminEmails.length === 0) {
-          adminEmails.push(process.env.SMTP_USER || process.env.ADMIN_EMAIL || 'admin@styleverse.com');
+        const adminEmails = Array.from(new Set(admins.map(a => a.email).filter(Boolean)));
+        if (process.env.SMTP_USER && !adminEmails.includes(process.env.SMTP_USER)) {
+          adminEmails.push(process.env.SMTP_USER);
         }
+        if (process.env.ADMIN_EMAIL && !adminEmails.includes(process.env.ADMIN_EMAIL)) {
+          adminEmails.push(process.env.ADMIN_EMAIL);
+        }
+
+        console.log(`[ORDER CONTROLLER] Sending Admin Order Alert Email for #${orderPayload.orderNumber} to:`, adminEmails);
 
         for (const adminEmail of adminEmails) {
           emailService.sendAdminOrderAlertEmail(adminEmail, orderPayload);
         }
       } catch (adminErr) {
-        console.error('[ORDER CONTROLLER] Failed to send admin order alert:', adminErr.message);
+        console.error('[ORDER CONTROLLER] Failed to send admin order alert email:', adminErr.message);
       }
     } catch (err) {
       console.error('[ORDER CONTROLLER] Order email dispatch error:', err.message);
@@ -276,14 +281,14 @@ exports.createWhatsappOrder = asyncHandler(async (req, res, next) => {
       },
     });
 
-    // Notify admins
-    const admins = await tx.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } });
+    // Notify admins & super admins
+    const admins = await tx.user.findMany({ where: { role: { in: ['ADMIN', 'SUPER_ADMIN'] } }, select: { id: true } });
     for (const admin of admins) {
       await tx.notification.create({
         data: {
           userId: admin.id,
           title: `📱 New WhatsApp Order #${orderNumber}`,
-          message: `${created.user.fullName} is placing a WhatsApp order for ₹${totalAmount.toLocaleString('en-IN')}`,
+          message: `${created.user?.fullName || 'Customer'} is placing a WhatsApp order for ₹${totalAmount.toLocaleString('en-IN')}`,
           type: 'ADMIN_ORDER',
           link: '/admin/orders',
         },
@@ -392,9 +397,9 @@ exports.cancelOrder = asyncHandler(async (req, res, next) => {
       },
     });
 
-    // Notify all admins about the cancellation
+    // Notify all admins and super admins about the cancellation
     const admins = await tx.user.findMany({
-      where: { role: 'ADMIN' },
+      where: { role: { in: ['ADMIN', 'SUPER_ADMIN'] } },
       select: { id: true },
     });
     for (const admin of admins) {
