@@ -160,7 +160,7 @@ const Home = () => {
             if (newDataKey !== prevDataRef.current) {
               prevDataRef.current = newDataKey;
               if (bundle.banners?.length > 0) setBanners(bundle.banners);
-              if (Array.isArray(bundle.categories)) setCategories(bundle.categories);
+              if (Array.isArray(bundle.categories) && bundle.categories.length > 0) setCategories(bundle.categories);
               if (bundle.products) {
                 const bProds = bundle.products;
                 setProducts({

@@ -100,6 +100,31 @@ exports.createCategory = asyncHandler(async (req, res, next) => {
 
   invalidateHomepageBundleCache();
 
+  // Auto-create HeaderMenu entry so category appears in website header navigation
+  if (category.inNavMenu) {
+    try {
+      const existingMenu = await prisma.headerMenu.findFirst({
+        where: { OR: [{ slug: category.slug }, { categoryId: category.id }] }
+      });
+      if (!existingMenu) {
+        const maxOrder = await prisma.headerMenu.aggregate({ _max: { sortOrder: true } });
+        await prisma.headerMenu.create({
+          data: {
+            title: category.name,
+            slug: category.slug,
+            link: `/categories/${category.slug}`,
+            categoryId: category.id,
+            sortOrder: (maxOrder._max.sortOrder || 0) + 1,
+            status: 'PUBLISHED',
+            isActive: true
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('Auto-create HeaderMenu warning:', e.message);
+    }
+  }
+
   res.status(201).json({
     success: true,
     message: 'Category created successfully',
@@ -140,6 +165,47 @@ exports.updateCategory = asyncHandler(async (req, res, next) => {
   });
 
   invalidateHomepageBundleCache();
+
+  // Sync HeaderMenu when category is updated
+  try {
+    const existingMenu = await prisma.headerMenu.findFirst({
+      where: { OR: [{ categoryId: id }, { slug: category.slug }] }
+    });
+    if (category.inNavMenu) {
+      if (existingMenu) {
+        // Update existing menu entry to reflect name/slug changes
+        await prisma.headerMenu.update({
+          where: { id: existingMenu.id },
+          data: {
+            title: category.name,
+            slug: category.slug,
+            link: `/categories/${category.slug}`,
+            status: category.status === 'PUBLISHED' ? 'PUBLISHED' : 'HIDDEN',
+            isActive: category.isVisible !== false
+          }
+        });
+      } else {
+        // Category was toggled to show in nav — create menu entry
+        const maxOrder = await prisma.headerMenu.aggregate({ _max: { sortOrder: true } });
+        await prisma.headerMenu.create({
+          data: {
+            title: category.name,
+            slug: category.slug,
+            link: `/categories/${category.slug}`,
+            categoryId: id,
+            sortOrder: (maxOrder._max.sortOrder || 0) + 1,
+            status: 'PUBLISHED',
+            isActive: true
+          }
+        });
+      }
+    } else if (existingMenu) {
+      // Category removed from nav — delete the menu entry
+      await prisma.headerMenu.delete({ where: { id: existingMenu.id } });
+    }
+  } catch (e) {
+    console.warn('Sync HeaderMenu warning:', e.message);
+  }
 
   res.status(200).json({
     success: true,

@@ -390,6 +390,13 @@ const AdminCategories = () => {
       toast.success(data.message || 'Category deleted successfully');
       setDeleteTarget(null);
       fetchCategories();
+      // Clear all caches and notify frontend
+      try {
+        localStorage.removeItem('__KVLR_HOME_PERSISTENT_CACHE_V3__');
+        sessionStorage.removeItem('__KVLR_HOME_CACHE__');
+        sessionStorage.removeItem('__KVLR_MEGA_CACHE__');
+        window.dispatchEvent(new Event('kvlr:content-updated'));
+      } catch (e) {}
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete category');
     } finally {

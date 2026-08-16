@@ -1251,10 +1251,10 @@ exports.getHeaderMenusPublic = asyncHandler(async (req, res) => {
     const enriched = await Promise.all(menus.map(async menu => {
         let subcategories = [];
         if (menu.categoryId) {
-            subcategories = await prisma.category.findMany({
-                where: { parentId: menu.categoryId, isActive: true },
+            subcategories = await prisma.subCategory.findMany({
+                where: { categoryId: menu.categoryId },
                 orderBy: { sortOrder: 'asc' }
-            });
+            }).catch(() => []);
         }
         return { ...menu, subcategories };
     }));
@@ -1489,7 +1489,8 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
             prisma.category.findMany({
                 where: { showOnHomepage: true, isVisible: true },
                 take: 12,
-                orderBy: { displayOrder: 'asc' }
+                orderBy: { sortOrder: 'asc' },
+                include: { subcategories: true }
             }).catch(() => []),
             prisma.product.findMany({
                 where: { status: publishedStatusFilter, isVisible: true },
