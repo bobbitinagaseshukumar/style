@@ -12,7 +12,6 @@ import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatImageUrl } from '../../utils/formatImageUrl';
 import ProductCard from '../../components/common/ProductCard';
-import PersonalizedSections from '../../components/common/PersonalizedSections';
 import RecentlyViewedSection from '../../components/home/RecentlyViewedSection';
 import FlashSaleSection from '../../components/home/FlashSaleSection';
 import CollectionShowcase from '../../components/home/CollectionShowcase';
@@ -85,7 +84,7 @@ const getCategoryThumbnail = (cat) => {
 };
 
 // Persistent Cache Key for instant 0ms loads across browser sessions
-const CACHE_KEY = '__KVLR_HOME_PERSISTENT_CACHE_V4__';
+const CACHE_KEY = '__KVLR_HOME_PERSISTENT_CACHE_V5__';
 
 const getInitialCache = () => {
   try {
@@ -372,11 +371,6 @@ const Home = () => {
           </div>
         </section>
       )}
-
-      {/* AI PERSONALIZED RECOMMENDATIONS */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-4">
-        <PersonalizedSections />
-      </div>
 
       {/* 6. MAIN PUBLISHED PRODUCTS CATALOG — Renders immediately below Categories */}
       {(() => {
