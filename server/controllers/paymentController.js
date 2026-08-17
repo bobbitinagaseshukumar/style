@@ -96,16 +96,72 @@ exports.verifyPayment = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // If an internal order ID is provided, update its payment status
+  // If an internal order ID is provided, update its payment status & notify customer
   if (orderId) {
     try {
-      await prisma.order.update({
+      const updatedOrder = await prisma.order.update({
         where: { id: orderId },
         data: {
           paymentStatus: 'PAID',
           paymentTxnId: razorpay_payment_id,
           paymentMethod: 'RAZORPAY',
         },
+        include: {
+          items: { include: { product: { include: { images: true } } } },
+          user: { select: { email: true, fullName: true, id: true } },
+          address: true,
+        },
+      });
+
+      // Send Payment Confirmation Email & In-App Notification (async)
+      setImmediate(async () => {
+        try {
+          const emailService = require('../services/emailService');
+
+          // Create In-App Notification
+          await prisma.notification.create({
+            data: {
+              userId: updatedOrder.userId,
+              title: `💰 Payment Verified (#${updatedOrder.orderNumber})`,
+              message: `Payment of ₹${updatedOrder.totalAmount.toLocaleString('en-IN')} via Razorpay was successful! (Txn ID: ${razorpay_payment_id})`,
+              type: 'ORDER',
+              link: '/orders',
+            },
+          }).catch(() => {});
+
+          // Send Email
+          if (updatedOrder.user?.email) {
+            const orderPayload = {
+              orderNumber: updatedOrder.orderNumber,
+              orderId: updatedOrder.id,
+              customerName: updatedOrder.user?.fullName || 'Valued Customer',
+              paymentMethod: 'RAZORPAY (Online Payment)',
+              paymentStatus: 'PAID',
+              paymentTxnId: razorpay_payment_id,
+              items: updatedOrder.items.map(i => ({
+                slug: i.product?.slug || i.productId,
+                name: i.product?.name || 'Product Item',
+                price: i.price,
+                quantity: i.quantity,
+                color: i.color,
+                size: i.size,
+                image: i.product?.images?.[0]?.url,
+              })),
+              subtotal: updatedOrder.subtotal,
+              discount: updatedOrder.discountAmount,
+              shippingCharge: updatedOrder.shippingFee,
+              total: updatedOrder.totalAmount,
+              shippingAddress: updatedOrder.address
+                ? `${updatedOrder.address.fullName || ''}, ${updatedOrder.address.street}, ${updatedOrder.address.city}, ${updatedOrder.address.state} - ${updatedOrder.address.postalCode}`
+                : 'N/A',
+              estimatedDelivery: '3-5 Business Days',
+            };
+
+            await emailService.sendOrderPlacedEmail(updatedOrder.user.email, updatedOrder.user.fullName || 'Valued Customer', orderPayload);
+          }
+        } catch (notifyErr) {
+          console.warn('[RAZORPAY VERIFY NOTIFY ERROR]', notifyErr.message);
+        }
       });
     } catch (updateErr) {
       console.warn('[RAZORPAY VERIFY] Order update warning:', updateErr.message);

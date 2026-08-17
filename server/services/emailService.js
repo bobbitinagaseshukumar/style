@@ -335,6 +335,7 @@ class EmailService {
   }
 
   // ==================== 5. ORDER PLACED (SENT TO ADMIN FOR APPROVAL) ====================
+  // ==================== 5. ORDER PLACED EMAIL (BEFORE ADMIN CONFIRMATION) ====================
   async sendOrderPlacedEmail(email, fullName, orderData) {
     const { storeName, storeTagline, primaryColor, clientUrl } = await getStoreMetadata();
     const goldAccent = primaryColor || '#D4AF37';
@@ -360,11 +361,6 @@ class EmailService {
                 ${item.color ? `Color: ${item.color}` : ''} ${item.size ? `| Size: ${item.size}` : ''}
               </div>
             ` : ''}
-            <div style="margin-top: 6px;">
-              <a href="${pUrl}" target="_blank" style="color: ${goldAccent}; font-size: 11px; text-decoration: underline; font-weight: 700;">
-                View Product Page →
-              </a>
-            </div>
           </td>
           <td style="padding: 12px; color: #DDDDDD; font-size: 13px; text-align: center;">
             x${item.quantity || 1}
@@ -376,20 +372,25 @@ class EmailService {
       `;
     }).join('');
 
+    const isPaid = orderData.paymentStatus === 'PAID' || orderData.paymentTxnId;
+
     const description = `
       <p style="margin-bottom: 12px; font-size: 15px; color: #FFFFFF;">Thank you for your order, <strong>${fullName}</strong>!</p>
-      <p style="margin-bottom: 16px; color: #CCCCCC; font-size: 13px;">We have received your order <strong>#${orderData.orderNumber}</strong> at <strong>${storeName}</strong>. It has been sent to our administrator for verification and approval.</p>
+      <p style="margin-bottom: 16px; color: #CCCCCC; font-size: 13px;">We have received your order <strong>#${orderData.orderNumber}</strong> at <strong>${storeName}</strong>.</p>
       
-      <!-- APPROVAL NOTICE BOX -->
-      <div style="background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.3); padding: 14px 18px; border-radius: 10px; margin-bottom: 20px; font-size: 13px; color: ${goldAccent};">
-        ⏳ <strong>Status:</strong> Sent to Admin for Approval. You will receive a separate confirmation email as soon as Admin reviews and approves your order.
+      <!-- BEFORE CONFIRMATION STATUS BADGE -->
+      <div style="background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.35); padding: 14px 18px; border-radius: 10px; margin-bottom: 20px; font-size: 13px; color: ${goldAccent};">
+        ⏳ <strong>Order Status (Before Confirmation):</strong> Order Received & Pending Store Approval. You will receive an official confirmation notice once approved by administration.
       </div>
 
-      <!-- ORDER SUMMARY BOX -->
+      <!-- PAYMENT & ORDER SUMMARY BOX -->
       <div style="background: #161616; padding: 18px; border-radius: 12px; margin-bottom: 24px; border: 1px solid rgba(212,175,55,0.25);">
+        <h4 style="color: ${goldAccent}; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px 0;">💳 Payment & Order Details</h4>
         <p style="margin: 4px 0; font-size: 13px; color: #FFFFFF;"><strong>Order Number:</strong> #${orderData.orderNumber}</p>
         <p style="margin: 4px 0; font-size: 13px; color: ${goldAccent};"><strong>Total Amount:</strong> ₹${(orderData.total || 0).toLocaleString('en-IN')}</p>
         <p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Payment Method:</strong> ${orderData.paymentMethod || 'Online Payment'}</p>
+        <p style="margin: 4px 0; font-size: 13px; color: ${isPaid ? '#10B981' : '#F59E0B'};"><strong>Payment Status:</strong> ${isPaid ? '✅ PAID & CONFIRMED' : '⏳ PENDING'}</p>
+        ${orderData.paymentTxnId ? `<p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Transaction ID:</strong> ${orderData.paymentTxnId}</p>` : ''}
         <p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Estimated Delivery:</strong> ${orderData.estimatedDelivery || '3-5 Business Days'}</p>
         ${orderData.shippingAddress ? `<p style="margin: 4px 0; font-size: 13px; color: #CCCCCC;"><strong>Delivery Address:</strong> ${orderData.shippingAddress}</p>` : ''}
       </div>
@@ -412,7 +413,7 @@ class EmailService {
     `;
 
     const htmlContent = wrapTemplate({
-      headline: `⏳ Order Received — Sent for Admin Approval (#${orderData.orderNumber})`,
+      headline: `💳 Payment & Order Details — #${orderData.orderNumber}`,
       description,
       buttonText: 'View Order Status →',
       buttonUrl: `${clientUrl}/orders`,
@@ -424,13 +425,13 @@ class EmailService {
 
     return sendEmailViaBrevo({
       to: email,
-      subject: `Order Received #${orderData.orderNumber} (Pending Admin Approval) - ${storeName}`,
+      subject: `Order & Payment Details #${orderData.orderNumber} - ${storeName}`,
       htmlContent,
       senderName: storeName,
     });
   }
 
-  // ==================== 5B. ORDER APPROVED & CONFIRMED EMAIL (AFTER ADMIN APPROVAL) ====================
+  // ==================== 5B. ORDER APPROVED & CONFIRMED EMAIL (AFTER ADMIN CONFIRMATION) ====================
   async sendOrderApprovedEmail(email, fullName, orderData) {
     const { storeName, storeTagline, primaryColor, clientUrl } = await getStoreMetadata();
     const goldAccent = primaryColor || '#D4AF37';
@@ -456,11 +457,6 @@ class EmailService {
                 ${item.color ? `Color: ${item.color}` : ''} ${item.size ? `| Size: ${item.size}` : ''}
               </div>
             ` : ''}
-            <div style="margin-top: 6px;">
-              <a href="${pUrl}" target="_blank" style="color: ${goldAccent}; font-size: 11px; text-decoration: underline; font-weight: 700;">
-                View Product Page →
-              </a>
-            </div>
           </td>
           <td style="padding: 12px; color: #DDDDDD; font-size: 13px; text-align: center;">
             x${item.quantity || 1}
@@ -474,11 +470,11 @@ class EmailService {
 
     const description = `
       <p style="margin-bottom: 12px; font-size: 15px; color: #FFFFFF;">Great news, <strong>${fullName}</strong>!</p>
-      <p style="margin-bottom: 16px; color: #CCCCCC; font-size: 13px;">Your order <strong>#${orderData.orderNumber}</strong> has been reviewed and <strong>officially approved</strong> by our admin team at <strong>${storeName}</strong>. Your items are now confirmed and being packed for delivery.</p>
+      <p style="margin-bottom: 16px; color: #CCCCCC; font-size: 13px;">Your order <strong>#${orderData.orderNumber}</strong> has been <strong>officially confirmed and approved</strong> by our team at <strong>${storeName}</strong>. Your items are now being prepared for shipping.</p>
       
-      <!-- APPROVED BANNER -->
-      <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); padding: 14px 18px; border-radius: 10px; margin-bottom: 20px; font-size: 13px; color: #10B981;">
-        ✅ <strong>Order Approved & Confirmed!</strong> Expected Delivery: <strong>${orderData.estimatedDelivery || '3-5 Business Days'}</strong>.
+      <!-- AFTER CONFIRMATION STATUS BADGE -->
+      <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.35); padding: 14px 18px; border-radius: 10px; margin-bottom: 20px; font-size: 13px; color: #10B981;">
+        ✅ <strong>Order Status (After Confirmation):</strong> Confirmed & Approved! Expected Delivery: <strong>${orderData.estimatedDelivery || '3-5 Business Days'}</strong>.
       </div>
 
       <!-- ORDER SUMMARY BOX -->
@@ -509,9 +505,9 @@ class EmailService {
     `;
 
     const htmlContent = wrapTemplate({
-      headline: `✅ Order Approved & Confirmed! (#${orderData.orderNumber})`,
+      headline: `✅ Order Confirmed — #${orderData.orderNumber}`,
       description,
-      buttonText: 'Track Order & Shipment →',
+      buttonText: 'Track Order Details →',
       buttonUrl: `${clientUrl}/orders`,
       storeName,
       storeTagline,
@@ -521,7 +517,7 @@ class EmailService {
 
     return sendEmailViaBrevo({
       to: email,
-      subject: `✅ Order Approved & Confirmed #${orderData.orderNumber} - ${storeName}`,
+      subject: `✅ Order Confirmed #${orderData.orderNumber} - ${storeName}`,
       htmlContent,
       senderName: storeName,
     });
@@ -553,11 +549,6 @@ class EmailService {
                 ${item.color ? `Color: ${item.color}` : ''} ${item.size ? `| Size: ${item.size}` : ''}
               </div>
             ` : ''}
-            <div style="margin-top: 6px;">
-              <a href="${pUrl}" target="_blank" style="color: ${goldAccent}; font-size: 11px; text-decoration: underline; font-weight: 700;">
-                View Product on Store →
-              </a>
-            </div>
           </td>
           <td style="padding: 12px; color: #DDDDDD; font-size: 13px; text-align: center;">
             x${item.quantity || 1}
@@ -686,13 +677,13 @@ class EmailService {
     });
   }
 
-  // ==================== 8. ORDER CANCELLED & APOLOGY EMAIL ====================
+  // ==================== 8. ORDER CANCELLED & REFUND EMAIL ====================
   async sendOrderCancelledEmail(email, fullName, orderData) {
     const { storeName, storeTagline, primaryColor, clientUrl } = await getStoreMetadata();
 
     const description = `
       <p style="margin-bottom: 12px; font-size: 15px;">Dear <strong>${fullName || 'Valued Customer'}</strong>,</p>
-      <p style="margin-bottom: 16px; line-height: 1.6;">We are writing to sincerely apologize and inform you that your order <strong>#${orderData.orderNumber}</strong> could not be fulfilled and has been cancelled by our store management team.</p>
+      <p style="margin-bottom: 16px; line-height: 1.6;">We are writing to inform you that your order <strong>#${orderData.orderNumber}</strong> at <strong>${storeName}</strong> has been cancelled.</p>
       
       ${orderData.reason ? `
       <div style="background: rgba(239, 68, 68, 0.08); border-left: 4px solid #ef4444; padding: 14px 16px; border-radius: 8px; margin: 16px 0;">
@@ -701,13 +692,20 @@ class EmailService {
       </div>
       ` : ''}
 
-      <div style="background: rgba(255, 255, 255, 0.04); padding: 14px 16px; border-radius: 8px; margin: 16px 0; border: 1px solid rgba(255,255,255,0.08);">
-        <p style="margin: 0; font-size: 13px; color: #d1d5db; line-height: 1.5;">
-          💳 <strong>Refund Status:</strong> If any online payment was made for this order (₹${(orderData.total || 0).toLocaleString('en-IN')}), a full refund has been initiated immediately and will reflect in your source account within 3–5 business days.
+      <!-- STRICT 10-MINUTE REFUND NOTICE -->
+      <div style="background: rgba(239, 68, 68, 0.12); border: 2px solid #ef4444; padding: 16px 20px; border-radius: 12px; margin: 18px 0; box-shadow: 0 4px 15px rgba(239,68,68,0.2);">
+        <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 800; color: #ef4444; text-transform: uppercase; letter-spacing: 0.5px;">
+          💳 REFUND NOTIFICATION:
+        </p>
+        <p style="margin: 0; font-size: 15px; color: #ffffff; font-weight: 800; line-height: 1.5;">
+          Order Canceled. Your amount will be returned within 10 minutes strictly.
+        </p>
+        <p style="margin: 6px 0 0 0; font-size: 12px; color: #fca5a5;">
+          Total refund amount of ₹${(orderData.total || 0).toLocaleString('en-IN')} has been queued to your original payment account.
         </p>
       </div>
 
-      <p style="margin-top: 16px; font-size: 13px; color: #9ca3af; line-height: 1.5;">We deeply regret any inconvenience this may have caused you. If you have any questions or need assistance, our support team is always here for you.</p>
+      <p style="margin-top: 16px; font-size: 13px; color: #9ca3af; line-height: 1.5;">We deeply regret any inconvenience caused. If you have questions regarding your refund, our support team is available 24/7.</p>
     `;
 
     const htmlContent = wrapTemplate({
@@ -724,7 +722,7 @@ class EmailService {
 
     return sendEmailViaBrevo({
       to: email,
-      subject: `Order Cancellation & Sincere Apology #${orderData.orderNumber} - ${storeName}`,
+      subject: `Order Cancellation & Refund Alert #${orderData.orderNumber} - ${storeName}`,
       htmlContent,
       senderName: storeName,
     });

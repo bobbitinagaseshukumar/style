@@ -996,12 +996,12 @@ exports.adminCancelOrder = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // 3. Create In-App Notification for Customer with polite apology
+  // 3. Create In-App Notification for Customer with strict refund guarantee
   await prisma.notification.create({
     data: {
       userId: order.userId,
-      title: `❌ Order Cancelled: Apology from Store (#${order.orderNumber})`,
-      message: `We sincerely apologize, but your order #${order.orderNumber} was cancelled. Message from store: "${apologyReason}". Any payment made will be refunded immediately.`,
+      title: `❌ Order Cancelled (#${order.orderNumber})`,
+      message: `Order #${order.orderNumber} Canceled. Your amount will be returned within 10 minutes strictly. Message: "${apologyReason}"`,
       type: 'ORDER',
       link: '/orders',
     }
