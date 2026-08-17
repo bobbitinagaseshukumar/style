@@ -303,6 +303,40 @@ const Home = () => {
     };
   }, []);
 
+  const getBannerRedirectUrl = (banner) => {
+    let link = (banner.buttonLink || banner.linkUrl || '').trim();
+
+    // 1. If explicit link set by admin (and not '#'), use it directly
+    if (link && link !== '#') {
+      if (!link.startsWith('http://') && !link.startsWith('https://') && !link.startsWith('/')) {
+        return '/' + link;
+      }
+      return link;
+    }
+
+    // 2. If no explicit link set, match title/subtitle against database categories
+    const bannerTitle = (banner.title || '').toLowerCase().trim();
+    const bannerSub = (banner.subtitle || '').toLowerCase().trim();
+
+    if (bannerTitle || bannerSub) {
+      const matchedCat = categories.find(c => {
+        const catName = (c.name || '').toLowerCase().trim();
+        const catSlug = (c.slug || '').toLowerCase().trim();
+        return (
+          (catName && (bannerTitle.includes(catName) || catName.includes(bannerTitle) || bannerSub.includes(catName))) ||
+          (catSlug && (bannerTitle.includes(catSlug) || catSlug.includes(bannerTitle)))
+        );
+      });
+
+      if (matchedCat) {
+        return `/categories/${matchedCat.slug}`;
+      }
+    }
+
+    // 3. Fallback
+    return '/categories';
+  };
+
   const heroSliders = banners.filter(b => 
     (b.position === 'HOMEPAGE_HERO' || b.bannerType === 'SLIDER' || b.type === 'HERO_SLIDER' || !b.position) && 
     (b.isActive !== false)
@@ -316,7 +350,7 @@ const Home = () => {
           <Swiper modules={[Autoplay, Pagination, EffectFade]} effect="fade" autoplay={{ delay: 5000, disableOnInteraction: false }}
             pagination={{ clickable: true }} loop className="w-full h-[260px] sm:h-[420px] lg:h-[560px]">
             {heroSliders.map((banner) => {
-              const targetUrl = banner.buttonLink || banner.linkUrl || '/categories';
+              const targetUrl = getBannerRedirectUrl(banner);
               const btnText = banner.buttonText || 'Shop Collection';
 
               return (

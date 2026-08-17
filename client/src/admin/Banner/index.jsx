@@ -52,7 +52,7 @@ const STATUSES = [
 const getStatusStyle = (status) => STATUSES.find(s => s.value === status)?.color || 'bg-gray-100 text-gray-600 border-gray-200';
 
 const defaultForm = {
-  title: '', subtitle: '', description: '', imageUrl: '', buttonText: 'Shop Collection', buttonLink: '#',
+  title: '', subtitle: '', description: '', imageUrl: '', buttonText: 'Shop Collection', buttonLink: '',
   ctaEnabled: true, openInNewTab: false,
   textColor: '#FFFFFF', buttonColor: '#D4AF37', overlayOpacity: '0.3', textAlignment: 'CENTER',
   bannerType: 'STATIC', position: 'HOMEPAGE_HERO', priority: '0', sortOrder: '0',
@@ -170,7 +170,9 @@ const AdminBanner = () => {
     try { devicesArr = JSON.parse(banner.devices || '[]'); } catch {}
     setForm({
       title: banner.title || '', subtitle: banner.subtitle || '', description: banner.description || '',
-      imageUrl: banner.imageUrl || '', buttonText: banner.buttonText || 'Shop Now', buttonLink: banner.buttonLink || '#',
+      imageUrl: banner.imageUrl || '', 
+      buttonText: banner.buttonText || 'Shop Collection', 
+      buttonLink: (banner.buttonLink && banner.buttonLink !== '#') ? banner.buttonLink : '',
       ctaEnabled: banner.buttonText !== null && banner.buttonText !== '', openInNewTab: false,
       textColor: banner.textColor || '#FFFFFF', buttonColor: banner.buttonColor || '#D4AF37',
       overlayOpacity: banner.overlayOpacity?.toString() || '0.3', textAlignment: banner.textAlignment || 'CENTER',
@@ -213,8 +215,8 @@ const AdminBanner = () => {
       setSaving(true);
       const payload = {
         ...form,
-        buttonText: form.ctaEnabled ? form.buttonText : null,
-        buttonLink: form.ctaEnabled ? form.buttonLink : null,
+        buttonText: form.buttonText ? form.buttonText.trim() : 'Shop Collection',
+        buttonLink: (form.buttonLink && form.buttonLink.trim() !== '#') ? form.buttonLink.trim() : null,
         overlayOpacity: parseFloat(form.overlayOpacity || 0.3),
         priority: parseInt(form.priority || 0),
         sortOrder: parseInt(form.sortOrder || 0),
