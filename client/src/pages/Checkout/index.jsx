@@ -187,55 +187,60 @@ const Checkout = () => {
     const isRazorpay = paymentMethod === 'UPI' || paymentMethod === 'CARD' || paymentMethod === 'NET_BANKING' || paymentMethod === 'RAZORPAY';
 
     if (isRazorpay) {
-      // Razorpay flow: pay first, then create order
-      initiatePayment({
-        amount: grandTotal,
-        receipt: `checkout_${Date.now()}`,
-        notes: { userId: user?.id, coupon: appliedCoupon || '' },
-        prefill: {
-          name: user?.fullName,
-          email: user?.email,
-          contact: user?.phone,
-        },
-        onSuccess: async (paymentData) => {
-          try {
-            setLoading(true);
-            const payload = {
-              items,
-              addressId: selectedAddressId,
-              paymentMethod: 'RAZORPAY',
-              couponCode: appliedCoupon,
-              discountAmount,
-              shippingFee: activeShippingFee,
-              deliveryEstimate: activeDeliveryEstimate,
-              shippingTier: selectedShippingTierId,
-            };
-            const { data } = await api.post('/orders', payload);
-            if (data?.success) {
-              // Update order with payment details
-              try {
-                await api.post('/payments/verify', {
-                  razorpay_order_id: paymentData.razorpay_order_id,
-                  razorpay_payment_id: paymentData.razorpay_payment_id,
-                  razorpay_signature: paymentData.razorpay_signature,
-                  orderId: data.data?.id,
-                });
-              } catch (e) { /* Already verified in hook */ }
-              dispatch(clearCart());
-              toast.success('🎉 Order placed & payment successful!');
-              navigate('/orders', { state: { newOrder: data.data } });
-            }
-          } catch (err) {
-            console.error(err);
-            toast.error(err.response?.data?.message || 'Order creation failed after payment. Contact support.');
-          } finally {
-            setLoading(false);
-          }
-        },
-        onFailure: () => {
-          // Payment cancelled or failed — no order created
-        },
-      });
+      // Amazon-style flow: Create order (PENDING) → Pay → Verify → Mark PAID
+      try {
+        setLoading(true);
+
+        // Step 1: Create order with PENDING payment status
+        const payload = {
+          items,
+          addressId: selectedAddressId,
+          paymentMethod: 'RAZORPAY',
+          couponCode: appliedCoupon,
+          discountAmount,
+          shippingFee: activeShippingFee,
+          deliveryEstimate: activeDeliveryEstimate,
+          shippingTier: selectedShippingTierId,
+        };
+        const { data: orderData } = await api.post('/orders', payload);
+
+        if (!orderData?.success) {
+          toast.error('Failed to create order');
+          setLoading(false);
+          return;
+        }
+
+        const createdOrder = orderData.data;
+        setLoading(false);
+
+        // Step 2: Open Razorpay payment modal
+        initiatePayment({
+          amount: grandTotal,
+          receipt: `order_${createdOrder.orderNumber}`,
+          notes: { orderId: createdOrder.id, orderNumber: createdOrder.orderNumber },
+          orderId: createdOrder.id,
+          prefill: {
+            name: user?.fullName,
+            email: user?.email,
+            contact: user?.phone,
+          },
+          onSuccess: (paymentData) => {
+            // Step 3: Payment verified — order is now PAID on backend
+            dispatch(clearCart());
+            toast.success('🎉 Payment successful! Order confirmed.');
+            navigate('/orders', { state: { newOrder: createdOrder } });
+          },
+          onFailure: () => {
+            // Payment cancelled/failed — order stays PENDING in DB
+            toast.warning('Payment not completed. Your order is saved — complete payment from Orders page.');
+            navigate('/orders');
+          },
+        });
+      } catch (err) {
+        console.error(err);
+        toast.error(err.response?.data?.message || 'Failed to create order. Try again.');
+        setLoading(false);
+      }
     } else {
       // COD / other methods: create order directly
       try {

@@ -119,7 +119,8 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
         totalAmount,
         orderStatus: 'PENDING_APPROVAL',
         approvalStatus: 'PENDING_APPROVAL',
-        paymentStatus: paymentMethod === 'COD' ? 'PENDING' : 'PAID',
+        // Razorpay/UPI/Card orders MUST start as PENDING — only the /payments/verify endpoint can set PAID
+        paymentStatus: ['RAZORPAY', 'UPI', 'CARD', 'NET_BANKING'].includes(paymentMethod) ? 'PENDING' : (paymentMethod === 'COD' ? 'PENDING' : 'PAID'),
         paymentMethod: paymentMethod || 'COD',
         couponCode: couponCode || null,
         notes: notes || null,

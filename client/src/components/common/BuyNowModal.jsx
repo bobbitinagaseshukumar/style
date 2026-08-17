@@ -97,52 +97,58 @@ const BuyNowModal = ({ isOpen, onClose, product = null, cartMode = false }) => {
     const isRazorpay = paymentMethod === 'UPI' || paymentMethod === 'CARD' || paymentMethod === 'NET_BANKING' || paymentMethod === 'RAZORPAY';
 
     if (isRazorpay) {
-      // Razorpay flow: pay first, then create order
-      initiatePayment({
-        amount: total,
-        receipt: `buynow_${Date.now()}`,
-        notes: { userId: user?.id },
-        prefill: {
-          name: user?.fullName,
-          email: user?.email,
-          contact: user?.phone,
-        },
-        onSuccess: async (paymentData) => {
-          try {
-            setLoading(true);
-            const payload = {
-              items: orderItems.map(i => ({ productId: i.productId || i.id, quantity: i.quantity, size: i.size, color: i.color })),
-              addressId: selectedAddress,
-              paymentMethod: 'RAZORPAY',
-              couponCode: couponCode || undefined,
-              notes: notes || undefined,
-              shippingFee: shipping,
-            };
-            const { data } = await api.post('/orders', payload);
-            if (data?.success) {
-              // Link payment to order
-              try {
-                await api.post('/payments/verify', {
-                  razorpay_order_id: paymentData.razorpay_order_id,
-                  razorpay_payment_id: paymentData.razorpay_payment_id,
-                  razorpay_signature: paymentData.razorpay_signature,
-                  orderId: data.data?.id,
-                });
-              } catch (e) { /* Already verified in hook */ }
-              toast.success('\ud83c\udf89 Order placed & payment successful!');
-              onClose();
-              navigate('/orders');
-            }
-          } catch (err) {
-            toast.error(err.response?.data?.message || 'Order creation failed after payment. Contact support.');
-          } finally {
-            setLoading(false);
-          }
-        },
-        onFailure: () => {
-          // Payment cancelled or failed — no order created
-        },
-      });
+      // Amazon-style flow: Create order (PENDING) → Pay → Verify → Mark PAID
+      try {
+        setLoading(true);
+
+        // Step 1: Create order with PENDING payment status
+        const payload = {
+          items: orderItems.map(i => ({ productId: i.productId || i.id, quantity: i.quantity, size: i.size, color: i.color })),
+          addressId: selectedAddress,
+          paymentMethod: 'RAZORPAY',
+          couponCode: couponCode || undefined,
+          notes: notes || undefined,
+          shippingFee: shipping,
+        };
+        const { data: orderData } = await api.post('/orders', payload);
+
+        if (!orderData?.success) {
+          toast.error('Failed to create order');
+          setLoading(false);
+          return;
+        }
+
+        const createdOrder = orderData.data;
+        setLoading(false);
+
+        // Step 2: Open Razorpay payment modal
+        initiatePayment({
+          amount: total,
+          receipt: `order_${createdOrder.orderNumber}`,
+          notes: { orderId: createdOrder.id, orderNumber: createdOrder.orderNumber },
+          orderId: createdOrder.id,
+          prefill: {
+            name: user?.fullName,
+            email: user?.email,
+            contact: user?.phone,
+          },
+          onSuccess: () => {
+            // Step 3: Payment verified — order is now PAID on backend
+            toast.success('🎉 Payment successful! Order confirmed.');
+            onClose();
+            navigate('/orders');
+          },
+          onFailure: () => {
+            // Payment cancelled/failed — order stays PENDING in DB
+            toast.warning('Payment not completed. Complete payment from Orders page.');
+            onClose();
+            navigate('/orders');
+          },
+        });
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to create order. Try again.');
+        setLoading(false);
+      }
     } else {
       // COD flow: create order directly
       try {
@@ -156,7 +162,7 @@ const BuyNowModal = ({ isOpen, onClose, product = null, cartMode = false }) => {
           shippingFee: shipping,
         };
         const { data } = await api.post('/orders', payload);
-        toast.success('\ud83c\udf89 Order placed successfully!');
+        toast.success('🎉 Order placed successfully!');
         onClose();
         navigate('/orders');
       } catch (err) {
