@@ -505,6 +505,8 @@ exports.createBanner = asyncHandler(async (req, res) => {
             endDate: endDate ? new Date(endDate) : null
         }
     });
+
+    exports.invalidateHomepageBundleCache();
     res.status(201).json({ success: true, message: 'Banner created', data: banner });
 });
 
@@ -514,10 +516,11 @@ exports.updateBanner = asyncHandler(async (req, res) => {
     if (updateData.overlayOpacity !== undefined) updateData.overlayOpacity = parseFloat(updateData.overlayOpacity);
     if (updateData.priority !== undefined) updateData.priority = parseInt(updateData.priority);
     if (updateData.sortOrder !== undefined) updateData.sortOrder = parseInt(updateData.sortOrder);
-    if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
-    if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
+    if (updateData.startDate) updateData.startDate = updateData.startDate ? new Date(updateData.startDate) : null;
+    if (updateData.endDate) updateData.endDate = updateData.endDate ? new Date(updateData.endDate) : null;
 
     const banner = await prisma.banner.update({ where: { id: req.params.id }, data: updateData });
+    exports.invalidateHomepageBundleCache();
     res.status(200).json({ success: true, message: 'Banner updated successfully', data: banner });
 });
 
@@ -528,11 +531,13 @@ exports.duplicateBanner = asyncHandler(async (req, res) => {
     const duplicate = await prisma.banner.create({
         data: { ...rest, title: (rest.title || 'Banner') + ' (Copy)', status: 'DRAFT', isActive: false, views: 0, clicks: 0 }
     });
+    exports.invalidateHomepageBundleCache();
     res.status(201).json({ success: true, message: 'Banner duplicated', data: duplicate });
 });
 
 exports.deleteBanner = asyncHandler(async (req, res) => {
     await prisma.banner.delete({ where: { id: req.params.id } });
+    exports.invalidateHomepageBundleCache();
     res.status(200).json({ success: true, message: 'Banner deleted' });
 });
 
@@ -1748,8 +1753,8 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
             rawDynamicSections
         ] = await Promise.all([
             prisma.banner.findMany({
-                where: { isActive: true },
-                orderBy: { order: 'asc' }
+                where: { isActive: true, status: 'PUBLISHED' },
+                orderBy: { priority: 'desc' }
             }).catch(() => []),
             prisma.category.findMany({
                 where: { showOnHomepage: true, isVisible: true },

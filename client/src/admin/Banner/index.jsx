@@ -777,6 +777,7 @@ const AdminBanner = () => {
         onClose={() => setCropperOpen(false)}
         onComplete={handleCropComplete}
         imageSrc={cropperSrc}
+        uploadOnApply={true}
         aspectRatio={16/9}
         aspectPresets={[
           { label: '16:9', value: 16/9 },
