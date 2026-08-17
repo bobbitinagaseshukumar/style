@@ -63,14 +63,11 @@ exports.deleteNotification = asyncHandler(async (req, res) => {
 exports.clearAllNotifications = asyncHandler(async (req, res) => {
   const isAdmin = req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN';
   await prisma.notification.deleteMany({
-    where: isAdmin ? {
+    where: {
       OR: [
         { userId: req.user.id },
-        { user: { role: { in: ['ADMIN', 'SUPER_ADMIN'] } } },
-        { type: { in: ['ADMIN_ORDER', 'STOCK', 'SYSTEM'] } }
+        ...(isAdmin ? [{ type: { in: ['ADMIN_ORDER', 'STOCK', 'SYSTEM'] } }] : [])
       ]
-    } : {
-      userId: req.user.id
     },
   }).catch(() => {});
 
@@ -114,37 +111,43 @@ exports.getAdminNotifications = asyncHandler(async (req, res) => {
   try {
     const dbNotifs = await prisma.notification.findMany({
       where: {
-        OR: [
-          { userId: req.user.id },
-          { user: { role: { in: ['ADMIN', 'SUPER_ADMIN'] } } },
-          { type: { in: ['ADMIN_ORDER', 'STOCK', 'SYSTEM'] } }
-        ]
+        userId: req.user.id,
       },
       orderBy: { createdAt: 'desc' },
-      take: 30,
+      take: 50,
     });
 
-    const notifications = dbNotifs.map((n) => ({
-      id: n.id,
-      title: n.title,
-      text: n.message,
-      time: n.createdAt,
-      type: n.type || 'ORDER',
-      unread: !n.isRead,
-      link: n.link || '/admin/orders'
-    }));
+    // Deduplicate in memory by title + message + link to guarantee 100% unique notifications
+    const seen = new Set();
+    const notifications = [];
+
+    for (const n of dbNotifs) {
+      const dedupKey = `${n.title}|${n.message}|${n.link}`;
+      if (!seen.has(dedupKey)) {
+        seen.add(dedupKey);
+        notifications.push({
+          id: n.id,
+          title: n.title,
+          text: n.message,
+          time: n.createdAt,
+          type: n.type || 'ORDER',
+          unread: !n.isRead,
+          link: n.link || '/admin/orders',
+        });
+      }
+    }
 
     const unreadCount = notifications.filter(n => n.unread).length;
 
     res.status(200).json({
       success: true,
-      data: { notifications, unreadCount }
+      data: { notifications, unreadCount },
     });
   } catch (err) {
     console.error('[ADMIN NOTIFICATIONS ERR]', err.message);
     res.status(200).json({
       success: true,
-      data: { notifications: [], unreadCount: 0 }
+      data: { notifications: [], unreadCount: 0 },
     });
   }
 });
