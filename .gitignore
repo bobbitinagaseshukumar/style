@@ -14,6 +14,17 @@ yarn-error.log*
 **/.env*
 **/.env.example
 
+# Secrets & Credentials (NEVER push these)
+**/checkAdminCredentials*
+**/credentials*
+**/secrets*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*secret*
+**/*password*
+
 # Build output
 dist/
 **/dist/
