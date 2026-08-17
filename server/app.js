@@ -25,6 +25,7 @@ const marketplaceRoutes = require('./routes/marketplaceRoutes');
 const blogRoutes = require('./routes/blogRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 const emailRoutes = require('./routes/emailRoutes');
 const seoController = require('./controllers/seoController');
 const healthController = require('./controllers/healthController');
@@ -152,6 +153,7 @@ app.use('/api/v1/marketplace', marketplaceRoutes);
 app.use('/api/v1/blog', blogRoutes);
 app.use('/api/v1/support', supportRoutes);
 app.use('/api/v1/settings', settingsRoutes);
+app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/upload', uploadRoutes);
 
 // Centralized Error Middleware

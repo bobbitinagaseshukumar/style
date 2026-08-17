@@ -17,6 +17,7 @@ import { toast } from 'react-toastify';
 import api from '../config/api';
 import { formatCurrency } from '../utils/formatCurrency';
 import { buildWhatsAppOrderMessage, whatsappLink } from '../utils/whatsapp';
+import useRazorpay from '../hooks/useRazorpay';
 
 /* ─── Step indicator ────────────────────────────────────────── */
 const Step = ({ n, label, active, done }) => (
@@ -52,6 +53,7 @@ const BuyNowModal = ({ isOpen, onClose, product = null, cartMode = false }) => {
   const [notes, setNotes] = useState('');
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(false);
+  const { initiatePayment, loading: paymentLoading } = useRazorpay();
 
   // Order items: either single product or cart
   const orderItems = cartMode
@@ -91,24 +93,77 @@ const BuyNowModal = ({ isOpen, onClose, product = null, cartMode = false }) => {
 
   const handlePlaceOnlineOrder = async () => {
     if (!selectedAddress) { toast.error('Please select a delivery address'); return; }
-    try {
-      setLoading(true);
-      const payload = {
-        items: orderItems.map(i => ({ productId: i.productId || i.id, quantity: i.quantity, size: i.size, color: i.color })),
-        addressId: selectedAddress,
-        paymentMethod,
-        couponCode: couponCode || undefined,
-        notes: notes || undefined,
-        shippingFee: shipping,
-      };
-      const { data } = await api.post('/orders', payload);
-      toast.success('🎉 Order placed successfully!');
-      onClose();
-      navigate('/orders');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to place order');
-    } finally {
-      setLoading(false);
+
+    const isRazorpay = paymentMethod === 'UPI' || paymentMethod === 'CARD' || paymentMethod === 'NET_BANKING' || paymentMethod === 'RAZORPAY';
+
+    if (isRazorpay) {
+      // Razorpay flow: pay first, then create order
+      initiatePayment({
+        amount: total,
+        receipt: `buynow_${Date.now()}`,
+        notes: { userId: user?.id },
+        prefill: {
+          name: user?.fullName,
+          email: user?.email,
+          contact: user?.phone,
+        },
+        onSuccess: async (paymentData) => {
+          try {
+            setLoading(true);
+            const payload = {
+              items: orderItems.map(i => ({ productId: i.productId || i.id, quantity: i.quantity, size: i.size, color: i.color })),
+              addressId: selectedAddress,
+              paymentMethod: 'RAZORPAY',
+              couponCode: couponCode || undefined,
+              notes: notes || undefined,
+              shippingFee: shipping,
+            };
+            const { data } = await api.post('/orders', payload);
+            if (data?.success) {
+              // Link payment to order
+              try {
+                await api.post('/payments/verify', {
+                  razorpay_order_id: paymentData.razorpay_order_id,
+                  razorpay_payment_id: paymentData.razorpay_payment_id,
+                  razorpay_signature: paymentData.razorpay_signature,
+                  orderId: data.data?.id,
+                });
+              } catch (e) { /* Already verified in hook */ }
+              toast.success('\ud83c\udf89 Order placed & payment successful!');
+              onClose();
+              navigate('/orders');
+            }
+          } catch (err) {
+            toast.error(err.response?.data?.message || 'Order creation failed after payment. Contact support.');
+          } finally {
+            setLoading(false);
+          }
+        },
+        onFailure: () => {
+          // Payment cancelled or failed — no order created
+        },
+      });
+    } else {
+      // COD flow: create order directly
+      try {
+        setLoading(true);
+        const payload = {
+          items: orderItems.map(i => ({ productId: i.productId || i.id, quantity: i.quantity, size: i.size, color: i.color })),
+          addressId: selectedAddress,
+          paymentMethod,
+          couponCode: couponCode || undefined,
+          notes: notes || undefined,
+          shippingFee: shipping,
+        };
+        const { data } = await api.post('/orders', payload);
+        toast.success('\ud83c\udf89 Order placed successfully!');
+        onClose();
+        navigate('/orders');
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to place order');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -407,12 +462,14 @@ const BuyNowModal = ({ isOpen, onClose, product = null, cartMode = false }) => {
                   {mode === 'online' ? (
                     <button
                       onClick={handlePlaceOnlineOrder}
-                      disabled={loading}
+                      disabled={loading || paymentLoading}
                       className="flex-1 py-3 rounded-2xl bg-yellow-400 text-black text-sm font-black hover:bg-yellow-300 transition disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      {loading
-                        ? <><span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> Placing...</>
-                        : <><FiShoppingBag size={14} /> Place Order</>
+                      {loading || paymentLoading
+                        ? <><span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> Processing...</>
+                        : (paymentMethod === 'UPI' || paymentMethod === 'CARD' || paymentMethod === 'NET_BANKING')
+                          ? <><FiCreditCard size={14} /> Pay {formatCurrency(total)}</>
+                          : <><FiShoppingBag size={14} /> Place Order</>
                       }
                     </button>
                   ) : (

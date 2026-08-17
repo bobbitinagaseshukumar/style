@@ -11,6 +11,7 @@ import Modal from '../../components/common/Modal';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import { toast } from 'react-toastify';
+import useRazorpay from '../../hooks/useRazorpay';
 
 const DEFAULT_CHECKOUT_FIELDS = {
   fullName: { enabled: true, required: true, label: 'Full Name', type: 'text', placeholder: 'Your Full Name' },
@@ -33,6 +34,7 @@ const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState('COD');
   const [selectedShippingTierId, setSelectedShippingTierId] = useState('standard');
   const [loading, setLoading] = useState(false);
+  const { initiatePayment, loading: paymentLoading } = useRazorpay();
 
   // Dynamic Store Settings
   const [storeSettings, setStoreSettings] = useState(null);
@@ -182,30 +184,85 @@ const Checkout = () => {
       return;
     }
 
-    try {
-      setLoading(true);
-      const payload = {
-        items,
-        addressId: selectedAddressId,
-        paymentMethod,
-        couponCode: appliedCoupon,
-        discountAmount,
-        shippingFee: activeShippingFee,
-        deliveryEstimate: activeDeliveryEstimate,
-        shippingTier: selectedShippingTierId,
-      };
+    const isRazorpay = paymentMethod === 'UPI' || paymentMethod === 'CARD' || paymentMethod === 'NET_BANKING' || paymentMethod === 'RAZORPAY';
 
-      const { data } = await api.post('/orders', payload);
-      if (data?.success) {
-        dispatch(clearCart());
-        toast.success('Order placed successfully!');
-        navigate('/orders', { state: { newOrder: data.data } });
+    if (isRazorpay) {
+      // Razorpay flow: pay first, then create order
+      initiatePayment({
+        amount: grandTotal,
+        receipt: `checkout_${Date.now()}`,
+        notes: { userId: user?.id, coupon: appliedCoupon || '' },
+        prefill: {
+          name: user?.fullName,
+          email: user?.email,
+          contact: user?.phone,
+        },
+        onSuccess: async (paymentData) => {
+          try {
+            setLoading(true);
+            const payload = {
+              items,
+              addressId: selectedAddressId,
+              paymentMethod: 'RAZORPAY',
+              couponCode: appliedCoupon,
+              discountAmount,
+              shippingFee: activeShippingFee,
+              deliveryEstimate: activeDeliveryEstimate,
+              shippingTier: selectedShippingTierId,
+            };
+            const { data } = await api.post('/orders', payload);
+            if (data?.success) {
+              // Update order with payment details
+              try {
+                await api.post('/payments/verify', {
+                  razorpay_order_id: paymentData.razorpay_order_id,
+                  razorpay_payment_id: paymentData.razorpay_payment_id,
+                  razorpay_signature: paymentData.razorpay_signature,
+                  orderId: data.data?.id,
+                });
+              } catch (e) { /* Already verified in hook */ }
+              dispatch(clearCart());
+              toast.success('🎉 Order placed & payment successful!');
+              navigate('/orders', { state: { newOrder: data.data } });
+            }
+          } catch (err) {
+            console.error(err);
+            toast.error(err.response?.data?.message || 'Order creation failed after payment. Contact support.');
+          } finally {
+            setLoading(false);
+          }
+        },
+        onFailure: () => {
+          // Payment cancelled or failed — no order created
+        },
+      });
+    } else {
+      // COD / other methods: create order directly
+      try {
+        setLoading(true);
+        const payload = {
+          items,
+          addressId: selectedAddressId,
+          paymentMethod,
+          couponCode: appliedCoupon,
+          discountAmount,
+          shippingFee: activeShippingFee,
+          deliveryEstimate: activeDeliveryEstimate,
+          shippingTier: selectedShippingTierId,
+        };
+
+        const { data } = await api.post('/orders', payload);
+        if (data?.success) {
+          dispatch(clearCart());
+          toast.success('Order placed successfully!');
+          navigate('/orders', { state: { newOrder: data.data } });
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error(err.response?.data?.message || 'Failed to place order. Try again.');
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.message || 'Failed to place order. Try again.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -473,10 +530,15 @@ const Checkout = () => {
             ) : (
               <button
                 onClick={handlePlaceOrder}
-                disabled={loading}
+                disabled={loading || paymentLoading}
                 className="w-full py-4 rounded-full bg-gold-500 hover:bg-gold-600 text-white font-semibold text-sm transition-all shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
-                {loading ? 'Processing Order...' : 'Confirm & Place Order'}
+                {loading || paymentLoading
+                  ? 'Processing...'
+                  : (paymentMethod === 'UPI' || paymentMethod === 'CARD' || paymentMethod === 'NET_BANKING' || paymentMethod === 'RAZORPAY')
+                    ? `Pay ${formatCurrency(grandTotal)} — Razorpay`
+                    : 'Confirm & Place Order'
+                }
                 <FiLock />
               </button>
             )}
