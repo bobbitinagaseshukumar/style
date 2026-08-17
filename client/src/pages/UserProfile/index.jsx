@@ -9,6 +9,7 @@ import api from '../../config/api';
 import Modal from '../../components/common/Modal';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
+import SixDigitOtpInput from '../../components/common/SixDigitOtpInput';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDate } from '../../utils/formatDate';
 import { toast } from 'react-toastify';
@@ -695,15 +696,11 @@ const UserProfile = () => {
             A 6-digit security code was sent to your registered email address ({user?.email}). Please enter it below to confirm your new password.
           </p>
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">6-Digit OTP Code *</label>
-            <input
-              type="text"
-              maxLength={6}
-              required
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1 text-center">6-Digit OTP Code *</label>
+            <SixDigitOtpInput
               value={otpCode}
-              onChange={e => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="123456"
-              className="w-full text-center text-2xl tracking-[0.5em] font-mono py-3 border border-gray-300 rounded-xl focus:border-amber-600 outline-none"
+              onChange={setOtpCode}
+              disabled={verifyingOtp}
             />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">

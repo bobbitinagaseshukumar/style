@@ -10,6 +10,7 @@ import {
   FiLayers, FiActivity, FiEye, FiEyeOff, FiRotateCw, FiZoomIn
 } from 'react-icons/fi';
 import api from '../../config/api';
+import SixDigitOtpInput from '../../components/common/SixDigitOtpInput';
 
 /* ═══ HELPERS ═══ */
 const fmtDate = d => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
@@ -639,8 +640,8 @@ export default function AdminProfile() {
                 </div>
               )}
               <div style={{ marginBottom: 16 }}>
-                <label style={S.label}>Enter 6-Digit Verification OTP</label>
-                <input value={passOTP} onChange={e => setPassOTP(e.target.value)} placeholder="123456" maxLength={6} style={{ ...S.input, fontSize: 18, letterSpacing: 4, textAlign: 'center', fontWeight: 800 }} required />
+                <label style={{ ...S.label, textAlign: 'center', display: 'block' }}>Enter 6-Digit Verification OTP</label>
+                <SixDigitOtpInput value={passOTP} onChange={setPassOTP} disabled={actionLoading} />
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button type="button" onClick={() => setPassStep(1)} style={S.btnOutline}>Back</button>
