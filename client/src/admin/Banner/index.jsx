@@ -65,6 +65,7 @@ const defaultForm = {
 /* ═══════════════════════════════════════════════════════════ */
 const AdminBanner = () => {
   const [banners, setBanners] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -96,12 +97,15 @@ const AdminBanner = () => {
   const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
-      const [banRes, statRes] = await Promise.all([
+      const [banRes, statRes, catRes] = await Promise.all([
         api.get('/cms/banners'),
         api.get('/cms/banners/stats').catch(() => ({ data: { data: null } })),
+        api.get('/categories').catch(() => ({ data: { data: [] } })),
       ]);
       setBanners(banRes.data?.data || []);
       setStats(statRes.data?.data || null);
+      const fetchedCats = catRes.data?.data || catRes.data || [];
+      setCategories(Array.isArray(fetchedCats) ? fetchedCats : []);
     } catch { setBanners([]); }
     finally { setLoading(false); }
   }, []);
@@ -557,19 +561,104 @@ const AdminBanner = () => {
                     </div>
                   </div>
 
-                  {/* CTA Button */}
-                  <div className="space-y-3">
+                  {/* CTA Button & Category Link Selector */}
+                  <div className="space-y-3 p-4 bg-gray-50/80 rounded-2xl border border-gray-200/80">
                     <div className="flex justify-between items-center">
-                      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">3. CTA Button</h3>
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <FiExternalLink className="text-amber-500" /> 3. CTA Button & Shop Category Redirect
+                      </h3>
                       <label className="flex items-center gap-1.5 cursor-pointer">
                         <input type="checkbox" checked={form.ctaEnabled} onChange={e => setForm({ ...form, ctaEnabled: e.target.checked })} className="rounded text-amber-500 focus:ring-amber-400" />
                         <span className="text-xs font-semibold text-gray-700">Enable CTA Button</span>
                       </label>
                     </div>
+
                     {form.ctaEnabled && (
-                      <div className="grid grid-cols-2 gap-3">
-                        <input type="text" value={form.buttonText} onChange={e => setForm({ ...form, buttonText: e.target.value })} placeholder="Button Text (e.g. Explore Collection)" className="px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-amber-500 transition" />
-                        <input type="text" value={form.buttonLink} onChange={e => setForm({ ...form, buttonLink: e.target.value })} placeholder="Button URL (e.g. /categories/sarees)" className="px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-amber-500 transition" />
+                      <div className="space-y-3 pt-1">
+                        {/* Category Dropdown Selector */}
+                        <div>
+                          <label className="text-xs font-bold text-gray-700 block mb-1">
+                            📁 Select Target Category / Collection Page *
+                          </label>
+                          <select
+                            value={
+                              categories.find(c => form.buttonLink === `/categories/${c.slug}` || form.buttonLink === `/products?category=${c.slug}`)?.slug ||
+                              (form.buttonLink === '/products' ? 'ALL_PRODUCTS' : form.buttonLink === '/offers' ? 'OFFERS' : form.buttonLink === '/categories' ? 'ALL_CATEGORIES' : 'CUSTOM')
+                            }
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === 'ALL_PRODUCTS') {
+                                setForm(prev => ({ ...prev, buttonLink: '/products', buttonText: prev.buttonText || 'Shop All Products' }));
+                              } else if (val === 'ALL_CATEGORIES') {
+                                setForm(prev => ({ ...prev, buttonLink: '/categories', buttonText: prev.buttonText || 'Browse All Collections' }));
+                              } else if (val === 'OFFERS') {
+                                setForm(prev => ({ ...prev, buttonLink: '/offers', buttonText: prev.buttonText || 'View Special Offers' }));
+                              } else if (val === 'CUSTOM') {
+                                // keep custom input
+                              } else {
+                                const selectedCat = categories.find(c => c.slug === val);
+                                if (selectedCat) {
+                                  setForm(prev => ({
+                                    ...prev,
+                                    buttonLink: `/categories/${selectedCat.slug}`,
+                                    buttonText: prev.buttonText || `Shop ${selectedCat.name}`
+                                  }));
+                                }
+                              }
+                            }}
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs bg-white outline-none focus:border-amber-500 font-medium text-gray-800 shadow-sm"
+                          >
+                            <option value="">-- Choose Category or Page for Customer Redirect --</option>
+                            {categories.length > 0 && (
+                              <optgroup label="✨ Store Categories (Redirects to Category Page)">
+                                {categories.map(cat => (
+                                  <option key={cat.id} value={cat.slug}>
+                                    📁 Category: {cat.name} ({cat.subcategories?.length || 0} subcategories)
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+                            <optgroup label="🛍️ Store Main Pages">
+                              <option value="ALL_CATEGORIES">📁 All Collections Page (/categories)</option>
+                              <option value="ALL_PRODUCTS">🛒 Full Products Catalog (/products)</option>
+                              <option value="OFFERS">🏷️ Special Deals & Offers (/offers)</option>
+                              <option value="CUSTOM">🔗 Custom URL Path</option>
+                            </optgroup>
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[11px] font-semibold text-gray-600 block mb-1">Button Text *</label>
+                            <input
+                              type="text"
+                              value={form.buttonText}
+                              onChange={e => setForm({ ...form, buttonText: e.target.value })}
+                              placeholder="e.g. Shop Collection, Explore Sarees"
+                              className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-amber-500 bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-semibold text-gray-600 block mb-1">Target Redirect Link *</label>
+                            <input
+                              type="text"
+                              value={form.buttonLink}
+                              onChange={e => setForm({ ...form, buttonLink: e.target.value })}
+                              placeholder="e.g. /categories/sarees"
+                              className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-amber-500 font-mono bg-white"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Live Redirect Indicator */}
+                        <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/70 text-[11px] text-amber-900 flex items-center justify-between flex-wrap gap-1">
+                          <span className="font-semibold truncate">
+                            🎯 Redirect Link: <code className="font-mono text-amber-800 font-bold">{form.buttonLink || '/categories'}</code>
+                          </span>
+                          <span className="shrink-0 font-bold bg-amber-200/80 px-2 py-0.5 rounded-md text-[10px]">
+                            {form.buttonText || 'Shop Collection'}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>

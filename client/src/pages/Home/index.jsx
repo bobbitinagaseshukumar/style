@@ -303,7 +303,10 @@ const Home = () => {
     };
   }, []);
 
-  const heroSliders = banners.filter(b => (b.type === 'HERO_SLIDER' || !b.type) && (b.isActive !== false));
+  const heroSliders = banners.filter(b => 
+    (b.position === 'HOMEPAGE_HERO' || b.bannerType === 'SLIDER' || b.type === 'HERO_SLIDER' || !b.position) && 
+    (b.isActive !== false)
+  );
 
   return (
     <div className="min-h-screen bg-white">
@@ -311,28 +314,33 @@ const Home = () => {
       {heroSliders.length > 0 && (
         <section className="relative">
           <Swiper modules={[Autoplay, Pagination, EffectFade]} effect="fade" autoplay={{ delay: 5000, disableOnInteraction: false }}
-            pagination={{ clickable: true }} loop className="w-full h-[240px] sm:h-[400px] lg:h-[550px]">
-            {heroSliders.map((banner) => (
-              <SwiperSlide key={banner.id}>
-                <div className="relative w-full h-full">
-                  <img src={banner.imageUrl} alt={banner.title || ''} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8 w-full">
-                      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                        {banner.title && <h2 className="text-2xl sm:text-3xl lg:text-5xl font-serif font-bold text-white mb-3 max-w-lg">{banner.title}</h2>}
-                        {banner.subtitle && <p className="text-sm sm:text-lg text-white/80 mb-6 max-w-md">{banner.subtitle}</p>}
-                        {banner.linkUrl && (
-                          <Link to={banner.linkUrl} className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-5 py-2 sm:px-6 sm:py-3 text-sm sm:text-base rounded-full font-semibold transition-colors shadow-lg">
-                            Shop Collection <FiArrowRight />
+            pagination={{ clickable: true }} loop className="w-full h-[260px] sm:h-[420px] lg:h-[560px]">
+            {heroSliders.map((banner) => {
+              const targetUrl = banner.buttonLink || banner.linkUrl || '/categories';
+              const btnText = banner.buttonText || 'Shop Collection';
+
+              return (
+                <SwiperSlide key={banner.id || banner.title}>
+                  <div className="relative w-full h-full group">
+                    <Link to={targetUrl} className="block w-full h-full">
+                      <img src={banner.imageUrl} alt={banner.title || 'Banner'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
+                    </Link>
+                    <div className="absolute inset-0 flex items-center pointer-events-none">
+                      <div className="max-w-7xl mx-auto px-6 lg:px-8 w-full">
+                        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="pointer-events-auto">
+                          {banner.title && <h2 className="text-2xl sm:text-3xl lg:text-5xl font-serif font-bold text-white mb-2 max-w-xl drop-shadow-lg">{banner.title}</h2>}
+                          {banner.subtitle && <p className="text-xs sm:text-base lg:text-lg text-white/90 mb-5 max-w-md drop-shadow">{banner.subtitle}</p>}
+                          <Link to={targetUrl} className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-gold-500 hover:from-amber-600 hover:to-gold-600 text-white px-5 py-2.5 sm:px-7 sm:py-3.5 text-xs sm:text-base rounded-full font-bold transition-all shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 cursor-pointer">
+                            {btnText} <FiArrowRight className="w-4 h-4" />
                           </Link>
-                        )}
-                      </motion.div>
+                        </motion.div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </SwiperSlide>
-            ))}
+                </SwiperSlide>
+              );
+            })}
           </Swiper>
         </section>
       )}
