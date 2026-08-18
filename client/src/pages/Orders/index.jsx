@@ -108,7 +108,7 @@ const Orders = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get('/orders/my-orders');
+      const { data } = await api.get(`/orders/my-orders?_t=${Date.now()}`);
       setOrders(data.data || []);
     } catch (err) {
       console.error(err);

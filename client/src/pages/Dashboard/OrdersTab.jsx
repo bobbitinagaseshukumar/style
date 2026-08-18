@@ -156,7 +156,7 @@ const OrdersTab = () => {
 
   const fetchOrders = () => {
     setLoading(true);
-    api.get('/orders/my-orders')
+    api.get(`/orders/my-orders?_t=${Date.now()}`)
       .then(({ data }) => setOrders(data.data || []))
       .catch(() => setOrders([]))
       .finally(() => setLoading(false));

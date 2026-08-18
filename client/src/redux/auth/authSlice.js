@@ -58,7 +58,7 @@ const authSlice = createSlice({
       }
       try {
         localStorage.removeItem('persist:auth');
-        localStorage.removeItem('__KVLR_HOME_PERSISTENT_CACHE_V3__');
+        // NOTE: Do NOT clear home page product cache on login — products are public data
       } catch (e) {}
     },
     logoutUser: (state) => {
@@ -72,8 +72,8 @@ const authSlice = createSlice({
         localStorage.removeItem('persist:wishlist');
         localStorage.removeItem('styleverse_cart');
         localStorage.removeItem('styleverse_wishlist');
-        localStorage.removeItem('__KVLR_HOME_PERSISTENT_CACHE_V3__');
-        if (typeof window !== 'undefined') sessionStorage.clear();
+        // NOTE: Do NOT clear home page product cache on logout — products are public data
+        // NOTE: Do NOT sessionStorage.clear() — it destroys the home page SWR cache
       } catch (e) {}
     },
     clearError: (state) => {

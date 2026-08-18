@@ -83,21 +83,72 @@ const getCategoryThumbnail = (cat) => {
   return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80';
 };
 
+// ─── PERSISTENT CACHE KEY (must match the one in authSlice.js) ─────
+const PERSISTENT_CACHE_KEY = '__KVLR_HOME_PERSISTENT_CACHE_V3__';
+const SESSION_CACHE_KEY = '__KVLR_HOME_CACHE__';
+const CACHE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
+
+// Read cached homepage data from sessionStorage (fast) or localStorage (persistent)
+const getCachedHomeData = () => {
+  try {
+    const raw = sessionStorage.getItem(SESSION_CACHE_KEY) || localStorage.getItem(PERSISTENT_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Reject stale cache older than 10 minutes
+    if (parsed.savedAt && (Date.now() - parsed.savedAt) > CACHE_MAX_AGE_MS) return null;
+    return parsed;
+  } catch { return null; }
+};
+
+// Write cache to both sessionStorage and localStorage
+const writeCacheData = (data) => {
+  try {
+    const payload = JSON.stringify({ ...data, savedAt: Date.now() });
+    sessionStorage.setItem(SESSION_CACHE_KEY, payload);
+    localStorage.setItem(PERSISTENT_CACHE_KEY, payload);
+  } catch {}
+};
+
+// Inline SkeletonCard for loading state
+const SkeletonCard = () => (
+  <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 animate-pulse">
+    <div className="aspect-[3/4] bg-gray-200" />
+    <div className="p-3">
+      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+      <div className="h-3 bg-gray-100 rounded w-1/2 mb-3" />
+      <div className="h-5 bg-gray-200 rounded w-1/3" />
+    </div>
+  </div>
+);
+
 const Home = () => {
   const prevDataRef = React.useRef(null);
-  const [banners, setBanners] = useState(DEFAULT_HERO_SLIDERS);
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
-  const [products, setProducts] = useState({
-    featured: [],
-    trending: [],
-    newArrivals: [],
-    todaysDeals: [],
-    allPublished: []
+
+  // ── SWR: Hydrate initial state from cache so products are INSTANT ──
+  const cached = React.useMemo(() => getCachedHomeData(), []);
+
+  const [banners, setBanners] = useState(cached?.banners?.length > 0 ? cached.banners : DEFAULT_HERO_SLIDERS);
+  const [categories, setCategories] = useState(cached?.categories?.length > 0 ? cached.categories : DEFAULT_CATEGORIES);
+  const [products, setProducts] = useState(() => {
+    if (cached?.products && (
+      cached.products.allPublished?.length > 0 ||
+      cached.products.featured?.length > 0
+    )) {
+      return {
+        featured: cached.products.featured || [],
+        trending: cached.products.trending || [],
+        newArrivals: cached.products.newArrivals || [],
+        todaysDeals: cached.products.todaysDeals || [],
+        allPublished: cached.products.allPublished || []
+      };
+    }
+    return { featured: [], trending: [], newArrivals: [], todaysDeals: [], allPublished: [] };
   });
-  const [trendingData, setTrendingData] = useState(null);
+  const [trendingData, setTrendingData] = useState(cached?.trendingData || null);
   const [enableTrending, setEnableTrending] = useState(true);
-  const [dynamicSections, setDynamicSections] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [dynamicSections, setDynamicSections] = useState(cached?.dynamicSections || []);
+  // Only show loading skeleton if we have NO cached data at all
+  const [isLoading, setIsLoading] = useState(!cached);
 
   useEffect(() => {
     let isMounted = true;
@@ -139,55 +190,51 @@ const Home = () => {
             setIsLoading(false);
             bundleSuccess = true;
 
-            // Persist for 0ms instant loading on next app boot / back navigation
-            try {
-              const cachePayload = JSON.stringify({
-                banners: bundle.banners || [],
-                categories: bundle.categories || [],
-                products: bundle.products || {},
-                trendingData: bundle.trendingData || null,
-                dynamicSections: bundle.dynamicSections || [],
-                savedAt: Date.now()
-              });
-              localStorage.setItem(PERSISTENT_CACHE_KEY, cachePayload);
-              sessionStorage.setItem('__KVLR_HOME_CACHE__', cachePayload);
-            } catch (e) {}
+            // Persist for instant loading on next mount / back navigation
+            writeCacheData({
+              banners: bundle.banners || [],
+              categories: bundle.categories || [],
+              products: bundle.products || {},
+              trendingData: bundle.trendingData || null,
+              dynamicSections: bundle.dynamicSections || [],
+            });
           }
         } catch (bundleErr) {
           bundleSuccess = false;
         }
 
-        // Always fetch direct live products endpoint to guarantee every published product renders 100%
-        try {
-          const directProdsRes = await api.get('/products?limit=50&sort=newest');
-          const liveProds = directProdsRes.data?.data?.products || directProdsRes.data?.data || [];
-          if (Array.isArray(liveProds) && liveProds.length > 0 && isMounted) {
-            setProducts(prev => {
-              const feat = liveProds.filter(p => p.featured);
-              const newArr = liveProds.filter(p => p.newArrival || p.isNew);
-              const trend = liveProds.filter(p => p.trending);
-              const deals = liveProds.filter(p => p.todaysDeal || p.bestSeller);
-              const nextProds = {
-                featured: feat.length > 0 ? feat : prev.featured || [],
-                trending: trend.length > 0 ? trend : prev.trending || [],
-                newArrivals: newArr.length > 0 ? newArr : prev.newArrivals || [],
-                todaysDeals: deals.length > 0 ? deals : prev.todaysDeals || [],
-                allPublished: liveProds
-              };
-              // Persist live products to cache
-              try {
-                const currentCache = getCachedHomeData() || {};
-                localStorage.setItem(PERSISTENT_CACHE_KEY, JSON.stringify({
-                  ...currentCache,
+        // Only fetch direct products if bundle failed (avoid double-fetch)
+        if (!bundleSuccess) {
+          try {
+            const directProdsRes = await api.get('/products?limit=50&sort=newest');
+            const liveProds = directProdsRes.data?.data?.products || directProdsRes.data?.data || [];
+            if (Array.isArray(liveProds) && liveProds.length > 0 && isMounted) {
+              setProducts(prev => {
+                const feat = liveProds.filter(p => p.featured);
+                const newArr = liveProds.filter(p => p.newArrival || p.isNew);
+                const trend = liveProds.filter(p => p.trending);
+                const deals = liveProds.filter(p => p.todaysDeal || p.bestSeller);
+                const nextProds = {
+                  featured: feat.length > 0 ? feat : prev.featured || [],
+                  trending: trend.length > 0 ? trend : prev.trending || [],
+                  newArrivals: newArr.length > 0 ? newArr : prev.newArrivals || [],
+                  todaysDeals: deals.length > 0 ? deals : prev.todaysDeals || [],
+                  allPublished: liveProds
+                };
+                // Persist live products to cache
+                writeCacheData({
+                  banners: banners,
+                  categories: categories,
                   products: nextProds,
-                  savedAt: Date.now()
-                }));
-              } catch (e) {}
-              return nextProds;
-            });
-            setIsLoading(false);
-          }
-        } catch (directErr) {}
+                  trendingData: trendingData,
+                  dynamicSections: dynamicSections,
+                });
+                return nextProds;
+              });
+              setIsLoading(false);
+            }
+          } catch (directErr) {}
+        }
 
         if (bundleSuccess || !isMounted) return;
 
@@ -265,18 +312,13 @@ const Home = () => {
         setIsLoading(false);
 
         // Save to cache
-        try {
-          const cachePayload = JSON.stringify({
-            banners: nextBanners,
-            categories: nextCategories,
-            products: resolvedProducts,
-            trendingData: nextTrendingData,
-            dynamicSections: nextDynamicSections,
-            savedAt: Date.now()
-          });
-          localStorage.setItem(PERSISTENT_CACHE_KEY, cachePayload);
-          sessionStorage.setItem('__KVLR_HOME_CACHE__', cachePayload);
-        } catch (e) {}
+        writeCacheData({
+          banners: nextBanners,
+          categories: nextCategories,
+          products: resolvedProducts,
+          trendingData: nextTrendingData,
+          dynamicSections: nextDynamicSections,
+        });
       } catch (err) {
         console.error('Home page data fetch error:', err);
         setIsLoading(false);
@@ -288,7 +330,7 @@ const Home = () => {
     const handleContentUpdate = () => {
       try {
         localStorage.removeItem(PERSISTENT_CACHE_KEY);
-        sessionStorage.removeItem('__KVLR_HOME_CACHE__');
+        sessionStorage.removeItem(SESSION_CACHE_KEY);
       } catch (e) {}
       fetchHomeData();
     };

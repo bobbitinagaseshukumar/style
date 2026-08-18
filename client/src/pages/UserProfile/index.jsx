@@ -80,7 +80,7 @@ const UserProfile = () => {
       const [userRes, addrRes, orderRes, logRes] = await Promise.allSettled([
         api.get('/users/me'),
         api.get('/users/addresses'),
-        api.get('/orders/my-orders'),
+        api.get(`/orders/my-orders?_t=${Date.now()}`),
         api.get('/users/activity-logs'),
       ]);
 

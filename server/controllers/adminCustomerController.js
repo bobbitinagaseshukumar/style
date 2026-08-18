@@ -870,15 +870,10 @@ exports.deleteCustomer = asyncHandler(async (req, res, next) => {
     }
 
     // Decouple orders
-    const orders = await prisma.order.findMany({ where: { userId: id } }).catch(() => []);
-    if (orders.length > 0) {
-      for (const ord of orders) {
-        await prisma.orderItem.deleteMany({ where: { orderId: ord.id } }).catch(() => {});
-        await prisma.orderStatusHistory.deleteMany({ where: { orderId: ord.id } }).catch(() => {});
-        await prisma.payment.deleteMany({ where: { orderId: ord.id } }).catch(() => {});
-      }
-      await prisma.order.deleteMany({ where: { userId: id } }).catch(() => {});
-    }
+    await prisma.order.updateMany({
+      where: { userId: id },
+      data: { userId: null, deletedByAdmin: true }
+    }).catch(() => {});
 
     await logAdminAction(req, user, 'ACCOUNT_DELETED', 'Admin permanently deleted customer account');
     await prisma.user.delete({ where: { id } });

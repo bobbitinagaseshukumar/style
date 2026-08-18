@@ -911,14 +911,14 @@ exports.deleteOrder = asyncHandler(async (req, res, next) => {
   if (!order) {
     return next(new ApiError(404, 'Order not found'));
   }
+  if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+    return next(new ApiError(403, 'Only admins can delete orders'));
+  }
 
-  // PERMANENT DELETE: Delete order items first, then order record
-  await prisma.orderItem.deleteMany({ where: { orderId: id } }).catch(() => {});
-  await prisma.order.delete({ where: { id } }).catch(async () => {
-    await prisma.order.update({
-      where: { id },
-      data: { deletedByAdmin: true }
-    });
+  // SOFT DELETE: Mark as deleted by admin instead of removing from DB
+  await prisma.order.update({
+    where: { id },
+    data: { deletedByAdmin: true }
   });
 
   res.status(200).json({

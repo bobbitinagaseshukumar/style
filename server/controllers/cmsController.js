@@ -1715,7 +1715,7 @@ exports.updateHeaderSettings = asyncHandler(async (req, res) => {
 // ==================== CONSOLIDATED HOMEPAGE BUNDLE (LIGHTNING FAST) ====================
 let homepageBundleCache = null;
 let homepageBundleCacheTime = 0;
-const BUNDLE_CACHE_TTL_MS = 60 * 1000; // 60s memory cache
+const BUNDLE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 min memory cache (invalidated on mutations)
 
 exports.invalidateHomepageBundleCache = () => {
     homepageBundleCache = null;
