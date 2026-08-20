@@ -86,17 +86,14 @@ const getCategoryThumbnail = (cat) => {
 // ─── PERSISTENT CACHE KEY (must match the one in authSlice.js) ─────
 const PERSISTENT_CACHE_KEY = '__KVLR_HOME_PERSISTENT_CACHE_V3__';
 const SESSION_CACHE_KEY = '__KVLR_HOME_CACHE__';
-const CACHE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
 
-// Read cached homepage data — only return if it has REAL products
+// Read cached homepage data — always return if it has REAL products (true SWR: show stale, revalidate in background)
 const getCachedHomeData = () => {
   try {
     const raw = sessionStorage.getItem(SESSION_CACHE_KEY) || localStorage.getItem(PERSISTENT_CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    // Reject stale cache older than 10 minutes
-    if (parsed.savedAt && (Date.now() - parsed.savedAt) > CACHE_MAX_AGE_MS) return null;
-    // Reject cache with no actual products (prevents blank page from bad cache)
+    // Only reject cache with no actual products (prevents blank page from bad cache)
     const prods = parsed.products;
     if (!prods) return null;
     const hasProducts = (prods.allPublished?.length > 0) || (prods.featured?.length > 0) || (prods.trending?.length > 0);
@@ -270,89 +267,6 @@ const Home = () => {
           }
         }
 
-        if (bundleSuccess || !isMounted) return;
-
-        // Fallback parallel requests
-        const [bannersRes, categoriesRes, allProductsRes, featuredRes, trendingRes, newArrivalsRes, bestSellerRes, trendSelRes, settingsRes, dynSecRes] = await Promise.allSettled([
-          api.get('/cms/banners?activeOnly=true'),
-          api.get('/categories?showOnHomepage=true&limit=8'),
-          api.get('/products?limit=50&sort=newest'),
-          api.get('/products?featured=true&limit=12'),
-          api.get('/products?trending=true&limit=12'),
-          api.get('/products?newArrival=true&limit=12'),
-          api.get('/products?bestSeller=true&limit=12'),
-          api.get('/cms/trending-selection/public'),
-          api.get('/cms/settings'),
-          api.get('/cms/homepage/sections/public'),
-        ]);
-
-        if (!isMounted) return;
-
-        let nextDynamicSections = [];
-        if (dynSecRes.status === 'fulfilled' && dynSecRes.value.data?.data) {
-          nextDynamicSections = dynSecRes.value.data.data;
-          setDynamicSections(nextDynamicSections);
-        }
-
-        if (settingsRes.status === 'fulfilled') {
-          const cfg = settingsRes.value.data?.data || {};
-          if (cfg.enableTrendingProducts === false) setEnableTrending(false);
-        }
-
-        let nextTrendingData = null;
-        if (trendSelRes.status === 'fulfilled' && trendSelRes.value.data?.data) {
-          nextTrendingData = trendSelRes.value.data.data;
-          setTrendingData(nextTrendingData);
-        }
-
-        let nextBanners = DEFAULT_HERO_SLIDERS;
-        if (bannersRes.status === 'fulfilled' && bannersRes.value.data?.data?.length > 0) {
-          nextBanners = bannersRes.value.data.data;
-          setBanners(nextBanners);
-        }
-
-        let nextCategories = DEFAULT_CATEGORIES;
-        if (categoriesRes.status === 'fulfilled' && categoriesRes.value.data?.data?.length > 0) {
-          nextCategories = categoriesRes.value.data.data;
-          setCategories(nextCategories);
-        }
-
-        // Extract products helper
-        const extractProducts = (res) => {
-          if (res.status !== 'fulfilled') return [];
-          const d = res.value?.data;
-          if (Array.isArray(d?.data?.products)) return d.data.products;
-          if (Array.isArray(d?.data)) return d.data;
-          if (Array.isArray(d?.products)) return d.products;
-          if (Array.isArray(d)) return d;
-          return [];
-        };
-
-        const allProductsList = extractProducts(allProductsRes);
-        let featuredList = extractProducts(featuredRes);
-        let trendingList = extractProducts(trendingRes);
-        let newArrivalsList = extractProducts(newArrivalsRes);
-        let bestSellerList = extractProducts(bestSellerRes);
-
-        const resolvedProducts = {
-          featured: featuredList,
-          trending: trendingList,
-          newArrivals: newArrivalsList,
-          todaysDeals: bestSellerList,
-          allPublished: allProductsList
-        };
-
-        setProducts(resolvedProducts);
-        setIsLoading(false);
-
-        // Save to cache
-        writeCacheData({
-          banners: nextBanners,
-          categories: nextCategories,
-          products: resolvedProducts,
-          trendingData: nextTrendingData,
-          dynamicSections: nextDynamicSections,
-        });
       } catch (err) {
         console.error('Home page data fetch error:', err);
         setIsLoading(false);

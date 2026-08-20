@@ -1715,7 +1715,7 @@ exports.updateHeaderSettings = asyncHandler(async (req, res) => {
 // ==================== CONSOLIDATED HOMEPAGE BUNDLE (LIGHTNING FAST) ====================
 let homepageBundleCache = null;
 let homepageBundleCacheTime = 0;
-const BUNDLE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 min memory cache (invalidated on mutations)
+const BUNDLE_CACHE_TTL_MS = 15 * 60 * 1000; // 15 min memory cache (invalidated on product/category/banner mutations)
 
 exports.invalidateHomepageBundleCache = () => {
     homepageBundleCache = null;
@@ -1725,29 +1725,33 @@ exports.invalidateHomepageBundleCache = () => {
 exports.getHomepageBundle = asyncHandler(async (req, res) => {
     const now = Date.now();
     if (homepageBundleCache && (now - homepageBundleCacheTime < BUNDLE_CACHE_TTL_MS)) {
+        // Serve from memory cache with HTTP cache headers
+        res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
         return res.status(200).json({ success: true, cached: true, data: homepageBundleCache });
     }
 
     try {
-        const productInclude = {
-            images: {
-                orderBy: { displayOrder: 'asc' }
-            },
-            category: {
-                select: { id: true, name: true, slug: true }
-            }
+        const productSelect = {
+            id: true, name: true, slug: true, sku: true,
+            price: true, discountPercent: true, discountPrice: true,
+            stock: true, shortDesc: true, status: true,
+            featured: true, trending: true, newArrival: true,
+            bestSeller: true, todaysDeal: true, flashSale: true,
+            showOnHomepage: true, isRecommended: true,
+            isPremium: true, isVisible: true,
+            sizes: true, colors: true,
+            createdAt: true, displayOrder: true,
+            images: { orderBy: { displayOrder: 'asc' } },
+            category: { select: { id: true, name: true, slug: true } }
         };
 
         const publishedStatusFilter = { notIn: ['DELETED', 'ARCHIVED', 'DRAFT', 'deleted', 'archived', 'draft'] };
 
+        // Only 6 queries instead of 10 — featured/trending/newArrival/bestSeller derived from allProducts in memory
         const [
             banners,
             categories,
             allProducts,
-            featuredProducts,
-            trendingProducts,
-            newArrivalProducts,
-            bestSellerProducts,
             trendingSelection,
             storeSettings,
             rawDynamicSections
@@ -1766,31 +1770,7 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
                 where: { status: publishedStatusFilter, isVisible: true },
                 take: 50,
                 orderBy: { createdAt: 'desc' },
-                include: productInclude
-            }).catch(() => []),
-            prisma.product.findMany({
-                where: { status: publishedStatusFilter, isVisible: true, featured: true },
-                take: 12,
-                orderBy: { createdAt: 'desc' },
-                include: productInclude
-            }).catch(() => []),
-            prisma.product.findMany({
-                where: { status: publishedStatusFilter, isVisible: true, trending: true },
-                take: 12,
-                orderBy: { createdAt: 'desc' },
-                include: productInclude
-            }).catch(() => []),
-            prisma.product.findMany({
-                where: { status: publishedStatusFilter, isVisible: true, newArrival: true },
-                take: 12,
-                orderBy: { createdAt: 'desc' },
-                include: productInclude
-            }).catch(() => []),
-            prisma.product.findMany({
-                where: { status: publishedStatusFilter, isVisible: true, bestSeller: true },
-                take: 12,
-                orderBy: { createdAt: 'desc' },
-                include: productInclude
+                select: productSelect
             }).catch(() => []),
             prisma.trendingSelection.findFirst({
                 where: { isActive: true }
@@ -1801,6 +1781,12 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
             }).catch(() => [])
         ]);
 
+        // Derive product sections from allProducts in-memory (zero extra DB queries)
+        const featuredProducts = allProducts.filter(p => p.featured).slice(0, 12);
+        const trendingProducts = allProducts.filter(p => p.trending).slice(0, 12);
+        const newArrivalProducts = allProducts.filter(p => p.newArrival).slice(0, 12);
+        const bestSellerProducts = allProducts.filter(p => p.bestSeller).slice(0, 12);
+
         // Enrich trendingSelection products if set
         let enrichedTrending = null;
         if (trendingSelection) {
@@ -1808,27 +1794,43 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
             try { pIds = JSON.parse(trendingSelection.productIds || '[]'); } catch (e) { pIds = []; }
             let tProducts = [];
             if (pIds.length > 0) {
-                tProducts = await prisma.product.findMany({
-                    where: { id: { in: pIds }, status: 'PUBLISHED', isVisible: true },
-                    include: productInclude
-                }).catch(() => []);
+                // Try to resolve from allProducts first (avoid extra DB query)
+                const allProductsMap = new Map(allProducts.map(p => [p.id, p]));
+                tProducts = pIds.map(id => allProductsMap.get(id)).filter(Boolean);
+                // Only query DB if some products weren't in allProducts (e.g. different status)
+                if (tProducts.length < pIds.length) {
+                    const missingIds = pIds.filter(id => !allProductsMap.has(id));
+                    if (missingIds.length > 0) {
+                        const extraProducts = await prisma.product.findMany({
+                            where: { id: { in: missingIds }, status: 'PUBLISHED', isVisible: true },
+                            select: productSelect
+                        }).catch(() => []);
+                        tProducts = [...tProducts, ...extraProducts];
+                    }
+                }
             }
             enrichedTrending = { ...trendingSelection, products: tProducts };
         }
 
         // Enrich dynamicSections products
+        const allProductsMap = new Map(allProducts.map(p => [p.id, p]));
         const enrichedDynamicSections = await Promise.all(
             (rawDynamicSections || []).map(async (sec) => {
                 let pIds = [];
                 try { pIds = JSON.parse(sec.productIds || '[]'); } catch (e) { pIds = []; }
                 let sProducts = [];
                 if (pIds.length > 0) {
-                    const rawProds = await prisma.product.findMany({
-                        where: { id: { in: pIds }, status: 'PUBLISHED', isVisible: true },
-                        include: productInclude
-                    }).catch(() => []);
-                    const prodMap = new Map(rawProds.map((p) => [p.id, p]));
-                    sProducts = pIds.map((id) => prodMap.get(id)).filter(Boolean);
+                    // Resolve from allProducts map first
+                    sProducts = pIds.map(id => allProductsMap.get(id)).filter(Boolean);
+                    const missingIds = pIds.filter(id => !allProductsMap.has(id));
+                    if (missingIds.length > 0) {
+                        const rawProds = await prisma.product.findMany({
+                            where: { id: { in: missingIds }, status: 'PUBLISHED', isVisible: true },
+                            select: productSelect
+                        }).catch(() => []);
+                        const prodMap = new Map(rawProds.map((p) => [p.id, p]));
+                        sProducts = pIds.map((id) => allProductsMap.get(id) || prodMap.get(id)).filter(Boolean);
+                    }
                 }
                 return { ...sec, products: sProducts };
             })
@@ -1839,10 +1841,10 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
             categories: categories || [],
             products: {
                 allPublished: allProducts || [],
-                featured: featuredProducts || [],
-                trending: trendingProducts || [],
-                newArrivals: newArrivalProducts || [],
-                todaysDeals: bestSellerProducts || []
+                featured: featuredProducts,
+                trending: trendingProducts,
+                newArrivals: newArrivalProducts,
+                todaysDeals: bestSellerProducts
             },
             trendingData: enrichedTrending,
             settings: storeSettings,
@@ -1852,6 +1854,8 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
         homepageBundleCache = bundleData;
         homepageBundleCacheTime = Date.now();
 
+        // HTTP cache headers: browser can reuse for 2 min, serve stale for 5 min while revalidating
+        res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
         res.status(200).json({ success: true, cached: false, data: bundleData });
     } catch (err) {
         console.error('[HOMEPAGE BUNDLE ERROR]:', err.message);
