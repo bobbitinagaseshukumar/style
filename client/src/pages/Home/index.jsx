@@ -204,22 +204,27 @@ const Home = () => {
             if (bundle.settings?.enableTrendingProducts === false) setEnableTrending(false);
 
             setIsLoading(false);
-            bundleSuccess = true;
+            // Only mark bundle as fully successful if it actually returned products
+            const bundleProds = bundle.products || {};
+            const hasAnyProducts = (bundleProds.allPublished?.length > 0) || (bundleProds.featured?.length > 0);
+            bundleSuccess = hasAnyProducts;
 
             // Persist for instant loading on next mount / back navigation
-            writeCacheData({
-              banners: bundle.banners || [],
-              categories: bundle.categories || [],
-              products: bundle.products || {},
-              trendingData: bundle.trendingData || null,
-              dynamicSections: bundle.dynamicSections || [],
-            });
+            if (hasAnyProducts) {
+              writeCacheData({
+                banners: bundle.banners || [],
+                categories: bundle.categories || [],
+                products: bundle.products || {},
+                trendingData: bundle.trendingData || null,
+                dynamicSections: bundle.dynamicSections || [],
+              });
+            }
           }
         } catch (bundleErr) {
           bundleSuccess = false;
         }
 
-        // Only fetch direct products if bundle failed (avoid double-fetch)
+        // Fetch direct products if bundle failed OR returned empty products
         if (!bundleSuccess) {
           try {
             const directProdsRes = await api.get('/products?limit=50&sort=newest');
