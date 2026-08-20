@@ -1,14 +1,14 @@
 const jwt = require('jsonwebtoken');
 
-const generateToken = (userId, role) => {
+const generateToken = (userId, role, tokenVersion = 0) => {
     const secret = process.env.JWT_SECRET || 'Styleverse@2026SecureJWT#123456789';
-    return jwt.sign({ id: userId, role }, secret, {
+    return jwt.sign({ id: userId, role, tokenVersion }, secret, {
         expiresIn: process.env.JWT_EXPIRES_IN || '7d',
     });
 };
 
 const sendTokenResponse = (user, statusCode, res, message="Token generated successfully") => {
-    const token = generateToken(user.id, user.role);
+    const token = generateToken(user.id, user.role, user.tokenVersion || 0);
 
     const options = {
         expires: new Date(

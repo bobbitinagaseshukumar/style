@@ -88,7 +88,7 @@ const PERSISTENT_CACHE_KEY = '__KVLR_HOME_PERSISTENT_CACHE_V3__';
 const SESSION_CACHE_KEY = '__KVLR_HOME_CACHE__';
 const CACHE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
 
-// Read cached homepage data from sessionStorage (fast) or localStorage (persistent)
+// Read cached homepage data — only return if it has REAL products
 const getCachedHomeData = () => {
   try {
     const raw = sessionStorage.getItem(SESSION_CACHE_KEY) || localStorage.getItem(PERSISTENT_CACHE_KEY);
@@ -96,6 +96,11 @@ const getCachedHomeData = () => {
     const parsed = JSON.parse(raw);
     // Reject stale cache older than 10 minutes
     if (parsed.savedAt && (Date.now() - parsed.savedAt) > CACHE_MAX_AGE_MS) return null;
+    // Reject cache with no actual products (prevents blank page from bad cache)
+    const prods = parsed.products;
+    if (!prods) return null;
+    const hasProducts = (prods.allPublished?.length > 0) || (prods.featured?.length > 0) || (prods.trending?.length > 0);
+    if (!hasProducts) return null;
     return parsed;
   } catch { return null; }
 };
@@ -103,6 +108,9 @@ const getCachedHomeData = () => {
 // Write cache to both sessionStorage and localStorage
 const writeCacheData = (data) => {
   try {
+    // Only write cache if there are real products to cache
+    const prods = data?.products;
+    if (!prods || (!prods.allPublished?.length && !prods.featured?.length)) return;
     const payload = JSON.stringify({ ...data, savedAt: Date.now() });
     sessionStorage.setItem(SESSION_CACHE_KEY, payload);
     localStorage.setItem(PERSISTENT_CACHE_KEY, payload);
@@ -121,19 +129,17 @@ const SkeletonCard = () => (
   </div>
 );
 
-const Home = () => {
-  const prevDataRef = React.useRef(null);
+const EMPTY_PRODUCTS = { featured: [], trending: [], newArrivals: [], todaysDeals: [], allPublished: [] };
 
-  // ── SWR: Hydrate initial state from cache so products are INSTANT ──
+const Home = () => {
+  // ── SWR: Hydrate initial state from VALIDATED cache so products are INSTANT ──
   const cached = React.useMemo(() => getCachedHomeData(), []);
+  const hasCachedProducts = !!cached;
 
   const [banners, setBanners] = useState(cached?.banners?.length > 0 ? cached.banners : DEFAULT_HERO_SLIDERS);
   const [categories, setCategories] = useState(cached?.categories?.length > 0 ? cached.categories : DEFAULT_CATEGORIES);
   const [products, setProducts] = useState(() => {
-    if (cached?.products && (
-      cached.products.allPublished?.length > 0 ||
-      cached.products.featured?.length > 0
-    )) {
+    if (hasCachedProducts) {
       return {
         featured: cached.products.featured || [],
         trending: cached.products.trending || [],
@@ -142,18 +148,35 @@ const Home = () => {
         allPublished: cached.products.allPublished || []
       };
     }
-    return { featured: [], trending: [], newArrivals: [], todaysDeals: [], allPublished: [] };
+    return EMPTY_PRODUCTS;
   });
   const [trendingData, setTrendingData] = useState(cached?.trendingData || null);
   const [enableTrending, setEnableTrending] = useState(true);
   const [dynamicSections, setDynamicSections] = useState(cached?.dynamicSections || []);
-  // Only show loading skeleton if we have NO cached data at all
-  const [isLoading, setIsLoading] = useState(!cached);
+  // Show skeleton if we DON'T have cached products with real data
+  const [isLoading, setIsLoading] = useState(!hasCachedProducts);
+
+  // Use refs to avoid stale closures when writing cache from inside callbacks
+  const bannersRef = React.useRef(banners);
+  const categoriesRef = React.useRef(categories);
+  const trendingDataRef = React.useRef(trendingData);
+  const dynamicSectionsRef = React.useRef(dynamicSections);
+  bannersRef.current = banners;
+  categoriesRef.current = categories;
+  trendingDataRef.current = trendingData;
+  dynamicSectionsRef.current = dynamicSections;
 
   useEffect(() => {
     let isMounted = true;
 
     const fetchHomeData = async () => {
+      // Always set loading true if we have NO products yet
+      setProducts(prev => {
+        const hasAny = prev.allPublished?.length > 0 || prev.featured?.length > 0;
+        if (!hasAny) setIsLoading(true);
+        return prev;
+      });
+
       try {
         // Fast path: Fetch consolidated homepage bundle in 1 single optimized request
         let bundleSuccess = false;
@@ -163,25 +186,18 @@ const Home = () => {
             const bundle = bundleRes.data.data;
             if (!isMounted) return;
 
-            const newDataKey = JSON.stringify({
-              b: (bundle.banners || []).map(b => b.id),
-              c: (bundle.categories || []).map(c => c.id),
-              p: (bundle.products?.allPublished || []).map(p => p.id)
-            });
-            if (newDataKey !== prevDataRef.current) {
-              prevDataRef.current = newDataKey;
-              if (bundle.banners?.length > 0) setBanners(bundle.banners);
-              if (Array.isArray(bundle.categories) && bundle.categories.length > 0) setCategories(bundle.categories);
-              if (bundle.products) {
-                const bProds = bundle.products;
-                setProducts({
-                  featured: bProds.featured || [],
-                  trending: bProds.trending || [],
-                  newArrivals: bProds.newArrivals || [],
-                  todaysDeals: bProds.todaysDeals || [],
-                  allPublished: bProds.allPublished || []
-                });
-              }
+            if (bundle.banners?.length > 0) setBanners(bundle.banners);
+            if (Array.isArray(bundle.categories) && bundle.categories.length > 0) setCategories(bundle.categories);
+            if (bundle.products) {
+              const bProds = bundle.products;
+              const newProducts = {
+                featured: bProds.featured || [],
+                trending: bProds.trending || [],
+                newArrivals: bProds.newArrivals || [],
+                todaysDeals: bProds.todaysDeals || [],
+                allPublished: bProds.allPublished || []
+              };
+              setProducts(newProducts);
             }
             if (bundle.trendingData !== undefined) setTrendingData(bundle.trendingData);
             if (bundle.dynamicSections) setDynamicSections(bundle.dynamicSections);
@@ -209,11 +225,12 @@ const Home = () => {
             const directProdsRes = await api.get('/products?limit=50&sort=newest');
             const liveProds = directProdsRes.data?.data?.products || directProdsRes.data?.data || [];
             if (Array.isArray(liveProds) && liveProds.length > 0 && isMounted) {
+              const feat = liveProds.filter(p => p.featured);
+              const newArr = liveProds.filter(p => p.newArrival || p.isNew);
+              const trend = liveProds.filter(p => p.trending);
+              const deals = liveProds.filter(p => p.todaysDeal || p.bestSeller);
+
               setProducts(prev => {
-                const feat = liveProds.filter(p => p.featured);
-                const newArr = liveProds.filter(p => p.newArrival || p.isNew);
-                const trend = liveProds.filter(p => p.trending);
-                const deals = liveProds.filter(p => p.todaysDeal || p.bestSeller);
                 const nextProds = {
                   featured: feat.length > 0 ? feat : prev.featured || [],
                   trending: trend.length > 0 ? trend : prev.trending || [],
@@ -221,19 +238,31 @@ const Home = () => {
                   todaysDeals: deals.length > 0 ? deals : prev.todaysDeals || [],
                   allPublished: liveProds
                 };
-                // Persist live products to cache
-                writeCacheData({
-                  banners: banners,
-                  categories: categories,
-                  products: nextProds,
-                  trendingData: trendingData,
-                  dynamicSections: dynamicSections,
-                });
                 return nextProds;
               });
               setIsLoading(false);
+
+              // Persist using refs (avoids stale closure)
+              writeCacheData({
+                banners: bannersRef.current,
+                categories: categoriesRef.current,
+                products: {
+                  featured: feat,
+                  trending: trend,
+                  newArrivals: newArr,
+                  todaysDeals: deals,
+                  allPublished: liveProds
+                },
+                trendingData: trendingDataRef.current,
+                dynamicSections: dynamicSectionsRef.current,
+              });
+            } else {
+              // API returned empty — still stop loading
+              setIsLoading(false);
             }
-          } catch (directErr) {}
+          } catch (directErr) {
+            setIsLoading(false);
+          }
         }
 
         if (bundleSuccess || !isMounted) return;
@@ -493,7 +522,7 @@ const Home = () => {
       {/* 6. MAIN PUBLISHED PRODUCTS CATALOG — Renders immediately below Categories */}
       {(() => {
         const allList = products.allPublished || [];
-        if (allList.length === 0) return null;
+        if (allList.length === 0 && !isLoading) return null;
 
         return (
           <section className="py-12 lg:py-16 bg-white border-t border-gray-100">
@@ -508,9 +537,15 @@ const Home = () => {
                 </Link>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                {allList.slice(0, 16).map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
+                {allList.length > 0 ? (
+                  allList.slice(0, 16).map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))
+                ) : (
+                  [1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                    <SkeletonCard key={n} />
+                  ))
+                )}
               </div>
             </div>
           </section>

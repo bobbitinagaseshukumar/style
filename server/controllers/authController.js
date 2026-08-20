@@ -167,7 +167,7 @@ exports.verifyOTP = asyncHandler(async (req, res, next) => {
   sendWelcomeEmail(user.email, user.fullName);
 
   // Generate JWT token
-  const token = generateToken(user.id, user.role);
+  const token = generateToken(user.id, user.role, user.tokenVersion || 0);
 
   // Save or update UserSession record
   try {
@@ -195,6 +195,15 @@ exports.verifyOTP = asyncHandler(async (req, res, next) => {
         }
       });
     }
+
+    // Clean up any duplicate sessions with same fingerprint but different token
+    await prisma.userSession.deleteMany({
+      where: {
+        userId: user.id,
+        deviceFingerprint,
+        token: { not: token }
+      }
+    }).catch(() => {});
   } catch (sessErr) {
     console.warn('[VERIFY OTP SESSION SAVE NOTICE]', sessErr.message);
   }
@@ -285,95 +294,6 @@ exports.login = asyncHandler(async (req, res, next) => {
     success: true,
     message: `Authentication code sent to ${user.email}. Please enter the 6-digit code to complete sign in.`,
     data: { userId: user.id, email: user.email, requiresOTP: true }
-  });
-
-  // Update last login timestamp
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { lastLoginAt: new Date(), isVerified: true },
-  });
-
-  // ── Multi-Device Session Limit Check (Max 3 Devices) ──
-  const deviceFingerprint = req.body.deviceFingerprint || `fp-${req.headers['user-agent']?.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30) || 'default'}`;
-  const deviceName = req.body.deviceName || 'Web Browser';
-
-  let activeSessions = [];
-  let existingSession = null;
-
-  try {
-    activeSessions = await prisma.userSession.findMany({
-      where: { userId: user.id },
-      orderBy: { lastActiveAt: 'desc' }
-    });
-
-    existingSession = activeSessions.find(s => s.deviceFingerprint === deviceFingerprint);
-
-    if (!existingSession && activeSessions.length >= 3) {
-      return res.status(200).json({
-        success: false,
-        code: 'MAX_DEVICES_REACHED',
-        message: 'Maximum limit of 3 logged-in devices reached. Select a device to log out from to continue.',
-        data: {
-          userId: user.id,
-          email: user.email,
-          activeSessions: activeSessions.map(s => ({
-            id: s.id,
-            deviceName: s.deviceName || 'Browser Session',
-            browser: s.browser || 'Web Browser',
-            ipAddress: s.ipAddress || req.ip || 'Unknown IP',
-            lastActiveAt: s.lastActiveAt
-          }))
-        }
-      });
-    }
-  } catch (sessErr) {
-    console.warn('[USER SESSION CHECK NOTICE]', sessErr.message);
-  }
-
-  // Generate Multi-Device JWT Token (30-Day Expiration)
-  const token = generateToken(user.id, user.role);
-
-  // Save or update UserSession record
-  try {
-    if (existingSession) {
-      await prisma.userSession.update({
-        where: { id: existingSession.id },
-        data: {
-          token,
-          lastActiveAt: new Date(),
-          deviceName,
-          ipAddress: String(req.ip || '127.0.0.1')
-        }
-      });
-    } else {
-      await prisma.userSession.create({
-        data: {
-          userId: user.id,
-          token,
-          deviceFingerprint,
-          deviceName,
-          browser: req.headers['user-agent']?.substring(0, 50) || 'Web Browser',
-          ipAddress: String(req.ip || '127.0.0.1')
-        }
-      });
-    }
-  } catch (sessErr) {
-    console.warn('[USER SESSION RECORD FAILED]', sessErr.message);
-  }
-
-  res.status(200).json({
-    success: true,
-    message: 'Login successful! Active device session established.',
-    data: {
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-        isVerified: true,
-      },
-      token,
-    },
   });
 });
 
@@ -695,7 +615,7 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
     },
   });
 
-  const token = generateToken(updatedUser.id, updatedUser.role);
+  const token = generateToken(updatedUser.id, updatedUser.role, updatedUser.tokenVersion || 0);
 
   // Save or update UserSession record
   try {

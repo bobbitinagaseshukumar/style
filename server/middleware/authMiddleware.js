@@ -42,35 +42,25 @@ const protect = asyncHandler(async (req, res, next) => {
             if (sessions.length > 0) {
                 const matchingSession = sessions.find(s => s.token === token);
                 if (matchingSession) {
-                    await prisma.userSession.update({
-                        where: { id: matchingSession.id },
-                        data: { lastActiveAt: new Date() }
-                    });
-                } else if (sessions.length >= 3) {
-                    return next(new ApiError(401, 'Your session was logged out from another device. Please log in again.'));
-                } else {
-                    await prisma.userSession.create({
-                        data: {
-                            userId: user.id,
-                            deviceFingerprint: `fp-${req.headers['user-agent']?.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30) || 'default'}`,
-                            deviceName: 'Web Device',
-                            browser: req.headers['user-agent'] || 'Web Browser',
-                            ipAddress: req.ip || 'Unknown IP',
-                            token,
-                            lastActiveAt: new Date()
-                        }
-                    });
+                    // Throttle session touch to once per minute
+                    const lastActive = new Date(matchingSession.lastActiveAt).getTime();
+                    if (Date.now() - lastActive > 60000) {
+                        await prisma.userSession.update({
+                            where: { id: matchingSession.id },
+                            data: { lastActiveAt: new Date() }
+                        });
+                    }
                 }
+                // DO NOT auto-create sessions — sessions are only created during login/OTP verification
+                // If no matching session exists, the token is from before session tracking or sessions were cleared
             }
         } catch (sessErr) {
             console.warn('[AUTH MIDDLEWARE SESSION NOTICE]', sessErr.message);
         }
 
-        // Token Version Validation (Force Logout Enforcement for non-admin accounts)
-        if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
-            if (decoded.tokenVersion !== undefined && decoded.tokenVersion !== user.tokenVersion) {
-                return next(new ApiError(401, 'Your session has expired or was terminated by the administrator. Please log in again.'));
-            }
+        // Token Version Validation (Force Logout Enforcement for ALL users)
+        if (decoded.tokenVersion !== undefined && decoded.tokenVersion !== user.tokenVersion) {
+            return next(new ApiError(401, 'Your session has expired or was terminated. Please log in again.'));
         }
 
         // Account Status Controls

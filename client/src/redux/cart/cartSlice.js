@@ -104,7 +104,8 @@ export const clearCartServer = createAsyncThunk('cart/clearCartServer', async (_
 // ==================== SLICE ====================
 
 const initialState = {
-  items: loadCartFromStorage(),
+  // Only load persisted cart if user is authenticated — prevents ghost items for logged-out users
+  items: localStorage.getItem('token') ? loadCartFromStorage() : [],
   appliedCoupon: null,
   discountAmount: 0,
   shippingFee: 99,
