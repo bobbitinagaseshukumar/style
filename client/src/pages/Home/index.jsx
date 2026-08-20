@@ -87,28 +87,39 @@ const getCategoryThumbnail = (cat) => {
 const PERSISTENT_CACHE_KEY = '__KVLR_HOME_PERSISTENT_CACHE_V3__';
 const SESSION_CACHE_KEY = '__KVLR_HOME_CACHE__';
 
-// Read cached homepage data — always return if it has REAL products (true SWR: show stale, revalidate in background)
+// ─── MODULE-LEVEL MEMORY CACHE ─────────────────────────────────────
+// Survives component unmount/remount during SPA navigation.
+// Zero JSON parsing — products never disappear when navigating back.
+let _memoryCache = null;
+
+// Read cached homepage data — memory first (instant), then localStorage (fast)
 const getCachedHomeData = () => {
+  // 1st priority: in-memory (instant, 0ms, survives route changes)
+  if (_memoryCache) return _memoryCache;
+  // 2nd priority: localStorage/sessionStorage
   try {
     const raw = sessionStorage.getItem(SESSION_CACHE_KEY) || localStorage.getItem(PERSISTENT_CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    // Only reject cache with no actual products (prevents blank page from bad cache)
     const prods = parsed.products;
     if (!prods) return null;
     const hasProducts = (prods.allPublished?.length > 0) || (prods.featured?.length > 0) || (prods.trending?.length > 0);
     if (!hasProducts) return null;
+    // Warm up memory cache for next mount
+    _memoryCache = parsed;
     return parsed;
   } catch { return null; }
 };
 
-// Write cache to both sessionStorage and localStorage
+// Write cache to memory + sessionStorage + localStorage
 const writeCacheData = (data) => {
   try {
-    // Only write cache if there are real products to cache
     const prods = data?.products;
     if (!prods || (!prods.allPublished?.length && !prods.featured?.length)) return;
-    const payload = JSON.stringify({ ...data, savedAt: Date.now() });
+    const cacheObj = { ...data, savedAt: Date.now() };
+    // Always save to memory first (instant on next mount)
+    _memoryCache = cacheObj;
+    const payload = JSON.stringify(cacheObj);
     sessionStorage.setItem(SESSION_CACHE_KEY, payload);
     localStorage.setItem(PERSISTENT_CACHE_KEY, payload);
   } catch {}
@@ -129,7 +140,7 @@ const SkeletonCard = () => (
 const EMPTY_PRODUCTS = { featured: [], trending: [], newArrivals: [], todaysDeals: [], allPublished: [] };
 
 const Home = () => {
-  // ── SWR: Hydrate initial state from VALIDATED cache so products are INSTANT ──
+  // ── SWR: Hydrate initial state from memory/localStorage so products are INSTANT ──
   const cached = React.useMemo(() => getCachedHomeData(), []);
   const hasCachedProducts = !!cached;
 
@@ -150,7 +161,7 @@ const Home = () => {
   const [trendingData, setTrendingData] = useState(cached?.trendingData || null);
   const [enableTrending, setEnableTrending] = useState(true);
   const [dynamicSections, setDynamicSections] = useState(cached?.dynamicSections || []);
-  // Show skeleton if we DON'T have cached products with real data
+  // Show skeleton ONLY on very first visit (no cached data at all)
   const [isLoading, setIsLoading] = useState(!hasCachedProducts);
 
   // Use refs to avoid stale closures when writing cache from inside callbacks
@@ -277,6 +288,7 @@ const Home = () => {
 
     const handleContentUpdate = () => {
       try {
+        _memoryCache = null;
         localStorage.removeItem(PERSISTENT_CACHE_KEY);
         sessionStorage.removeItem(SESSION_CACHE_KEY);
       } catch (e) {}
