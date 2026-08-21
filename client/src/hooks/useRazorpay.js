@@ -1,20 +1,82 @@
 /**
  * useRazorpay — Custom hook for Razorpay Standard Checkout.
- * Handles: create order → open modal → verify signature.
- * Used by both Checkout page and BuyNowModal.
+ * Handles: load script → create order → open modal → verify signature.
+ * With auto-retry for Razorpay CDN script loading on poor networks.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import api from '../config/api';
 
+const RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID;
+
+/**
+ * Load or reload the Razorpay checkout script with retry.
+ * Returns true if loaded successfully, false if all retries fail.
+ */
+const loadRazorpayScript = (retries = 3) => {
+  return new Promise((resolve) => {
+    // Already loaded
+    if (typeof window.Razorpay !== 'undefined') {
+      return resolve(true);
+    }
+
+    const attempt = (attemptsLeft) => {
+      // Remove any broken previous script tags
+      const existing = document.querySelector(`script[src="${RAZORPAY_SCRIPT_URL}"]`);
+      if (existing) existing.remove();
+
+      const script = document.createElement('script');
+      script.src = RAZORPAY_SCRIPT_URL;
+      script.async = true;
+
+      script.onload = () => {
+        if (typeof window.Razorpay !== 'undefined') {
+          resolve(true);
+        } else if (attemptsLeft > 1) {
+          console.warn(`[Razorpay] Script loaded but Razorpay undefined, retrying... (${attemptsLeft - 1} left)`);
+          setTimeout(() => attempt(attemptsLeft - 1), 2000);
+        } else {
+          resolve(false);
+        }
+      };
+
+      script.onerror = () => {
+        console.warn(`[Razorpay] Script load failed, ${attemptsLeft - 1} retries left`);
+        if (attemptsLeft > 1) {
+          setTimeout(() => attempt(attemptsLeft - 1), 2000);
+        } else {
+          resolve(false);
+        }
+      };
+
+      document.body.appendChild(script);
+    };
+
+    attempt(retries);
+  });
+};
 
 const useRazorpay = () => {
   const [loading, setLoading] = useState(false);
+  const [scriptReady, setScriptReady] = useState(typeof window.Razorpay !== 'undefined');
   const user = useSelector(s => s.auth?.user);
   const storeSettings = useSelector(s => s.settings?.storeSettings);
+  const abortRef = useRef(null);
+
+  // Pre-load Razorpay script on mount
+  useEffect(() => {
+    if (!scriptReady) {
+      loadRazorpayScript(3).then(success => {
+        setScriptReady(success);
+        if (!success) {
+          console.error('[Razorpay] Failed to load payment script after 3 attempts');
+        }
+      });
+    }
+  }, []);
 
   /**
    * initiatePayment — Full Razorpay checkout flow.
@@ -39,11 +101,15 @@ const useRazorpay = () => {
     orderId,
     prefill = {},
   }) => {
-    // Validate Razorpay script is loaded
+    // Try loading script if not ready (handles slow networks)
     if (typeof window.Razorpay === 'undefined') {
-      toast.error('Payment service not loaded. Please refresh and try again.');
-      onFailure?.({ error: 'Razorpay script not loaded' });
-      return;
+      toast.info('Loading payment gateway...');
+      const loaded = await loadRazorpayScript(2);
+      if (!loaded) {
+        toast.error('Payment gateway unavailable. Please check your internet or try Cash on Delivery.');
+        onFailure?.({ error: 'Razorpay script not loaded' });
+        return;
+      }
     }
 
     // Validate amount
@@ -110,7 +176,8 @@ const useRazorpay = () => {
             }
           } catch (verifyErr) {
             console.error('[Razorpay Verify Error]:', verifyErr);
-            toast.error('Payment verification failed. Please contact support.');
+            // Don't panic the user — payment may have gone through
+            toast.warning('Payment received but verification pending. We\'ll confirm your order shortly.');
             onFailure?.({ error: verifyErr.message });
           } finally {
             setLoading(false);
@@ -136,7 +203,13 @@ const useRazorpay = () => {
       razorpayInstance.on('payment.failed', function (response) {
         setLoading(false);
         console.error('[Razorpay Payment Failed]:', response.error);
-        toast.error(`Payment failed: ${response.error.description || 'Unknown error'}`);
+        const desc = response.error.description || 'Unknown error';
+        // User-friendly messages for common failures
+        if (desc.includes('network') || desc.includes('timeout')) {
+          toast.error('Payment failed due to network issue. Please try again.');
+        } else {
+          toast.error(`Payment failed: ${desc}`);
+        }
         onFailure?.({
           error: response.error.description,
           code: response.error.code,
@@ -148,12 +221,17 @@ const useRazorpay = () => {
     } catch (err) {
       setLoading(false);
       console.error('[Razorpay Init Error]:', err);
-      toast.error(err.response?.data?.message || 'Failed to initiate payment. Try again.');
+      // User-friendly error messages
+      if (err.code === 'ECONNABORTED' || !err.response) {
+        toast.error('Connection timed out. Please check your internet and try again.');
+      } else {
+        toast.error(err.response?.data?.message || 'Failed to initiate payment. Try again.');
+      }
       onFailure?.({ error: err.message });
     }
   }, [user, storeSettings]);
 
-  return { initiatePayment, loading };
+  return { initiatePayment, loading, scriptReady };
 };
 
 export default useRazorpay;

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiMapPin, FiTruck, FiCreditCard, FiCheckCircle, FiShield, FiPlus, FiLock, FiDollarSign } from 'react-icons/fi';
+import { FiMapPin, FiTruck, FiCreditCard, FiCheckCircle, FiShield, FiPlus, FiLock, FiDollarSign, FiWifiOff } from 'react-icons/fi';
 import { useSelector, useDispatch } from 'react-redux';
 import api from '../../config/api';
 import { clearCart } from '../../redux/cart/cartSlice';
@@ -34,6 +34,8 @@ const Checkout = () => {
   const [selectedShippingTierId, setSelectedShippingTierId] = useState('standard');
   const [loading, setLoading] = useState(false);
   const { initiatePayment, loading: paymentLoading } = useRazorpay();
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const orderDebounceRef = useRef(false); // Prevent double-click
 
   // Dynamic Store Settings
   const [storeSettings, setStoreSettings] = useState(null);
@@ -149,15 +151,24 @@ const Checkout = () => {
 
     const handleSync = () => fetchAddresses();
     const handleSettingsSync = () => fetchStoreConfig();
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    const handleNetworkStatus = (e) => setIsOnline(e.detail?.isOnline ?? navigator.onLine);
 
     window.addEventListener('addresses_updated', handleSync);
     window.addEventListener('settings_updated', handleSettingsSync);
     window.addEventListener('kvlr:content-updated', handleSettingsSync);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('kvlr:network-status', handleNetworkStatus);
 
     return () => {
       window.removeEventListener('addresses_updated', handleSync);
       window.removeEventListener('settings_updated', handleSettingsSync);
       window.removeEventListener('kvlr:content-updated', handleSettingsSync);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('kvlr:network-status', handleNetworkStatus);
     };
   }, []);
 
@@ -186,6 +197,15 @@ const Checkout = () => {
   };
 
   const handlePlaceOrder = async () => {
+    // Prevent double-click
+    if (orderDebounceRef.current) return;
+
+    // Network check
+    if (!navigator.onLine) {
+      toast.error('You\'re offline. Please check your internet connection and try again.');
+      return;
+    }
+
     if (!selectedAddressId) {
       toast.error('Please select or add a shipping address');
       return;
@@ -195,6 +215,9 @@ const Checkout = () => {
       toast.error('Your cart is empty');
       return;
     }
+
+    orderDebounceRef.current = true;
+    setTimeout(() => { orderDebounceRef.current = false; }, 3000); // 3s debounce
 
     const isRazorpay = paymentMethod === 'UPI' || paymentMethod === 'CARD' || paymentMethod === 'NET_BANKING' || paymentMethod === 'RAZORPAY';
 
@@ -252,7 +275,17 @@ const Checkout = () => {
         });
       } catch (err) {
         console.error(err);
-        toast.error(err.response?.data?.message || 'Failed to create order. Try again.');
+        // User-friendly error messages based on error type
+        if (err.code === 'ECONNABORTED') {
+          toast.error('Connection timed out. Your internet may be slow — please try again.');
+        } else if (!err.response) {
+          toast.error('Network error. Please check your internet connection and try again.');
+        } else if (err.response?.status === 409 || err.response?.data?.duplicate) {
+          toast.info('Order already created. Redirecting to your orders...');
+          navigate('/orders');
+        } else {
+          toast.error(err.response?.data?.message || 'Failed to create order. Try again.');
+        }
         setLoading(false);
       }
     } else {
@@ -281,7 +314,13 @@ const Checkout = () => {
         }
       } catch (err) {
         console.error(err);
-        toast.error(err.response?.data?.message || 'Failed to place order. Try again.');
+        if (err.code === 'ECONNABORTED') {
+          toast.error('Connection timed out. Your internet may be slow — please try again.');
+        } else if (!err.response) {
+          toast.error('Network error. Please check your internet connection and try again.');
+        } else {
+          toast.error(err.response?.data?.message || 'Failed to place order. Try again.');
+        }
       } finally {
         setLoading(false);
       }
@@ -628,6 +667,14 @@ const Checkout = () => {
                   Your account has been restricted from placing orders by store administration. You may browse and view products, but checkout is disabled.
                 </p>
               </div>
+            ) : !isOnline ? (
+              <button
+                disabled
+                className="w-full py-4 rounded-full bg-gray-400 text-white font-semibold text-sm flex items-center justify-center gap-2 opacity-60 cursor-not-allowed"
+              >
+                <FiWifiOff className="w-4 h-4 animate-pulse" />
+                Waiting for connection...
+              </button>
             ) : (
               <button
                 onClick={handlePlaceOrder}
@@ -635,12 +682,12 @@ const Checkout = () => {
                 className="w-full py-4 rounded-full bg-gold-500 hover:bg-gold-600 text-white font-semibold text-sm transition-all shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {loading || paymentLoading
-                  ? 'Processing...'
+                  ? <><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Processing...</>
                   : (paymentMethod === 'UPI' || paymentMethod === 'CARD' || paymentMethod === 'NET_BANKING' || paymentMethod === 'RAZORPAY')
                     ? `Pay ${formatCurrency(grandTotal)} — Razorpay`
                     : 'Confirm & Place Order'
                 }
-                <FiLock />
+                {!(loading || paymentLoading) && <FiLock />}
               </button>
             )}
           </div>
