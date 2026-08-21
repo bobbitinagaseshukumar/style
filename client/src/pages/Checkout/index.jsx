@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiMapPin, FiTruck, FiCreditCard, FiCheckCircle, FiShield, FiPlus, FiLock, FiDollarSign, FiWifiOff } from 'react-icons/fi';
 import { useSelector, useDispatch } from 'react-redux';
@@ -27,6 +27,21 @@ const Checkout = () => {
 
   const { items, appliedCoupon, discountAmount, shippingFee: cartShippingFee, freeShippingThreshold: cartFreeThreshold } = useSelector((state) => state.cart);
   const { user } = useSelector((state) => state.auth || {});
+
+  const [searchParams] = useSearchParams();
+  const isBuyNow = searchParams.get('buyNow') === 'true';
+
+  // Buy Now mode: use the single item from sessionStorage instead of cart
+  const buyNowItem = React.useMemo(() => {
+    if (!isBuyNow) return null;
+    try {
+      const stored = sessionStorage.getItem('__KVLR_BUY_NOW_ITEM__');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  }, [isBuyNow]);
+
+  // Effective items: either Buy Now single item or cart items
+  const effectiveItems = isBuyNow && buyNowItem ? [buyNowItem] : items;
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
@@ -56,11 +71,11 @@ const Checkout = () => {
     isDefault: true,
   });
 
-  const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const subtotal = effectiveItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   // Per-product shipping: sum each product's shippingFee × quantity (freeShipping items = ₹0)
-  const hasPerProductShipping = items.some(i => i.shippingFee > 0 || i.freeShipping);
-  const perProductShippingTotal = items.reduce((sum, i) => {
+  const hasPerProductShipping = effectiveItems.some(i => i.shippingFee > 0 || i.freeShipping);
+  const perProductShippingTotal = effectiveItems.reduce((sum, i) => {
     if (i.freeShipping) return sum;
     return sum + (parseFloat(i.shippingFee) || 0) * i.quantity;
   }, 0);
@@ -211,7 +226,7 @@ const Checkout = () => {
       return;
     }
 
-    if (items.length === 0) {
+    if (effectiveItems.length === 0) {
       toast.error('Your cart is empty');
       return;
     }
@@ -222,69 +237,72 @@ const Checkout = () => {
     const isRazorpay = paymentMethod === 'UPI' || paymentMethod === 'CARD' || paymentMethod === 'NET_BANKING' || paymentMethod === 'RAZORPAY';
 
     if (isRazorpay) {
-      // Amazon-style flow: Create order (PENDING) → Pay → Verify → Mark PAID
+      // Pay-first flow: Pay via Razorpay FIRST, then create order only after payment is verified
       try {
         setLoading(true);
-
-        // Step 1: Create order with PENDING payment status
-        const payload = {
-          items,
-          addressId: selectedAddressId,
-          paymentMethod: 'RAZORPAY',
-          couponCode: appliedCoupon,
-          discountAmount,
-          shippingFee: activeShippingFee,
-          deliveryEstimate: activeDeliveryEstimate,
-          shippingTier: selectedShippingTierId,
-        };
-        const { data: orderData } = await api.post('/orders', payload);
-
-        if (!orderData?.success) {
-          toast.error('Failed to create order');
-          setLoading(false);
-          return;
-        }
-
-        const createdOrder = orderData.data;
-        setLoading(false);
-
-        // Step 2: Open Razorpay payment modal
         const lastPage = sessionStorage.getItem('__KVLR_LAST_PRODUCT_PAGE__') || '/';
+
+        // Step 1: Open Razorpay payment modal (no DB order created yet)
+        setLoading(false);
         initiatePayment({
           amount: grandTotal,
-          receipt: `order_${createdOrder.orderNumber}`,
-          notes: { orderId: createdOrder.id, orderNumber: createdOrder.orderNumber },
-          orderId: createdOrder.id,
+          receipt: `order_${Date.now()}`,
+          notes: { userId: user?.id },
           prefill: {
             name: user?.fullName,
             email: user?.email,
             contact: user?.phone,
           },
-          onSuccess: (paymentData) => {
-            // Step 3: Payment verified — order is now PAID on backend
-            dispatch(clearCart());
-            toast.success('🎉 Payment successful! Order confirmed.');
-            sessionStorage.removeItem('__KVLR_LAST_PRODUCT_PAGE__');
-            navigate(lastPage);
+          onSuccess: async (paymentData) => {
+            // Step 2: Payment verified — NOW create the order with payment proof
+            try {
+              setLoading(true);
+              const payload = {
+                items: effectiveItems,
+                addressId: selectedAddressId,
+                paymentMethod: 'RAZORPAY',
+                couponCode: appliedCoupon,
+                discountAmount,
+                shippingFee: activeShippingFee,
+                deliveryEstimate: activeDeliveryEstimate,
+                shippingTier: selectedShippingTierId,
+                razorpayPaymentId: paymentData.razorpay_payment_id,
+                razorpayOrderId: paymentData.razorpay_order_id,
+                razorpaySignature: paymentData.razorpay_signature,
+              };
+
+              const { data: orderData } = await api.post('/orders', payload);
+              if (orderData?.success) {
+                if (isBuyNow) {
+                  sessionStorage.removeItem('__KVLR_BUY_NOW_ITEM__');
+                } else {
+                  dispatch(clearCart());
+                }
+                toast.success('🎉 Payment successful! Order confirmed.');
+                sessionStorage.removeItem('__KVLR_LAST_PRODUCT_PAGE__');
+                navigate(lastPage);
+              }
+            } catch (orderErr) {
+              console.error('[Order creation after payment]', orderErr);
+              toast.error(orderErr.response?.data?.message || 'Payment succeeded but order creation failed. Contact support.');
+              navigate('/orders');
+            } finally {
+              setLoading(false);
+            }
           },
           onFailure: () => {
-            // Payment cancelled/failed — order stays PENDING in DB
-            toast.warning('Payment not completed. Your order is saved — complete payment from Orders page.');
-            navigate('/orders');
+            // Payment cancelled/failed — NO order created, no stock touched
+            toast.info('Payment cancelled. No order was created.');
           },
         });
       } catch (err) {
         console.error(err);
-        // User-friendly error messages based on error type
         if (err.code === 'ECONNABORTED') {
           toast.error('Connection timed out. Your internet may be slow — please try again.');
         } else if (!err.response) {
           toast.error('Network error. Please check your internet connection and try again.');
-        } else if (err.response?.status === 409 || err.response?.data?.duplicate) {
-          toast.info('Order already created. Redirecting to your orders...');
-          navigate('/orders');
         } else {
-          toast.error(err.response?.data?.message || 'Failed to create order. Try again.');
+          toast.error(err.response?.data?.message || 'Failed to initiate payment. Try again.');
         }
         setLoading(false);
       }
@@ -293,7 +311,7 @@ const Checkout = () => {
       try {
         setLoading(true);
         const payload = {
-          items,
+          items: effectiveItems,
           addressId: selectedAddressId,
           paymentMethod,
           couponCode: appliedCoupon,
@@ -305,7 +323,11 @@ const Checkout = () => {
 
         const { data } = await api.post('/orders', payload);
         if (data?.success) {
-          dispatch(clearCart());
+          if (isBuyNow) {
+            sessionStorage.removeItem('__KVLR_BUY_NOW_ITEM__');
+          } else {
+            dispatch(clearCart());
+          }
           toast.success('🎉 Order placed successfully!');
           // Redirect back to the product page the customer was viewing
           const lastPage = sessionStorage.getItem('__KVLR_LAST_PRODUCT_PAGE__') || '/';
@@ -610,10 +632,10 @@ const Checkout = () => {
 
           {/* RIGHT: ORDER SUMMARY SIDEBAR */}
           <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm h-fit space-y-6">
-            <h3 className="font-serif font-bold text-lg text-charcoal-900 border-b pb-3">Order Items ({items.length})</h3>
+            <h3 className="font-serif font-bold text-lg text-charcoal-900 border-b pb-3">Order Items ({effectiveItems.length})</h3>
 
             <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-              {items.map((item, idx) => (
+              {effectiveItems.map((item, idx) => (
                 <div key={idx} className="flex gap-3 text-xs">
                   <img src={formatImageUrl(item.image, item.name)} alt={item.name || ''} className="w-12 h-16 object-cover rounded-xl shrink-0 bg-gray-50 border border-gray-100" />
                   <div className="flex-1 min-w-0">

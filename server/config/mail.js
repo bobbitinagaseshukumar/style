@@ -22,7 +22,7 @@ const sendEmailViaBrevo = async ({ to, subject, htmlContent, senderName, senderE
   const apiKey = env.BREVO_API_KEY;
 
   if (!apiKey) {
-    console.warn('[BREVO MAIL] BREVO_API_KEY not configured. Falling back to SMTP.');
+    console.warn('[BREVO MAIL] ⚠️ BREVO_API_KEY not configured in environment. Falling back to SMTP. Set BREVO_API_KEY in your .env file for reliable email delivery.');
     return transporter.sendMail({
       from: `"${senderName || env.FROM_NAME}" <${senderEmail || env.FROM_EMAIL}>`,
       to,

@@ -96,6 +96,7 @@ const ProductCard = ({ product, index = 0 }) => {
   const name = product.name || 'StyleVerse Product';
   const slug = product.slug || product._id || product.id || '';
   const brand = product.brand?.name || product.brandName || product.category?.name || '';
+  const isOutOfStock = (product.stock !== undefined && product.stock !== null && product.stock <= 0);
 
   // Extract valid non-blob product images
   const extractImages = () => {
@@ -211,16 +212,19 @@ const ProductCard = ({ product, index = 0 }) => {
       return;
     }
     setBuyingNow(true);
-    dispatch(addToCart({
+    // Store Buy Now item in sessionStorage — does NOT touch the cart
+    sessionStorage.setItem('__KVLR_BUY_NOW_ITEM__', JSON.stringify({
       id: product._id || product.id,
       name,
       price: finalPrice,
       image: primaryImage,
       quantity: 1,
+      shippingFee: product.shippingFee || 0,
+      freeShipping: product.freeShipping || false,
     }));
     setTimeout(() => {
       setBuyingNow(false);
-      navigate('/checkout');
+      navigate('/checkout?buyNow=true');
     }, 400);
   };
 
@@ -269,6 +273,15 @@ const ProductCard = ({ product, index = 0 }) => {
               decoding="async"
               className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-400"
             />
+          )}
+
+          {/* Out of Stock Overlay */}
+          {isOutOfStock && (
+            <div className="absolute inset-0 bg-black/40 z-10 flex items-center justify-center">
+              <span className="bg-white/95 text-gray-900 text-xs sm:text-sm font-bold px-4 py-2 rounded-full shadow-lg tracking-wide uppercase">
+                Out of Stock
+              </span>
+            </div>
           )}
 
           {/* ── Wishlist Glass Button (ONLY element on image) ──── */}
@@ -402,7 +415,8 @@ const ProductCard = ({ product, index = 0 }) => {
             <motion.button
               onClick={handleAddToCart}
               whileTap={{ scale: 0.9 }}
-              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center border transition-all duration-300 ${
+              disabled={isOutOfStock}
+              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center border transition-all duration-300 ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''} ${
                 addedToCart
                   ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/25'
                   : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 shadow-sm'
@@ -438,7 +452,8 @@ const ProductCard = ({ product, index = 0 }) => {
             <motion.button
               onClick={handleBuyNow}
               whileTap={{ scale: 0.95 }}
-              className={`sv-buy-btn relative flex-1 py-2.5 sm:py-3 px-4 rounded-xl font-semibold text-[11px] sm:text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 overflow-hidden ${
+              disabled={isOutOfStock}
+              className={`sv-buy-btn relative flex-1 py-2.5 sm:py-3 px-4 rounded-xl font-semibold text-[11px] sm:text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 overflow-hidden ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''} ${
                 buyingNow
                   ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
                   : 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-gray-900 shadow-md shadow-amber-500/15 hover:shadow-lg hover:shadow-amber-500/25 hover:-translate-y-[1px]'

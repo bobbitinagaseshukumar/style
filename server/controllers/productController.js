@@ -403,13 +403,17 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
 
   // Broadcast notification asynchronously without blocking response
   if (fullProduct && (fullProduct.status === 'PUBLISHED' || fullProduct.isVisible)) {
+    console.log(`[PRODUCT CONTROLLER] Product "${fullProduct.name}" is PUBLISHED/visible — triggering new product email broadcast...`);
     setImmediate(async () => {
       try {
         await emailService.sendNewProductNotificationToCustomers(fullProduct);
+        console.log(`[PRODUCT CONTROLLER] New product email broadcast completed for "${fullProduct.name}"`);
       } catch (mailErr) {
-        console.error('[NEW PRODUCT NOTIFICATION ERROR - IGNORED]', mailErr.message);
+        console.error('[NEW PRODUCT NOTIFICATION ERROR - IGNORED]', mailErr.message, mailErr.stack);
       }
     });
+  } else {
+    console.log(`[PRODUCT CONTROLLER] Product "${fullProduct?.name}" is NOT published/visible — skipping email broadcast.`);
   }
 
   try { invalidateHomepageBundleCache(); } catch (e) {}

@@ -469,10 +469,28 @@ export default function ProductDetails() {
   };
 
   const handleBuyNow = () => {
-    handleAddToCart();
-    // Store current product page for post-order redirect
+    if (!product) return;
+    if (!user) {
+      toast.info('Please sign in to purchase items');
+      navigate('/login');
+      return;
+    }
+    if (availableSizes.length > 0 && !selectedSize) { toast.error('Please select a size'); return; }
+    if (currentStock === 0) { toast.error('Out of stock'); return; }
+    // Store Buy Now item in sessionStorage — does NOT touch the cart
+    sessionStorage.setItem('__KVLR_BUY_NOW_ITEM__', JSON.stringify({
+      id: product.id,
+      name: product.name,
+      price: currentDiscountPrice,
+      image: colorImages[0]?.url || colorImages[0],
+      size: selectedSize,
+      color: selectedColor.name || '',
+      quantity,
+      shippingFee: product.shippingFee || 0,
+      freeShipping: product.freeShipping || false,
+    }));
     sessionStorage.setItem('__KVLR_LAST_PRODUCT_PAGE__', window.location.pathname);
-    navigate('/checkout');
+    navigate('/checkout?buyNow=true');
   };
 
   const handleWishlist = () => {
@@ -743,14 +761,22 @@ export default function ProductDetails() {
 
                 {/* Primary CTA Buttons */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button onClick={handleAddToCart}
-                    className="py-4 rounded-2xl border-2 border-amber-400 bg-amber-50 text-amber-900 font-black text-sm hover:bg-amber-400 hover:text-black transition flex items-center justify-center gap-2 shadow-sm">
-                    <FiShoppingBag size={18} /> Add to Cart
-                  </button>
-                  <button onClick={handleBuyNow}
-                    className="py-4 rounded-2xl bg-gray-900 text-amber-400 font-black text-sm hover:bg-gray-800 transition flex items-center justify-center gap-2 shadow-lg">
-                    ⚡ Buy Now
-                  </button>
+                  {currentStock === 0 ? (
+                    <div className="col-span-full py-4 rounded-2xl bg-gray-100 text-gray-500 font-black text-sm flex items-center justify-center gap-2">
+                      Out of Stock
+                    </div>
+                  ) : (
+                    <>
+                      <button onClick={handleAddToCart}
+                        className="py-4 rounded-2xl border-2 border-amber-400 bg-amber-50 text-amber-900 font-black text-sm hover:bg-amber-400 hover:text-black transition flex items-center justify-center gap-2 shadow-sm">
+                        <FiShoppingBag size={18} /> Add to Cart
+                      </button>
+                      <button onClick={handleBuyNow}
+                        className="py-4 rounded-2xl bg-gray-900 text-amber-400 font-black text-sm hover:bg-gray-800 transition flex items-center justify-center gap-2 shadow-lg">
+                        ⚡ Buy Now
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 {/* Secondary Wishlist & Share */}
@@ -1040,14 +1066,22 @@ export default function ProductDetails() {
                 <p className="font-black text-gray-900 text-lg">{formatCurrency(currentDiscountPrice)}</p>
               </div>
               <div className="flex gap-2 flex-shrink-0">
-                <button onClick={handleAddToCart}
-                  className="px-4 py-2.5 rounded-xl border-2 border-amber-400 bg-amber-50 text-amber-900 text-xs font-black hover:bg-amber-400 hover:text-black transition whitespace-nowrap">
-                  + Cart
-                </button>
-                <button onClick={handleBuyNow}
-                  className="px-4 py-2.5 rounded-xl bg-gray-900 text-white text-xs font-black hover:bg-gray-800 transition whitespace-nowrap">
-                  Buy Now
-                </button>
+                {currentStock === 0 ? (
+                  <span className="px-4 py-2.5 rounded-xl bg-gray-100 text-gray-500 text-xs font-black whitespace-nowrap">
+                    Out of Stock
+                  </span>
+                ) : (
+                  <>
+                    <button onClick={handleAddToCart}
+                      className="px-4 py-2.5 rounded-xl border-2 border-amber-400 bg-amber-50 text-amber-900 text-xs font-black hover:bg-amber-400 hover:text-black transition whitespace-nowrap">
+                      + Cart
+                    </button>
+                    <button onClick={handleBuyNow}
+                      className="px-4 py-2.5 rounded-xl bg-gray-900 text-white text-xs font-black hover:bg-gray-800 transition whitespace-nowrap">
+                      Buy Now
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

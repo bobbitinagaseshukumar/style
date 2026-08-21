@@ -110,7 +110,8 @@ const QuickViewModal = ({ isOpen, onClose, product }) => {
   };
 
   const handleBuyNow = () => {
-    dispatch(addToCart({
+    // Store Buy Now item in sessionStorage — does NOT touch the cart
+    sessionStorage.setItem('__KVLR_BUY_NOW_ITEM__', JSON.stringify({
       id: product.id,
       name: product.name,
       price: finalPrice,
@@ -118,9 +119,11 @@ const QuickViewModal = ({ isOpen, onClose, product }) => {
       size: selectedSize || (sizes[0] || ''),
       color: activeColorDisplay,
       quantity: 1,
+      shippingFee: product.shippingFee || 0,
+      freeShipping: product.freeShipping || false,
     }));
     onClose();
-    navigate('/checkout');
+    navigate('/checkout?buyNow=true');
   };
 
   return (

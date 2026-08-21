@@ -39,7 +39,8 @@ const buildWAConfirmMsg = (fullName, order, siteUrl) => {
 exports.createOrder = asyncHandler(async (req, res, next) => {
   const {
     items, addressId, paymentMethod, couponCode,
-    discountAmount, shippingFee, notes, whatsappNumber
+    discountAmount, shippingFee, notes, whatsappNumber,
+    razorpayPaymentId, razorpayOrderId, razorpaySignature
   } = req.body;
 
   // 1. Restriction Check: Blocked customers can view products but cannot place orders
@@ -50,6 +51,20 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
 
   if (customer?.status === 'BLOCKED' || customer?.canPlaceOrders === false || customer?.canCheckout === false) {
     return next(new ApiError(403, 'Your account is currently restricted from placing orders by store administration. You may browse and view products, but checkout is disabled. Please contact customer support.'));
+  }
+
+  // If Razorpay payment proof is provided, verify signature before creating order
+  if (razorpayPaymentId && razorpayOrderId && razorpaySignature) {
+    const crypto = require('crypto');
+    const env = require('../config/env');
+    const body = razorpayOrderId + '|' + razorpayPaymentId;
+    const expectedSignature = crypto
+      .createHmac('sha256', env.RAZORPAY_KEY_SECRET)
+      .update(body)
+      .digest('hex');
+    if (expectedSignature !== razorpaySignature) {
+      return next(new ApiError(400, 'Payment verification failed — signature mismatch. Order not created.'));
+    }
   }
 
   if (!items || !Array.isArray(items) || items.length === 0) {
@@ -134,8 +149,9 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
         totalAmount,
         orderStatus: 'PENDING_APPROVAL',
         approvalStatus: 'PENDING_APPROVAL',
-        // Razorpay/UPI/Card orders MUST start as PENDING — only the /payments/verify endpoint can set PAID
-        paymentStatus: ['RAZORPAY', 'UPI', 'CARD', 'NET_BANKING'].includes(paymentMethod) ? 'PENDING' : (paymentMethod === 'COD' ? 'PENDING' : 'PAID'),
+        // If Razorpay payment proof is verified, mark as PAID immediately; otherwise PENDING
+        paymentStatus: razorpayPaymentId ? 'PAID' : (paymentMethod === 'COD' ? 'PENDING' : 'PENDING'),
+        paymentTxnId: razorpayPaymentId || null,
         paymentMethod: paymentMethod || 'COD',
         couponCode: couponCode || null,
         notes: notes || null,
@@ -148,13 +164,9 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
       },
     });
 
-    // Deduct stock
-    for (const item of items) {
-      await tx.product.update({
-        where: { id: item.productId || item.id },
-        data: { stock: { decrement: item.quantity } },
-      });
-    }
+    // NOTE: Stock is NOT decremented at order placement.
+    // Stock is only decremented when Admin marks the order as DELIVERED.
+    // This prevents stock issues when orders are cancelled/rejected before delivery.
 
     // Customer notification (Before Admin Approval)
     await tx.notification.create({
@@ -412,12 +424,15 @@ exports.cancelOrder = asyncHandler(async (req, res, next) => {
       },
     });
 
-    // Restore Inventory Stock
-    for (const item of order.items) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stock: { increment: item.quantity } },
-      });
+    // Stock restore is only needed if the order was previously DELIVERED
+    // (stock is decremented only on delivery, not on order placement)
+    if (order.orderStatus === 'DELIVERED') {
+      for (const item of order.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
     }
 
     // Customer Notification
@@ -544,6 +559,18 @@ exports.adminUpdateOrderStatus = asyncHandler(async (req, res, next) => {
       user: { select: { fullName: true, email: true, phone: true, whatsappNumber: true } },
     },
   });
+
+  // Decrement stock ONLY when order is marked as DELIVERED
+  if (orderStatus === 'DELIVERED') {
+    for (const item of order.items) {
+      if (item.productId) {
+        await prisma.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } },
+        });
+      }
+    }
+  }
 
   // In-app rich notification to customer
   const targetStatus = orderStatus || order.orderStatus;
@@ -787,13 +814,16 @@ exports.adminRejectOrder = asyncHandler(async (req, res, next) => {
       },
     });
 
-    // Restore Stock
-    for (const item of order.items) {
-      if (item.productId) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { increment: item.quantity } },
-        });
+    // Stock restore is only needed if the order was previously DELIVERED
+    // (stock is decremented only on delivery, not on order placement)
+    if (order.orderStatus === 'DELIVERED') {
+      for (const item of order.items) {
+        if (item.productId) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
       }
     }
 
@@ -1015,13 +1045,15 @@ exports.adminCancelOrder = asyncHandler(async (req, res, next) => {
     }
   });
 
-  // 2. Restore Product Inventory Stock
-  for (const item of order.items) {
-    if (item.productId) {
-      await prisma.product.update({
-        where: { id: item.productId },
-        data: { stock: { increment: item.quantity } }
-      }).catch(() => {});
+  // 2. Restore Product Inventory Stock (only if order was previously DELIVERED)
+  if (order.orderStatus === 'DELIVERED') {
+    for (const item of order.items) {
+      if (item.productId) {
+        await prisma.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } }
+        }).catch(() => {});
+      }
     }
   }
 

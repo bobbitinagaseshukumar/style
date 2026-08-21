@@ -314,8 +314,10 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
         window.dispatchEvent(new Event('kvlr:content-updated'));
       } catch (e) {}
 
-      onSaved?.();
+      // Close wizard FIRST to remove the blur overlay immediately
       onClose?.();
+      // Then refresh the product list (after modal is closed)
+      setTimeout(() => onSaved?.(), 100);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save product');
     } finally {
@@ -333,7 +335,14 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
   ];
 
   return (
-    <div className="fixed inset-0 z-[60] flex" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <motion.div
+      className="fixed inset-0 z-[60] flex"
+      style={{ fontFamily: "'Inter', sans-serif" }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
       {/* Overlay */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
@@ -486,7 +495,7 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
           </div>
         </div>
       </motion.div>
-    </div>
+    </motion.div>
   );
 };
 
