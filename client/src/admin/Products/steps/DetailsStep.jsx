@@ -18,7 +18,7 @@ const TextInput = ({ value, onChange, placeholder, name, ...rest }) => (
     value={value}
     onChange={onChange}
     placeholder={placeholder}
-    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none transition bg-white"
+    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition bg-white"
     {...rest}
   />
 );
@@ -29,7 +29,7 @@ const TextArea = ({ value, onChange, placeholder, rows = 3 }) => (
     onChange={onChange}
     placeholder={placeholder}
     rows={rows}
-    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none transition bg-white resize-none"
+    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition bg-white resize-none"
   />
 );
 
@@ -37,7 +37,7 @@ const SelectInput = ({ value, onChange, options, placeholder }) => (
   <select
     value={value}
     onChange={onChange}
-    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none transition bg-white"
+    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition bg-white"
   >
     <option value="">{placeholder || 'Select...'}</option>
     {options.map(o => (

@@ -378,7 +378,7 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
               return (
                 <button
                   key={step.id}
-                  onClick={() => setCurrentStep(idx)}
+                  onClick={() => { setValidationError(null); setCurrentStep(idx); }}
                   className={`w-full flex items-center gap-3 px-4 py-3 text-left transition
                     ${active ? 'bg-yellow-50 border-r-2 border-yellow-400' : 'hover:bg-gray-100 border-r-2 border-transparent'}`}
                 >
@@ -401,7 +401,7 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
               {STEPS.map((step, idx) => (
                 <button
                   key={step.id}
-                  onClick={() => setCurrentStep(idx)}
+                  onClick={() => { setValidationError(null); setCurrentStep(idx); }}
                   className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition
                     ${idx === currentStep ? 'bg-yellow-400 text-black' : completedSteps.has(idx) ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}
                 >
@@ -426,17 +426,9 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
             </AnimatePresence>
 
             {/* Active Step */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentStep}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-              >
-                {stepContent[currentStep]}
-              </motion.div>
-            </AnimatePresence>
+            <div key={currentStep}>
+              {stepContent[currentStep]}
+            </div>
           </main>
         </div>
 

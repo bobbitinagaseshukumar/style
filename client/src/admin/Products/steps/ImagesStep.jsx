@@ -36,7 +36,18 @@ const ImagesStep = ({ images, setImages }) => {
 
   const handleCropDone = async ({ url, blob }) => {
     const remaining = cropSrc?.remainingFiles || [];
-    setImages(prev => [...prev, { id: Date.now() + Math.random(), url, blob, isPrimary: prev.length === 0 }]);
+    const editingId = cropSrc?.editingId;
+
+    if (editingId) {
+      // Re-editing existing image — replace it in place
+      setImages(prev => prev.map(img =>
+        img.id === editingId ? { ...img, url, blob } : img
+      ));
+    } else {
+      // New image — add to the end
+      setImages(prev => [...prev, { id: Date.now() + Math.random(), url, blob, isPrimary: prev.length === 0 }]);
+    }
+
     setCropSrc(null);
     if (remaining.length > 0) {
       const dataUrl = await readFile(remaining[0]);
@@ -121,33 +132,43 @@ const ImagesStep = ({ images, setImages }) => {
               onDragStart={() => handleDragStart(idx)}
               onDragOver={(e) => handleDragOver(e, idx)}
               onDragEnd={handleDragEnd}
-              className={`relative group rounded-2xl overflow-hidden bg-gray-100 aspect-square border-2 transition cursor-grab active:cursor-grabbing
+              className={`relative rounded-2xl overflow-hidden bg-gray-100 aspect-square border-2 transition
                 ${img.isPrimary ? 'border-yellow-400 ring-2 ring-yellow-400/30' : 'border-transparent hover:border-gray-300'}
                 ${dragIdx === idx ? 'opacity-50 scale-95' : ''}
               `}
             >
-              <img src={img.url} alt="" className="w-full h-full object-cover" />
-              
-              {/* Overlay controls */}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center gap-2">
+              {/* Tap image to re-edit/preview */}
+              <img
+                src={img.url}
+                alt=""
+                className="w-full h-full object-cover cursor-pointer"
+                onClick={() => {
+                  // Open image in crop editor for re-editing
+                  setCropSrc({ dataUrl: img.url, editingId: img.id, remainingFiles: [] });
+                }}
+              />
+
+              {/* Remove button — always visible, top-right corner */}
+              <button
+                onClick={(e) => { e.stopPropagation(); handleRemove(img.id); }}
+                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition z-10"
+              >
+                <FiX size={12} />
+              </button>
+
+              {/* Set Primary button — always visible, bottom-left */}
+              {!img.isPrimary && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setPrimary(img.id); }}
-                  className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition
-                    ${img.isPrimary ? 'bg-yellow-400 text-black' : 'bg-white/20 text-white hover:bg-yellow-400 hover:text-black'}`}
+                  className="absolute bottom-1.5 left-1.5 px-2 py-1 rounded-lg bg-white/90 text-[9px] font-bold text-gray-700 flex items-center gap-0.5 shadow-sm hover:bg-yellow-400 hover:text-black transition z-10"
                 >
-                  <FiStar size={11} /> {img.isPrimary ? 'Primary' : 'Set Primary'}
+                  <FiStar size={9} /> Set Primary
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleRemove(img.id); }}
-                  className="p-1.5 rounded-lg bg-red-500/80 text-white hover:bg-red-600 transition"
-                >
-                  <FiX size={12} />
-                </button>
-              </div>
+              )}
 
               {/* Primary badge */}
               {img.isPrimary && (
-                <div className="absolute top-1.5 left-1.5 bg-yellow-400 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-md">
+                <div className="absolute top-1.5 left-1.5 bg-yellow-400 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-md z-10">
                   PRIMARY
                 </div>
               )}
@@ -155,11 +176,6 @@ const ImagesStep = ({ images, setImages }) => {
               {/* Index */}
               <div className="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
                 {idx + 1}
-              </div>
-
-              {/* Drag handle */}
-              <div className="absolute top-1.5 right-1.5 text-white/70 opacity-0 group-hover:opacity-100 transition">
-                <FiMove size={12} />
               </div>
             </motion.div>
           ))}
