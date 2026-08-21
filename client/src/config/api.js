@@ -37,11 +37,22 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-      if (isAdminPath) {
-        localStorage.removeItem('adminToken');
-      } else {
-        localStorage.removeItem('token');
+      const message = (error.response.data?.message || '').toLowerCase();
+      // Only clear tokens if server explicitly says the token is invalid/expired
+      // Do NOT clear on network errors, timeouts, or generic failures
+      const isTokenInvalid = message.includes('not authorized') ||
+                             message.includes('token failed') ||
+                             message.includes('token expired') ||
+                             message.includes('session has expired') ||
+                             message.includes('no token') ||
+                             message.includes('please log in');
+      if (isTokenInvalid) {
+        const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+        if (isAdminPath) {
+          localStorage.removeItem('adminToken');
+        } else {
+          localStorage.removeItem('token');
+        }
       }
     }
     return Promise.reject(error);

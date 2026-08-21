@@ -133,9 +133,9 @@ class AuthService {
    */
   generateToken(user) {
     return jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || 'kvlr_styles_jwt_super_secret_key_2026',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
+      { id: user.id, email: user.email, role: user.role, tokenVersion: user.tokenVersion || 0 },
+      process.env.JWT_SECRET || 'styleverse_super_secret_jwt_key_2026',
+      { expiresIn: process.env.JWT_EXPIRES_IN || '4d' }
     );
   }
 }

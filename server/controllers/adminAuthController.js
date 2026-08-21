@@ -10,7 +10,7 @@ const generateToken = (id, role, tokenVersion = 0) => {
   return jwt.sign(
     { id, role, tokenVersion },
     process.env.JWT_SECRET || 'styleverse_super_secret_jwt_key_2026',
-    { expiresIn: process.env.JWT_EXPIRE || '30d' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '4d' }
   );
 };
 
