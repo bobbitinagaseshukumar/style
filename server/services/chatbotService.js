@@ -5,39 +5,217 @@ const ollamaService = require('./ollamaService');
  * Enterprise Intelligent AI Shopping Assistant Service
  * Natural language intent parser, live product database search, order status checker,
  * policy engine, and human support escalation with ticket generation.
+ * 
+ * When Ollama is available: free-form queries get true AI responses.
+ * When Ollama is unavailable (production/Render): intelligent local fallbacks handle
+ * conversational queries, greetings, thanks, and common questions without showing
+ * the misleading "I searched our catalog" message for non-product queries.
  */
 class ChatbotService {
+
+  /* ══════════════════════════════════════════════════════════════════
+     WORD-BOUNDARY MATCH HELPERS
+     Prevents false positives like "this" matching "hi", "history" matching "hi",
+     "undertime" matching "time", etc.
+  ══════════════════════════════════════════════════════════════════ */
+  _matchesWord(text, word) {
+    const regex = new RegExp(`\\b${word}\\b`, 'i');
+    return regex.test(text);
+  }
+
+  _matchesAny(text, words) {
+    return words.some(w => this._matchesWord(text, w));
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     INTENT DETECTORS (improved with word-boundary matching)
+  ══════════════════════════════════════════════════════════════════ */
+
+  isEscalationQuery(q) {
+    return this._matchesAny(q, ['human', 'agent', 'person', 'frustrated', 'useless', 'escalate', 'complaint', 'customer care', 'speak to someone', 'real person']);
+  }
+
+  isOrderQuery(q) {
+    return this._matchesAny(q, ['order', 'track', 'shipped', 'dispatch']) || q.includes('where is my');
+  }
+
+  isProductSearchQuery(q) {
+    // Match product keywords including plural forms (shirts, shoes, sarees, etc.)
+    const productKeywords = ['shirt', 'saree', 'shoe', 'dress', 'gold', 'jean', 'bag', 'watch', 'jacket', 'kurta', 'ring', 'necklace', 'earring', 'bracelet', 'top', 'pant', 'lehenga', 'sandal', 'heel', 'tshirt', 't-shirt', 'trouser', 'sari', 'suit', 'blazer', 'sneaker', 'boot', 'chain', 'pendant'];
+    const matchesProduct = productKeywords.some(w => {
+      const regex = new RegExp(`\\b${w}s?\\b`, 'i'); // Allow optional plural 's'
+      return regex.test(q);
+    });
+    return matchesProduct ||
+           (this._matchesAny(q, ['show', 'recommend', 'find', 'search', 'looking for', 'browse']) && q.length > 8) ||
+           (q.includes('under') && /under\s*(?:₹|rs\.?|inr)?\s*\d+/i.test(q));
+  }
+
+  isGreetingQuery(q) {
+    return this._matchesAny(q, ['hi', 'hello', 'hey', 'greet', 'hii', 'hiii', 'namaste']) ||
+           /^(how are you|how('s| is) it going|what'?s up|good (morning|afternoon|evening|night)|howdy|sup|yo)\b/i.test(q) ||
+           /^(how are you|how do you do)\b/i.test(q);
+  }
+
+  isThankYouQuery(q) {
+    return this._matchesAny(q, ['thank', 'thanks', 'thankyou', 'thank you', 'ty', 'appreciated', 'helpful', 'great help']);
+  }
+
+  isFarewellQuery(q) {
+    return this._matchesAny(q, ['bye', 'goodbye', 'see you', 'cya', 'take care', 'goodnight', 'good night']);
+  }
+
+  isAboutBotQuery(q) {
+    return q.includes('who are you') || q.includes('what are you') || q.includes('what can you do') ||
+           q.includes('your name') || q.includes('are you a bot') || q.includes('are you ai') ||
+           q.includes('are you real') || q.includes('are you human');
+  }
+
+  isShippingQuery(q) {
+    return this._matchesAny(q, ['shipping', 'delivery', 'courier', 'deliver', 'shipped']) ||
+           (this._matchesWord(q, 'ship') && !this._matchesWord(q, 'relationship')) ||
+           (q.includes('delivery time') || q.includes('how long') || q.includes('when will'));
+  }
+
+  isReturnQuery(q) {
+    return this._matchesAny(q, ['return', 'refund', 'replace', 'exchange', 'return policy']);
+  }
+
+  isPaymentQuery(q) {
+    return this._matchesAny(q, ['pay', 'payment', 'upi', 'cod', 'coupon', 'offer', 'discount', 'promo']) ||
+           (this._matchesWord(q, 'card') && (q.includes('credit') || q.includes('debit') || q.includes('pay')));
+  }
+
+  isCartQuery(q) {
+    return this._matchesAny(q, ['cart', 'basket', 'checkout']);
+  }
+
+  isWishlistQuery(q) {
+    return this._matchesAny(q, ['wishlist', 'saved items', 'favorites']);
+  }
+
   /**
-   * Process Natural Language Query
+   * Detect if a query is conversational (non-product, non-transactional).
+   * Used to provide smart fallbacks when Ollama is unavailable.
    */
+  isConversationalQuery(q) {
+    return this.isGreetingQuery(q) || this.isThankYouQuery(q) || this.isFarewellQuery(q) ||
+           this.isAboutBotQuery(q) ||
+           /^(how are you|how('s| is) it going|what'?s up|good (morning|afternoon|evening|night))/i.test(q) ||
+           q.length < 10; // Very short queries like "ok", "cool", "nice" etc.
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     SMART FALLBACK for when Ollama is unavailable
+     Returns contextual responses instead of "I searched our catalog"
+  ══════════════════════════════════════════════════════════════════ */
+  getSmartFallback(q, query, user) {
+    // Greetings
+    if (this.isGreetingQuery(q) || /^(how are you|how('s| is) it going)/i.test(q)) {
+      return {
+        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! I'm doing great, thanks for asking! Welcome to KVLR Styles. I'm your AI Shopping Assistant — here to help you find luxury fashion, track orders, check offers, and more. How can I assist you today?`,
+        type: 'GREETING',
+        actions: [
+          { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
+          { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+          { label: '🔄 Return & Refund', action: 'RETURNS' },
+          { label: '🎟️ Offers & Coupons', action: 'OFFERS' },
+          { label: '👨‍💻 Human Support', action: 'ESCALATE' }
+        ]
+      };
+    }
+
+    // Thank you
+    if (this.isThankYouQuery(q)) {
+      return {
+        reply: `😊 You're welcome${user ? ', ' + (user.fullName || '') : ''}! I'm glad I could help. Feel free to ask me anything else — I'm here 24/7 to assist you with shopping, orders, returns, and more!`,
+        type: 'INFO',
+        actions: [
+          { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+          { label: '🎟️ Offers & Coupons', action: 'OFFERS' }
+        ]
+      };
+    }
+
+    // Farewell
+    if (this.isFarewellQuery(q)) {
+      return {
+        reply: `👋 Goodbye${user ? ', ' + (user.fullName || '') : ''}! Thank you for shopping with KVLR Styles. Have a wonderful day! Feel free to come back anytime — I'm always here to help. 🌟`,
+        type: 'INFO',
+        actions: [{ label: '🏠 Back to Store', action: 'STORE_HOME' }]
+      };
+    }
+
+    // About the bot
+    if (this.isAboutBotQuery(q)) {
+      return {
+        reply: `🤖 I'm the **KVLR Styles AI Shopping Assistant**! I'm here to help you with:\n\n• 🔍 Finding luxury products (clothes, jewelry, accessories)\n• 🚚 Tracking your orders in real-time\n• 🔄 Returns & refund information\n• 💳 Payment options & active offers\n• 🎟️ Coupons & discounts\n• 👨‍💻 Connecting you with human support\n\nJust ask me anything!`,
+        type: 'INFO',
+        actions: [
+          { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+          { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
+          { label: '👨‍💻 Human Support', action: 'ESCALATE' }
+        ]
+      };
+    }
+
+    // Short/simple queries like "ok", "cool", "nice", "hmm"
+    if (q.length < 10) {
+      return {
+        reply: `Got it! Is there anything else I can help you with? I can help you find products, track orders, check offers, or connect you with our support team. 😊`,
+        type: 'INFO',
+        actions: [
+          { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+          { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
+          { label: '🎟️ Offers & Coupons', action: 'OFFERS' }
+        ]
+      };
+    }
+
+    // For truly unknown queries when Ollama is down — be honest but helpful
+    return {
+      reply: `I appreciate your question! While I'm best at helping with shopping, orders, and store information, I'd love to assist you. Here's what I can do:\n\n• 🔍 Search our luxury collection\n• 🚚 Track your orders\n• 🔄 Returns & exchanges\n• 💳 Payments & offers\n• 👨‍💻 Connect with human support\n\nCould you try rephrasing your question, or pick an option below?`,
+      type: 'INFO',
+      actions: [
+        { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+        { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
+        { label: '👨‍💻 Human Support', action: 'ESCALATE' }
+      ]
+    };
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     MAIN QUERY PROCESSOR (non-streaming)
+  ══════════════════════════════════════════════════════════════════ */
+
   async processQuery({ query, user, sessionId, history }) {
     const q = query.trim().toLowerCase();
 
-    // 1. Check for Human Support Escalation Request
+    // 1. Human Support Escalation
     if (this.isEscalationQuery(q)) {
       return await this.escalateToSupport({ user, sessionId, query });
     }
 
-    // 2. Order Tracking & Status Intent
+    // 2. Order Tracking & Status
     if (this.isOrderQuery(q)) {
       return await this.handleOrderSupport({ q, user });
     }
 
-    // 3. Product Search Intent ("black shirt under 1000", "cotton sarees", "gold rings", "shoes")
+    // 3. Product Search
     if (this.isProductSearchQuery(q)) {
       return await this.handleProductSearch({ q });
     }
 
-    // 4. Cart & Wishlist Support Intent
-    if (q.includes('cart') || q.includes('basket')) {
+    // 4. Cart & Wishlist
+    if (this.isCartQuery(q)) {
       return this.handleCartHelp({ user });
     }
-    if (q.includes('wishlist') || q.includes('saved')) {
+    if (this.isWishlistQuery(q)) {
       return this.handleWishlistHelp({ user });
     }
 
-    // 5. Shipping & Delivery Intent
-    if (q.includes('ship') || q.includes('deliver') || q.includes('courier') || q.includes('time')) {
+    // 5. Shipping & Delivery
+    if (this.isShippingQuery(q)) {
       return {
         reply: "📦 **Shipping & Delivery Information**:\n• Free Express Shipping on orders above ₹2,999.\n• Standard Delivery: 2-5 business days across India.\n• Cash on Delivery (COD) is available on all eligible postal codes.\n• Real-time SMS & Email tracking links sent upon dispatch.",
         type: 'INFO',
@@ -45,8 +223,8 @@ class ChatbotService {
       };
     }
 
-    // 6. Returns & Refunds Intent
-    if (q.includes('return') || q.includes('refund') || q.includes('replace') || q.includes('exchange')) {
+    // 6. Returns & Refunds
+    if (this.isReturnQuery(q)) {
       return {
         reply: "🔄 **Returns & Refund Policy**:\n• Easy 7-Day Hassle-Free Returns & Replacements.\n• Pickup arranged right from your doorstep.\n• Refunds processed back to original payment method or wallet within 48 hours of quality verification.",
         type: 'INFO',
@@ -54,8 +232,8 @@ class ChatbotService {
       };
     }
 
-    // 7. Payments & Offers Intent
-    if (q.includes('pay') || q.includes('upi') || q.includes('cod') || q.includes('card') || q.includes('coupon') || q.includes('offer') || q.includes('discount')) {
+    // 7. Payments & Offers
+    if (this.isPaymentQuery(q)) {
       return {
         reply: "💳 **Payment Methods & Active Offers**:\n• We accept UPI, GPay, PhonePe, Credit/Debit Cards, NetBanking & Cash on Delivery.\n• Use code **KVLR10** for extra 10% OFF on luxury collections.\n• Festive offers & flash sales updated daily!",
         type: 'INFO',
@@ -63,8 +241,8 @@ class ChatbotService {
       };
     }
 
-    // 8. General Greetings / Default Intent
-    if (q.includes('hi') || q.includes('hello') || q.includes('hey') || q.includes('greet')) {
+    // 8. Greetings (including "how are you", "good morning", etc.)
+    if (this.isGreetingQuery(q)) {
       return {
         reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I am your AI Shopping Assistant. How can I help you today?`,
         type: 'GREETING',
@@ -78,8 +256,22 @@ class ChatbotService {
       };
     }
 
-    // Default — Send to Ollama AI for intelligent response
-    // Falls back to DB product recommendations if Ollama is unavailable
+    // 9. Thank you
+    if (this.isThankYouQuery(q)) {
+      return this.getSmartFallback(q, query, user);
+    }
+
+    // 10. Farewell
+    if (this.isFarewellQuery(q)) {
+      return this.getSmartFallback(q, query, user);
+    }
+
+    // 11. About the bot
+    if (this.isAboutBotQuery(q)) {
+      return this.getSmartFallback(q, query, user);
+    }
+
+    // ─── Default: Send to Ollama AI for intelligent response ───
     const aiResult = await ollamaService.chat(query, history || []);
 
     if (aiResult.success) {
@@ -102,37 +294,101 @@ class ChatbotService {
       };
     }
 
-    // Ollama unavailable — fall back to original DB product recommendations
-    console.warn('[ChatbotService] Ollama unavailable, using keyword fallback. Error:', aiResult.error);
-    const featuredProducts = await prisma.product.findMany({
-      where: { status: 'PUBLISHED', isVisible: true },
-      take: 3,
-      include: { images: true }
-    });
+    // Ollama unavailable — use smart fallback instead of "I searched our catalog"
+    console.warn('[ChatbotService] Ollama unavailable, using smart fallback. Error:', aiResult.error);
+    return this.getSmartFallback(q, query, user);
+  }
 
+  /* ══════════════════════════════════════════════════════════════════
+     STREAMING QUERY PROCESSOR (SSE)
+  ══════════════════════════════════════════════════════════════════ */
+
+  async processStreamQuery({ query, user, sessionId, history, onChunk, signal }) {
+    const q = query.trim().toLowerCase();
+
+    // All intent handlers return structured data (no streaming needed)
+    if (this.isEscalationQuery(q)) {
+      return { streamed: false, data: await this.escalateToSupport({ user, sessionId, query }) };
+    }
+    if (this.isOrderQuery(q)) {
+      return { streamed: false, data: await this.handleOrderSupport({ q, user }) };
+    }
+    if (this.isProductSearchQuery(q)) {
+      return { streamed: false, data: await this.handleProductSearch({ q }) };
+    }
+    if (this.isCartQuery(q)) {
+      return { streamed: false, data: this.handleCartHelp({ user }) };
+    }
+    if (this.isWishlistQuery(q)) {
+      return { streamed: false, data: this.handleWishlistHelp({ user }) };
+    }
+    if (this.isShippingQuery(q)) {
+      return { streamed: false, data: {
+        reply: "📦 **Shipping & Delivery Information**:\n• Free Express Shipping on orders above ₹2,999.\n• Standard Delivery: 2-5 business days across India.\n• Cash on Delivery (COD) is available on all eligible postal codes.\n• Real-time SMS & Email tracking links sent upon dispatch.",
+        type: 'INFO',
+        actions: [{ label: 'Track My Order', action: 'TRACK_ORDER' }, { label: 'Store Policies', action: 'POLICIES' }]
+      }};
+    }
+    if (this.isReturnQuery(q)) {
+      return { streamed: false, data: {
+        reply: "🔄 **Returns & Refund Policy**:\n• Easy 7-Day Hassle-Free Returns & Replacements.\n• Pickup arranged right from your doorstep.\n• Refunds processed back to original payment method or wallet within 48 hours of quality verification.",
+        type: 'INFO',
+        actions: [{ label: 'Return an Item', action: 'RETURN_ITEM' }, { label: 'Contact Support', action: 'ESCALATE' }]
+      }};
+    }
+    if (this.isPaymentQuery(q)) {
+      return { streamed: false, data: {
+        reply: "💳 **Payment Methods & Active Offers**:\n• We accept UPI, GPay, PhonePe, Credit/Debit Cards, NetBanking & Cash on Delivery.\n• Use code **KVLR10** for extra 10% OFF on luxury collections.\n• Festive offers & flash sales updated daily!",
+        type: 'INFO',
+        actions: [{ label: 'View Offers & Coupons', action: 'OFFERS' }, { label: 'Find a Product', action: 'SEARCH_PRODUCT' }]
+      }};
+    }
+    if (this.isGreetingQuery(q)) {
+      return { streamed: false, data: {
+        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I am your AI Shopping Assistant. How can I help you today?`,
+        type: 'GREETING',
+        actions: [
+          { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
+          { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+          { label: '🔄 Return & Refund', action: 'RETURNS' },
+          { label: '🎟️ Offers & Coupons', action: 'OFFERS' },
+          { label: '👨‍💻 Human Support', action: 'ESCALATE' }
+        ]
+      }};
+    }
+    if (this.isThankYouQuery(q)) {
+      return { streamed: false, data: this.getSmartFallback(q, query, user) };
+    }
+    if (this.isFarewellQuery(q)) {
+      return { streamed: false, data: this.getSmartFallback(q, query, user) };
+    }
+    if (this.isAboutBotQuery(q)) {
+      return { streamed: false, data: this.getSmartFallback(q, query, user) };
+    }
+
+    // Free-form query — stream from Ollama
+    const streamResult = await ollamaService.chatStream(
+      query,
+      history || [],
+      onChunk,
+      signal
+    );
+
+    if (streamResult.success) {
+      return { streamed: true, fullResponse: streamResult.fullResponse };
+    }
+
+    // Ollama unavailable — return smart fallback instead of "I searched our catalog"
+    console.warn('[ChatbotService] Ollama stream unavailable, using smart fallback. Error:', streamResult.error);
     return {
-      reply: `I searched our catalog for "${query}". Here are some of our top recommended luxury items you might like:`,
-      type: 'PRODUCT_CARDS',
-      products: featuredProducts,
-      actions: [{ label: 'Talk to Human Agent', action: 'ESCALATE' }]
+      streamed: false,
+      data: this.getSmartFallback(q, query, user)
     };
   }
 
-  /* ── Helper Intent Detectors ── */
-
-  isEscalationQuery(q) {
-    return q.includes('human') || q.includes('agent') || q.includes('person') || q.includes('frustrated') || q.includes('useless') || q.includes('escalate') || q.includes('complaint') || q.includes('customer care');
-  }
-
-  isOrderQuery(q) {
-    return q.includes('order') || q.includes('track') || q.includes('where is my') || q.includes('shipped') || q.includes('status') || q.includes('dispatch');
-  }
-
-  isProductSearchQuery(q) {
-    return q.includes('shirt') || q.includes('saree') || q.includes('shoe') || q.includes('dress') || q.includes('gold') || q.includes('under') || q.includes('show') || q.includes('recommend') || q.includes('jean') || q.includes('bag') || q.includes('watch') || q.includes('jacket') || q.includes('kurta');
-  }
-
-  /* ── Handlers ── */
+  /* ══════════════════════════════════════════════════════════════════
+     HANDLERS
+  ══════════════════════════════════════════════════════════════════ */
 
   async handleOrderSupport({ q, user }) {
     if (!user) {
@@ -284,99 +540,6 @@ class ChatbotService {
       type: 'ESCALATION',
       ticketNo,
       actions: [{ label: 'Back to Store', action: 'STORE_HOME' }]
-    };
-  }
-
-  /**
-   * Process query with streaming Ollama response.
-   * Returns structured data for intent matches, or streams AI for free-form.
-   * @param {Object} params
-   * @param {Function} params.onChunk - SSE chunk callback: onChunk(text)
-   * @param {AbortSignal} [params.signal] - Optional abort signal
-   * @returns {Promise<{streamed: boolean, data?: Object, fullResponse?: string}>}
-   */
-  async processStreamQuery({ query, user, sessionId, history, onChunk, signal }) {
-    const q = query.trim().toLowerCase();
-
-    // All existing intent handlers return structured data (no streaming needed)
-    if (this.isEscalationQuery(q)) {
-      return { streamed: false, data: await this.escalateToSupport({ user, sessionId, query }) };
-    }
-    if (this.isOrderQuery(q)) {
-      return { streamed: false, data: await this.handleOrderSupport({ q, user }) };
-    }
-    if (this.isProductSearchQuery(q)) {
-      return { streamed: false, data: await this.handleProductSearch({ q }) };
-    }
-    if (q.includes('cart') || q.includes('basket')) {
-      return { streamed: false, data: this.handleCartHelp({ user }) };
-    }
-    if (q.includes('wishlist') || q.includes('saved')) {
-      return { streamed: false, data: this.handleWishlistHelp({ user }) };
-    }
-    if (q.includes('ship') || q.includes('deliver') || q.includes('courier') || q.includes('time')) {
-      return { streamed: false, data: {
-        reply: "📦 **Shipping & Delivery Information**:\n• Free Express Shipping on orders above ₹2,999.\n• Standard Delivery: 2-5 business days across India.\n• Cash on Delivery (COD) is available on all eligible postal codes.\n• Real-time SMS & Email tracking links sent upon dispatch.",
-        type: 'INFO',
-        actions: [{ label: 'Track My Order', action: 'TRACK_ORDER' }, { label: 'Store Policies', action: 'POLICIES' }]
-      }};
-    }
-    if (q.includes('return') || q.includes('refund') || q.includes('replace') || q.includes('exchange')) {
-      return { streamed: false, data: {
-        reply: "🔄 **Returns & Refund Policy**:\n• Easy 7-Day Hassle-Free Returns & Replacements.\n• Pickup arranged right from your doorstep.\n• Refunds processed back to original payment method or wallet within 48 hours of quality verification.",
-        type: 'INFO',
-        actions: [{ label: 'Return an Item', action: 'RETURN_ITEM' }, { label: 'Contact Support', action: 'ESCALATE' }]
-      }};
-    }
-    if (q.includes('pay') || q.includes('upi') || q.includes('cod') || q.includes('card') || q.includes('coupon') || q.includes('offer') || q.includes('discount')) {
-      return { streamed: false, data: {
-        reply: "💳 **Payment Methods & Active Offers**:\n• We accept UPI, GPay, PhonePe, Credit/Debit Cards, NetBanking & Cash on Delivery.\n• Use code **KVLR10** for extra 10% OFF on luxury collections.\n• Festive offers & flash sales updated daily!",
-        type: 'INFO',
-        actions: [{ label: 'View Offers & Coupons', action: 'OFFERS' }, { label: 'Find a Product', action: 'SEARCH_PRODUCT' }]
-      }};
-    }
-    if (q.includes('hi') || q.includes('hello') || q.includes('hey') || q.includes('greet')) {
-      return { streamed: false, data: {
-        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I am your AI Shopping Assistant. How can I help you today?`,
-        type: 'GREETING',
-        actions: [
-          { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
-          { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
-          { label: '🔄 Return & Refund', action: 'RETURNS' },
-          { label: '🎟️ Offers & Coupons', action: 'OFFERS' },
-          { label: '👨‍💻 Human Support', action: 'ESCALATE' }
-        ]
-      }};
-    }
-
-    // Free-form query — stream from Ollama
-    const streamResult = await ollamaService.chatStream(
-      query,
-      history || [],
-      onChunk,
-      signal
-    );
-
-    if (streamResult.success) {
-      return { streamed: true, fullResponse: streamResult.fullResponse };
-    }
-
-    // Ollama unavailable — return structured fallback (not streamed)
-    console.warn('[ChatbotService] Ollama stream unavailable, using fallback. Error:', streamResult.error);
-    const featuredProducts = await prisma.product.findMany({
-      where: { status: 'PUBLISHED', isVisible: true },
-      take: 3,
-      include: { images: true }
-    });
-
-    return {
-      streamed: false,
-      data: {
-        reply: `I searched our catalog for "${query}". Here are some of our top recommended luxury items you might like:`,
-        type: 'PRODUCT_CARDS',
-        products: featuredProducts,
-        actions: [{ label: 'Talk to Human Agent', action: 'ESCALATE' }]
-      }
     };
   }
 

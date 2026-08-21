@@ -462,13 +462,17 @@ export default function ProductDetails() {
       size: selectedSize,
       color: selectedColor.name || '',
       quantity,
+      shippingFee: product.shippingFee || 0,
+      freeShipping: product.freeShipping || false,
     }));
     toast.success(`"${product.name}" added to cart!`);
   };
 
   const handleBuyNow = () => {
     handleAddToCart();
-    navigate('/cart');
+    // Store current product page for post-order redirect
+    sessionStorage.setItem('__KVLR_LAST_PRODUCT_PAGE__', window.location.pathname);
+    navigate('/checkout');
   };
 
   const handleWishlist = () => {

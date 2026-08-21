@@ -289,7 +289,8 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
     featured, trending, newArrival, bestSeller, isRecommended, isPremium, isFestival,
     showOnHomepage, status, displayOrder,
     sizes, colors, material, occasion, gender, images,
-    colorGalleries, colorSizeInventory
+    colorGalleries, colorSizeInventory,
+    shippingFee, freeShipping
   } = req.body;
 
   if (!name || price === undefined || price === null || !categoryId) {
@@ -375,6 +376,8 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
       status: (status || 'PUBLISHED').toUpperCase(),
       displayOrder: displayOrder ? parseInt(displayOrder) : 0,
       isVisible: true,
+      shippingFee: shippingFee ? parseFloat(shippingFee) : 0,
+      freeShipping: freeShipping === 'true' || freeShipping === true,
     }
   });
 
@@ -457,6 +460,8 @@ exports.updateProduct = asyncHandler(async (req, res, next) => {
   if (updateData.isFestival !== undefined) updateData.isFestival = updateData.isFestival === 'true' || updateData.isFestival === true;
   if (updateData.showOnHomepage !== undefined) updateData.showOnHomepage = updateData.showOnHomepage === 'true' || updateData.showOnHomepage === true;
   if (updateData.isVisible !== undefined) updateData.isVisible = updateData.isVisible === 'true' || updateData.isVisible === true;
+  if (updateData.freeShipping !== undefined) updateData.freeShipping = updateData.freeShipping === 'true' || updateData.freeShipping === true;
+  if (updateData.shippingFee !== undefined) updateData.shippingFee = parseFloat(updateData.shippingFee) || 0;
 
   if (updateData.status) {
     updateData.status = updateData.status.toUpperCase();

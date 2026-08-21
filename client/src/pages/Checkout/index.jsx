@@ -7,7 +7,6 @@ import api from '../../config/api';
 import { clearCart } from '../../redux/cart/cartSlice';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatImageUrl } from '../../utils/formatImageUrl';
-import Modal from '../../components/common/Modal';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import { toast } from 'react-toastify';
@@ -57,10 +56,22 @@ const Checkout = () => {
 
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-  // Calculate dynamic shipping cost based on selected delivery tier
-  let activeShippingFee = subtotal > (storeSettings?.freeShippingThreshold || cartFreeThreshold || 999)
-    ? 0
-    : (parseFloat(storeSettings?.shippingCharge || storeSettings?.shippingFee || cartShippingFee) || 0);
+  // Per-product shipping: sum each product's shippingFee × quantity (freeShipping items = ₹0)
+  const hasPerProductShipping = items.some(i => i.shippingFee > 0 || i.freeShipping);
+  const perProductShippingTotal = items.reduce((sum, i) => {
+    if (i.freeShipping) return sum;
+    return sum + (parseFloat(i.shippingFee) || 0) * i.quantity;
+  }, 0);
+
+  // Calculate dynamic shipping cost — prefer per-product fees, fallback to global settings
+  let activeShippingFee;
+  if (hasPerProductShipping) {
+    activeShippingFee = perProductShippingTotal;
+  } else {
+    activeShippingFee = subtotal > (storeSettings?.freeShippingThreshold || cartFreeThreshold || 999)
+      ? 0
+      : (parseFloat(storeSettings?.shippingCharge || storeSettings?.shippingFee || cartShippingFee) || 0);
+  }
 
   let activeDeliveryEstimate = storeSettings?.estimatedDeliveryDays || '3-5 Business Days';
 
@@ -85,9 +96,10 @@ const Checkout = () => {
         setAddresses(data.data);
         const defaultAddr = data.data.find(a => a.isDefault) || data.data[0];
         setSelectedAddressId(prev => prev || defaultAddr.id);
+        setAddressModal(false); // Ensure saved addresses tab is active
       } else {
         setAddresses([]);
-        setAddressModal(true);
+        setAddressModal(true); // Switch to "Add New Address" tab when no saved addresses
       }
     } catch (err) {
       console.error(err);
@@ -214,6 +226,7 @@ const Checkout = () => {
         setLoading(false);
 
         // Step 2: Open Razorpay payment modal
+        const lastPage = sessionStorage.getItem('__KVLR_LAST_PRODUCT_PAGE__') || '/';
         initiatePayment({
           amount: grandTotal,
           receipt: `order_${createdOrder.orderNumber}`,
@@ -228,7 +241,8 @@ const Checkout = () => {
             // Step 3: Payment verified — order is now PAID on backend
             dispatch(clearCart());
             toast.success('🎉 Payment successful! Order confirmed.');
-            navigate('/orders', { state: { newOrder: createdOrder } });
+            sessionStorage.removeItem('__KVLR_LAST_PRODUCT_PAGE__');
+            navigate(lastPage);
           },
           onFailure: () => {
             // Payment cancelled/failed — order stays PENDING in DB
@@ -259,8 +273,11 @@ const Checkout = () => {
         const { data } = await api.post('/orders', payload);
         if (data?.success) {
           dispatch(clearCart());
-          toast.success('Order placed successfully!');
-          navigate('/orders', { state: { newOrder: data.data } });
+          toast.success('🎉 Order placed successfully!');
+          // Redirect back to the product page the customer was viewing
+          const lastPage = sessionStorage.getItem('__KVLR_LAST_PRODUCT_PAGE__') || '/';
+          sessionStorage.removeItem('__KVLR_LAST_PRODUCT_PAGE__');
+          navigate(lastPage);
         }
       } catch (err) {
         console.error(err);
@@ -279,52 +296,126 @@ const Checkout = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* LEFT: ADDRESS & PAYMENT SELECTION */}
           <div className="lg:col-span-2 space-y-8">
-            {/* STEP 1: SHIPPING ADDRESS */}
+            {/* STEP 1: SHIPPING ADDRESS — Saved Addresses + Add New */}
             <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm space-y-4">
-              <div className="flex justify-between items-center border-b pb-3">
-                <div className="flex items-center gap-2">
-                  <FiMapPin className="w-5 h-5 text-gold-600" />
-                  <h2 className="font-serif font-bold text-lg text-charcoal-900">1. Select Shipping Address</h2>
-                </div>
-                <Button variant="outline" icon={FiPlus} onClick={() => setAddressModal(true)}>Add Address</Button>
+              <div className="flex items-center gap-2 border-b pb-3">
+                <FiMapPin className="w-5 h-5 text-gold-600" />
+                <h2 className="font-serif font-bold text-lg text-charcoal-900">1. Select Shipping Address</h2>
               </div>
 
-              {addresses.length === 0 ? (
-                <div className="p-6 text-center text-gray-500 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
-                  No saved addresses found. Click &apos;Add Address&apos; to specify delivery location.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {addresses.map((addr) => (
-                    <label
-                      key={addr.id}
-                      className={`p-4 rounded-2xl border-2 cursor-pointer transition flex flex-col justify-between ${
-                        selectedAddressId === addr.id
-                          ? 'border-gold-500 bg-gold-50/50 shadow-sm'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <input
-                          type="radio"
-                          name="shippingAddress"
-                          checked={selectedAddressId === addr.id}
-                          onChange={() => setSelectedAddressId(addr.id)}
-                          className="mt-1 text-gold-500 focus:ring-gold-500 cursor-pointer"
-                        />
-                        <div className="space-y-1">
-                          <strong className="block text-sm text-charcoal-900">{addr.fullName}</strong>
-                          <p className="text-xs text-gray-600">{addr.street}</p>
-                          {addr.apartment && <p className="text-xs text-gray-500">Apt/Suite: {addr.apartment}</p>}
-                          {addr.landmark && <p className="text-xs text-gray-500">Landmark: {addr.landmark}</p>}
-                          {addr.village && <p className="text-xs text-gray-500">{addr.village}</p>}
-                          <p className="text-xs text-gray-600">{addr.city}, {addr.state} - {addr.postalCode}</p>
-                          <p className="text-xs text-gray-400 mt-2 font-mono">Phone: {addr.phone}</p>
+              {/* Two option buttons: Saved Addresses vs Add New */}
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAddressModal(false)}
+                  className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition border-2 ${
+                    !addressModal
+                      ? 'border-gold-500 bg-gold-50 text-charcoal-900'
+                      : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  📍 Saved Addresses {addresses.length > 0 && `(${addresses.length})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddressModal(true)}
+                  className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition border-2 ${
+                    addressModal
+                      ? 'border-gold-500 bg-gold-50 text-charcoal-900'
+                      : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  <FiPlus className="inline w-4 h-4 mr-1" /> Add New Address
+                </button>
+              </div>
+
+              {/* Tab Content: Saved Addresses */}
+              {!addressModal && (
+                <>
+                  {addresses.length === 0 ? (
+                    <div className="p-6 text-center text-gray-500 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
+                      No saved addresses found. Click &apos;Add New Address&apos; to add your delivery location.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {addresses.map((addr) => (
+                        <label
+                          key={addr.id}
+                          className={`p-4 rounded-2xl border-2 cursor-pointer transition flex flex-col justify-between ${
+                            selectedAddressId === addr.id
+                              ? 'border-gold-500 bg-gold-50/50 shadow-sm'
+                              : 'border-gray-200 bg-white hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <input
+                              type="radio"
+                              name="shippingAddress"
+                              checked={selectedAddressId === addr.id}
+                              onChange={() => setSelectedAddressId(addr.id)}
+                              className="mt-1 text-gold-500 focus:ring-gold-500 cursor-pointer"
+                            />
+                            <div className="space-y-1">
+                              <strong className="block text-sm text-charcoal-900">{addr.fullName}</strong>
+                              <p className="text-xs text-gray-600">{addr.street}</p>
+                              {addr.apartment && <p className="text-xs text-gray-500">Apt/Suite: {addr.apartment}</p>}
+                              {addr.landmark && <p className="text-xs text-gray-500">Landmark: {addr.landmark}</p>}
+                              {addr.village && <p className="text-xs text-gray-500">{addr.village}</p>}
+                              <p className="text-xs text-gray-600">{addr.city}, {addr.state} - {addr.postalCode}</p>
+                              <p className="text-xs text-gray-400 mt-2 font-mono">Phone: {addr.phone}</p>
+                              {addr.isDefault && (
+                                <span className="inline-block mt-1 text-[10px] font-bold bg-gold-100 text-gold-700 px-2 py-0.5 rounded-full">DEFAULT</span>
+                              )}
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Tab Content: Add New Address (Inline Form) */}
+              {addressModal && (
+                <form onSubmit={handleAddAddress} className="space-y-4 bg-gray-50 rounded-2xl p-5 border border-gray-200">
+                  {Object.entries(checkoutFields).filter(([_, f]) => f.enabled).map(([key, field]) => {
+                    if (field.type === 'textarea') {
+                      return (
+                        <div key={key}>
+                          <label className="block text-xs font-bold text-charcoal-900 uppercase tracking-wide mb-1">
+                            {field.label || key} {field.required ? '*' : ''}
+                          </label>
+                          <textarea
+                            rows={2}
+                            required={field.required}
+                            placeholder={field.placeholder || ''}
+                            value={addressForm[key] || ''}
+                            onChange={(e) => setAddressForm({ ...addressForm, [key]: e.target.value })}
+                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-gold-500 bg-white"
+                          />
                         </div>
+                      );
+                    }
+                    return (
+                      <div key={key}>
+                        <Input
+                          label={`${field.label || key}${field.required ? ' *' : ''}`}
+                          type={field.type || 'text'}
+                          placeholder={field.placeholder || ''}
+                          value={addressForm[key] || ''}
+                          onChange={(e) => setAddressForm({ ...addressForm, [key]: e.target.value })}
+                          required={field.required}
+                        />
                       </div>
-                    </label>
-                  ))}
-                </div>
+                    );
+                  })}
+                  <div className="flex justify-end gap-3 pt-3 border-t">
+                    {addresses.length > 0 && (
+                      <Button type="button" variant="outline" onClick={() => setAddressModal(false)}>Cancel</Button>
+                    )}
+                    <Button type="submit">Save Address</Button>
+                  </div>
+                </form>
               )}
             </div>
 
@@ -489,6 +580,11 @@ const Checkout = () => {
                   <div className="flex-1 min-w-0">
                     <span className="font-semibold text-charcoal-900 block truncate">{item.name}</span>
                     <span className="text-gray-400">Qty: {item.quantity}</span>
+                    {item.freeShipping ? (
+                      <span className="block text-[10px] text-emerald-600 font-semibold">🚚 Free Delivery</span>
+                    ) : item.shippingFee > 0 ? (
+                      <span className="block text-[10px] text-gray-400">Delivery: {formatCurrency(item.shippingFee)}/pc</span>
+                    ) : null}
                   </div>
                   <span className="font-bold text-charcoal-900">{formatCurrency(item.price * item.quantity)}</span>
                 </div>
@@ -550,56 +646,6 @@ const Checkout = () => {
           </div>
         </div>
       </div>
-
-      {/* Modal: Add Address (Dynamic Form Rendering) */}
-      <Modal isOpen={addressModal} onClose={() => addresses.length > 0 ? setAddressModal(false) : null} title="Add Shipping Address">
-        <form onSubmit={handleAddAddress} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
-          {Object.entries(checkoutFields).filter(([_, f]) => f.enabled).map(([key, field]) => {
-            if (field.type === 'textarea') {
-              return (
-                <div key={key}>
-                  <label className="block text-xs font-bold text-charcoal-900 uppercase tracking-wide mb-1">
-                    {field.label || key} {field.required ? '*' : ''}
-                  </label>
-                  <textarea
-                    rows={2}
-                    required={field.required}
-                    placeholder={field.placeholder || ''}
-                    value={addressForm[key] || ''}
-                    onChange={(e) => setAddressForm({ ...addressForm, [key]: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-gold-500"
-                  />
-                </div>
-              );
-            }
-
-            return (
-              <div key={key}>
-                <Input
-                  label={`${field.label || key}${field.required ? ' *' : ''}`}
-                  type={field.type || 'text'}
-                  placeholder={field.placeholder || ''}
-                  value={addressForm[key] || ''}
-                  onChange={(e) => setAddressForm({ ...addressForm, [key]: e.target.value })}
-                  required={field.required}
-                />
-              </div>
-            );
-          })}
-
-          {addresses.length === 0 && (
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium">
-              ⚠️ Please add your delivery address to proceed with the order.
-            </div>
-          )}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            {addresses.length > 0 && (
-              <Button type="button" variant="outline" onClick={() => setAddressModal(false)}>Cancel</Button>
-            )}
-            <Button type="submit">Save Address</Button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 };

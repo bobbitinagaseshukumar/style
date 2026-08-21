@@ -158,13 +158,14 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
     lowStockAlert: '5',
     minQty: '1',
     maxQty: '',
-    freeShipping: false,
+    freeShipping: editProduct?.freeShipping || false,
     cashOnDelivery: true,
     preOrder: false,
     backOrder: false,
     returnAvailable: true,
     replacementAvailable: true,
-    weight: '',
+    shippingFee: editProduct?.shippingFee?.toString() || '',
+    weight: editProduct?.weight?.toString() || '',
     length: '',
     width: '',
     height: '',
@@ -294,6 +295,9 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
         pattern: form.pattern,
         washCare: form.washCare,
         slug: form.slug,
+        // Per-product shipping
+        shippingFee: parseFloat(form.shippingFee) || 0,
+        freeShipping: !!form.freeShipping,
       };
 
       if (editProduct) {

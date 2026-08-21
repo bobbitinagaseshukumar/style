@@ -86,7 +86,22 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
   }
 
   const calcDiscount = discountAmount ? parseFloat(discountAmount) : 0;
-  const calcShipping = shippingFee !== undefined ? parseFloat(shippingFee) : (subtotal > 999 ? 0 : 99);
+  // Per-product shipping: sum each product's shippingFee (freeShipping products contribute ₹0)
+  // If client sends explicit shippingFee, use it; otherwise calculate from product data
+  let calcShipping = 0;
+  if (shippingFee !== undefined && shippingFee !== null) {
+    calcShipping = parseFloat(shippingFee);
+  } else {
+    // Fallback: calculate from product-level shipping fees
+    for (const item of orderItemsData) {
+      const prod = await prisma.product.findUnique({ where: { id: item.productId }, select: { shippingFee: true, freeShipping: true } });
+      if (prod && !prod.freeShipping) {
+        calcShipping += (prod.shippingFee || 0) * item.quantity;
+      }
+    }
+    // If no per-product fees set, fallback to global default
+    if (calcShipping === 0 && subtotal <= 999) calcShipping = 99;
+  }
   const totalAmount = Math.max(0, subtotal - calcDiscount + calcShipping);
   const orderNumber = genOrderNumber();
 
@@ -902,6 +917,7 @@ exports.getOrderCancellationStatus = asyncHandler(async (req, res, next) => {
 // ==================== ADMIN / CUSTOMER: DELETE ORDER ====================
 exports.deleteOrder = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
+  const hardDelete = req.query.hardDelete === 'true';
 
   const order = await prisma.order.findUnique({
     where: { id },
@@ -915,16 +931,29 @@ exports.deleteOrder = asyncHandler(async (req, res, next) => {
     return next(new ApiError(403, 'Only admins can delete orders'));
   }
 
-  // SOFT DELETE: Mark as deleted by admin instead of removing from DB
-  await prisma.order.update({
-    where: { id },
-    data: { deletedByAdmin: true }
-  });
+  if (hardDelete) {
+    // HARD DELETE: Remove order items first (FK constraint), then the order itself
+    await prisma.$transaction(async (tx) => {
+      await tx.orderItem.deleteMany({ where: { orderId: id } });
+      await tx.order.delete({ where: { id } });
+    });
 
-  res.status(200).json({
-    success: true,
-    message: `Order #${order.orderNumber || id} deleted permanently from database and all views`,
-  });
+    res.status(200).json({
+      success: true,
+      message: `Order #${order.orderNumber || id} permanently deleted from database`,
+    });
+  } else {
+    // SOFT DELETE: Mark as deleted by admin
+    await prisma.order.update({
+      where: { id },
+      data: { deletedByAdmin: true }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Order #${order.orderNumber || id} hidden from admin panel`,
+    });
+  }
 });
 
 // ==================== ADMIN: GET PENDING ORDERS COUNT FOR SIDEBAR BADGE ====================

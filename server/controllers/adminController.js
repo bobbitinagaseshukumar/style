@@ -4,7 +4,6 @@ const ApiError = require('../utils/ApiError');
 
 // Analytics Overview
 exports.getAnalytics = asyncHandler(async (req, res) => {
-  const totalOrders = await prisma.order.count();
   const totalProducts = await prisma.product.count();
   const totalUsers = await prisma.user.count({ where: { role: 'CUSTOMER' } });
 
@@ -12,8 +11,10 @@ exports.getAnalytics = asyncHandler(async (req, res) => {
     select: { totalAmount: true, createdAt: true, orderStatus: true },
   });
 
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.orderStatus !== 'CANCELLED' ? o.totalAmount : 0), 0);
-  const deliveredOrders = orders.filter(o => o.orderStatus === 'DELIVERED').length;
+  // Only DELIVERED orders count towards total orders and revenue
+  const totalOrders = orders.filter(o => o.orderStatus === 'DELIVERED').length;
+  const totalRevenue = orders.filter(o => o.orderStatus === 'DELIVERED').reduce((sum, o) => sum + o.totalAmount, 0);
+  const deliveredOrders = totalOrders;
   const cancelledOrders = orders.filter(o => o.orderStatus === 'CANCELLED').length;
   const pendingOrders = orders.filter(o => ['PENDING', 'CONFIRMED', 'PACKED', 'SHIPPED'].includes(o.orderStatus)).length;
 

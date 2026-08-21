@@ -235,6 +235,8 @@ model Product {
   occasion        String?
   gender          String?
   weight          Float?
+  shippingFee     Float       @default(0)
+  freeShipping    Boolean     @default(false)
 
   shortDesc       String      @default("")
   description     String      @default("")

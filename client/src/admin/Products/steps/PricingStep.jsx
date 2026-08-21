@@ -145,7 +145,7 @@ const PricingStep = ({ form, onChange }) => {
         </div>
       </div>
 
-      {/* Shipping Dimensions */}
+      {/* Shipping Dimensions & Fee */}
       <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
         <h3 className="font-bold text-gray-700 text-sm uppercase tracking-widest">Shipping Details</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -154,7 +154,14 @@ const PricingStep = ({ form, onChange }) => {
           <NumInput label="Width" value={form.width} onChange={handle('width')} suffix="cm" />
           <NumInput label="Height" value={form.height} onChange={handle('height')} suffix="cm" />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <NumInput
+            label="Shipping / Delivery Fee"
+            value={form.freeShipping ? 0 : (form.shippingFee || '')}
+            onChange={handle('shippingFee')}
+            prefix="₹"
+            hint={form.freeShipping ? 'Free shipping enabled — fee ignored' : 'Per-unit delivery charge'}
+          />
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Shipping Class</label>
             <select value={form.shippingClass} onChange={e => onChange('shippingClass', e.target.value)}
