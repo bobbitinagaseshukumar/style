@@ -51,10 +51,19 @@ class ChatbotService {
            (q.includes('under') && /under\s*(?:₹|rs\.?|inr)?\s*\d+/i.test(q));
   }
 
+  /** Simple greetings: hi, hello, hey — get the welcome message */
   isGreetingQuery(q) {
-    return this._matchesAny(q, ['hi', 'hello', 'hey', 'greet', 'hii', 'hiii', 'namaste']) ||
-           /^(how are you|how('s| is) it going|what'?s up|good (morning|afternoon|evening|night)|howdy|sup|yo)\b/i.test(q) ||
-           /^(how are you|how do you do)\b/i.test(q);
+    return this._matchesAny(q, ['hi', 'hello', 'hey', 'greet', 'hii', 'hiii', 'namaste', 'howdy']);
+  }
+
+  /** Conversational greetings: how are you, good morning — get a natural response */
+  isConversationalGreeting(q) {
+    return /\bhow are you\b/i.test(q) ||
+           /\bhow('s| is) it going\b/i.test(q) ||
+           /\bwhat'?s up\b/i.test(q) ||
+           /\bhow do you do\b/i.test(q) ||
+           /^good (morning|afternoon|evening|night)\b/i.test(q) ||
+           /^(sup|yo)\b/i.test(q);
   }
 
   isThankYouQuery(q) {
@@ -99,10 +108,10 @@ class ChatbotService {
    * Used to provide smart fallbacks when Ollama is unavailable.
    */
   isConversationalQuery(q) {
-    return this.isGreetingQuery(q) || this.isThankYouQuery(q) || this.isFarewellQuery(q) ||
+    return this.isGreetingQuery(q) || this.isConversationalGreeting(q) ||
+           this.isThankYouQuery(q) || this.isFarewellQuery(q) ||
            this.isAboutBotQuery(q) ||
-           /^(how are you|how('s| is) it going|what'?s up|good (morning|afternoon|evening|night))/i.test(q) ||
-           q.length < 10; // Very short queries like "ok", "cool", "nice" etc.
+           q.length < 10;
   }
 
   /* ══════════════════════════════════════════════════════════════════
@@ -110,10 +119,27 @@ class ChatbotService {
      Returns contextual responses instead of "I searched our catalog"
   ══════════════════════════════════════════════════════════════════ */
   getSmartFallback(q, query, user) {
-    // Greetings
-    if (this.isGreetingQuery(q) || /^(how are you|how('s| is) it going)/i.test(q)) {
+    // Conversational greetings ("how are you", "good morning") — natural response
+    if (this.isConversationalGreeting(q)) {
+      const timeOfDay = new Date().getHours();
+      const timeGreeting = timeOfDay < 12 ? 'Good morning' : timeOfDay < 17 ? 'Good afternoon' : 'Good evening';
       return {
-        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! I'm doing great, thanks for asking! Welcome to KVLR Styles. I'm your AI Shopping Assistant — here to help you find luxury fashion, track orders, check offers, and more. How can I assist you today?`,
+        reply: `😊 I'm doing great, thank you for asking${user ? ', ' + (user.fullName || '') : ''}! ${timeGreeting} and welcome to KVLR Styles! ✨\n\nI'm your AI Shopping Assistant — available 24/7 to help you with:\n• 🔍 Finding luxury products\n• 🚚 Tracking orders\n• 🎟️ Offers & coupons\n• 💳 Payment support\n\nHow can I assist you today?`,
+        type: 'AI_RESPONSE',
+        aiPowered: true,
+        actions: [
+          { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+          { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
+          { label: '🎟️ Offers & Coupons', action: 'OFFERS' },
+          { label: '👨‍💻 Human Support', action: 'ESCALATE' }
+        ]
+      };
+    }
+
+    // Simple greetings ("hi", "hello") — welcome message
+    if (this.isGreetingQuery(q)) {
+      return {
+        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I'm your AI Shopping Assistant — here to help you find luxury fashion, track orders, check offers, and more. How can I assist you today?`,
         type: 'GREETING',
         actions: [
           { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
@@ -241,7 +267,25 @@ class ChatbotService {
       };
     }
 
-    // 8. Greetings (including "how are you", "good morning", etc.)
+    // 8. Conversational greetings ("how are you", "good morning") — try Ollama, then smart fallback
+    if (this.isConversationalGreeting(q)) {
+      const aiResult = await ollamaService.chat(query, history || []);
+      if (aiResult.success) {
+        return {
+          reply: aiResult.response,
+          type: 'AI_RESPONSE',
+          aiPowered: true,
+          actions: [
+            { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+            { label: '👨‍💻 Human Support', action: 'ESCALATE' }
+          ]
+        };
+      }
+      // Ollama unavailable — use smart natural fallback
+      return this.getSmartFallback(q, query, user);
+    }
+
+    // 9. Simple greetings ("hi", "hello", "hey")
     if (this.isGreetingQuery(q)) {
       return {
         reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I am your AI Shopping Assistant. How can I help you today?`,
@@ -256,17 +300,17 @@ class ChatbotService {
       };
     }
 
-    // 9. Thank you
+    // 10. Thank you
     if (this.isThankYouQuery(q)) {
       return this.getSmartFallback(q, query, user);
     }
 
-    // 10. Farewell
+    // 11. Farewell
     if (this.isFarewellQuery(q)) {
       return this.getSmartFallback(q, query, user);
     }
 
-    // 11. About the bot
+    // 12. About the bot
     if (this.isAboutBotQuery(q)) {
       return this.getSmartFallback(q, query, user);
     }
@@ -342,6 +386,15 @@ class ChatbotService {
         type: 'INFO',
         actions: [{ label: 'View Offers & Coupons', action: 'OFFERS' }, { label: 'Find a Product', action: 'SEARCH_PRODUCT' }]
       }};
+    }
+    // Conversational greetings ("how are you", "good morning") — stream from Ollama for natural reply
+    if (this.isConversationalGreeting(q)) {
+      const streamResult = await ollamaService.chatStream(query, history || [], onChunk, signal);
+      if (streamResult.success) {
+        return { streamed: true, fullResponse: streamResult.fullResponse };
+      }
+      // Ollama unavailable — return smart natural fallback
+      return { streamed: false, data: this.getSmartFallback(q, query, user) };
     }
     if (this.isGreetingQuery(q)) {
       return { streamed: false, data: {
