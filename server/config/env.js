@@ -21,6 +21,9 @@ const env = {
   FROM_NAME: process.env.FROM_NAME || 'KVLR Styles',
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
+  // Ollama AI Integration
+  OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+  OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'qwen2.5:3b',
 };
 
 module.exports = env;

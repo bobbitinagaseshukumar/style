@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiMessageSquare, FiX, FiSend, FiShoppingBag, FiTruck,
@@ -23,6 +23,7 @@ const QUICK_ACTIONS = [
 
 /**
  * AI Shopping Assistant Chatbot Widget
+ * Powered by Ollama AI with streaming responses.
  * Controlled dynamically by Admin Chatbot Settings in Admin Dashboard!
  */
 const ChatbotWidget = () => {
@@ -31,9 +32,12 @@ const ChatbotWidget = () => {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [unread, setUnread] = useState(1);
+  const [conversationHistory, setConversationHistory] = useState([]);
 
   const messagesEndRef = useRef(null);
+  const abortControllerRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -80,9 +84,13 @@ const ChatbotWidget = () => {
   }
   if (settings?.hideOnCheckout && location.pathname.startsWith('/checkout')) return null;
 
+  /**
+   * Send message with streaming SSE support.
+   * Falls back to regular POST if streaming fails.
+   */
   const handleSendMessage = async (textToSend) => {
     const text = textToSend || inputValue;
-    if (!text || !text.trim()) return;
+    if (!text || !text.trim() || isStreaming) return;
 
     const userMsg = {
       id: `user-${Date.now()}`,
@@ -94,20 +102,22 @@ const ChatbotWidget = () => {
     setMessages((prev) => [...prev, userMsg]);
     setInputValue('');
     setIsTyping(true);
+    setIsStreaming(true);
+
+    // Track conversation history for Ollama context
+    const updatedHistory = [
+      ...conversationHistory,
+      { role: 'user', content: text.trim() }
+    ].slice(-10); // Keep last 10 messages
 
     try {
-      const res = await api.post('/chatbot/message', { message: text.trim() });
-      const botData = res.data?.data || {};
+      // Try streaming endpoint first
+      const streamSuccess = await handleStreamRequest(text.trim(), updatedHistory);
 
-      const botMsg = {
-        id: `bot-${Date.now()}`,
-        sender: 'BOT',
-        text: botData.reply || 'I found some matching details for you.',
-        data: botData,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      setMessages((prev) => [...prev, botMsg]);
+      if (!streamSuccess) {
+        // Fallback to regular non-streaming endpoint
+        await handleRegularRequest(text.trim());
+      }
     } catch (err) {
       setMessages((prev) => [
         ...prev,
@@ -120,7 +130,178 @@ const ChatbotWidget = () => {
       ]);
     } finally {
       setIsTyping(false);
+      setIsStreaming(false);
+      abortControllerRef.current = null;
     }
+  };
+
+  /**
+   * Handle streaming SSE request to /chatbot/stream
+   */
+  const handleStreamRequest = async (text, history) => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    try {
+      // Build the full URL using the same base as the api instance
+      const baseURL = api.defaults.baseURL || '/api/v1';
+      const token = localStorage.getItem('token');
+
+      const response = await fetch(`${baseURL}/chatbot/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message: text, history }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        return false;
+      }
+
+      setIsTyping(false); // Stop "thinking" indicator, start showing text
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let streamingMsgId = `bot-stream-${Date.now()}`;
+      let fullText = '';
+      let isAiPowered = false;
+      let structuredData = null;
+
+      // Add an empty bot message that we'll fill progressively
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: streamingMsgId,
+          sender: 'BOT',
+          text: '',
+          isStreaming: true,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+
+        for (const line of lines) {
+          const data = line.slice(6); // Remove "data: " prefix
+
+          if (data === '[DONE]') {
+            // Stream complete
+            break;
+          }
+
+          try {
+            const parsed = JSON.parse(data);
+
+            if (parsed.type === 'chunk') {
+              // Progressive text from AI
+              fullText += parsed.content;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === streamingMsgId
+                    ? { ...m, text: fullText }
+                    : m
+                )
+              );
+            } else if (parsed.type === 'done') {
+              // AI stream finished — update message metadata
+              isAiPowered = true;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === streamingMsgId
+                    ? { ...m, isStreaming: false, aiPowered: true, data: { actions: parsed.actions } }
+                    : m
+                )
+              );
+            } else if (parsed.type === 'structured') {
+              // Intent-matched response — replace the streaming placeholder
+              structuredData = parsed.data;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === streamingMsgId
+                    ? {
+                        ...m,
+                        text: structuredData.reply || '',
+                        data: structuredData,
+                        isStreaming: false,
+                      }
+                    : m
+                )
+              );
+            } else if (parsed.type === 'error') {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === streamingMsgId
+                    ? { ...m, text: parsed.message, isStreaming: false }
+                    : m
+                )
+              );
+            }
+          } catch {
+            // Skip malformed JSON
+          }
+        }
+      }
+
+      // Finalize the message
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === streamingMsgId
+            ? { ...m, isStreaming: false }
+            : m
+        )
+      );
+
+      // Update conversation history with the AI response
+      if (fullText || structuredData?.reply) {
+        setConversationHistory([
+          ...history,
+          { role: 'assistant', content: fullText || structuredData?.reply || '' }
+        ].slice(-10));
+      }
+
+      return true;
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        return true; // User cancelled — not an error
+      }
+      console.warn('[ChatbotWidget] Streaming failed, falling back:', err.message);
+      // Remove the placeholder streaming message
+      setMessages((prev) => prev.filter((m) => !m.isStreaming));
+      return false;
+    }
+  };
+
+  /**
+   * Fallback: Regular non-streaming POST to /chatbot/message
+   */
+  const handleRegularRequest = async (text) => {
+    const res = await api.post('/chatbot/message', { message: text });
+    const botData = res.data?.data || {};
+
+    const botMsg = {
+      id: `bot-${Date.now()}`,
+      sender: 'BOT',
+      text: botData.reply || 'I found some matching details for you.',
+      data: botData,
+      aiPowered: botData.aiPowered || false,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setMessages((prev) => [...prev, botMsg]);
+
+    // Update conversation history
+    setConversationHistory((prev) => [
+      ...prev,
+      { role: 'assistant', content: botData.reply || '' }
+    ].slice(-10));
   };
 
   const posClass = settings?.position === 'bottom-left'
@@ -201,8 +382,22 @@ const ChatbotWidget = () => {
                     }`}
                   >
                     <p className="whitespace-pre-line">{m.text}</p>
+
+                    {/* Streaming cursor */}
+                    {m.isStreaming && (
+                      <span className="inline-block w-1.5 h-3.5 bg-gold-400 ml-0.5 animate-pulse rounded-sm" />
+                    )}
                   </div>
-                  <span className="text-[9px] text-gray-500 mt-1 px-1">{m.timestamp}</span>
+
+                  {/* AI badge + timestamp */}
+                  <div className="flex items-center gap-1.5 mt-1 px-1">
+                    {m.aiPowered && (
+                      <span className="text-[8px] text-gold-400/60 font-semibold flex items-center gap-0.5">
+                        <FiZap className="w-2.5 h-2.5" /> AI Powered
+                      </span>
+                    )}
+                    <span className="text-[9px] text-gray-500">{m.timestamp}</span>
+                  </div>
                 </div>
               ))}
 
@@ -211,6 +406,7 @@ const ChatbotWidget = () => {
                   <span className="w-1.5 h-1.5 bg-gold-400 rounded-full animate-bounce" />
                   <span className="w-1.5 h-1.5 bg-gold-400 rounded-full animate-bounce [animation-delay:0.2s]" />
                   <span className="w-1.5 h-1.5 bg-gold-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                  <span className="text-[10px] text-gray-400 ml-1.5">AI is thinking...</span>
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -222,7 +418,8 @@ const ChatbotWidget = () => {
                 <button
                   key={action.label}
                   onClick={() => handleSendMessage(action.query)}
-                  className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-gold-500/20 border border-white/10 text-gray-300 hover:text-gold-400 text-[10px] font-semibold whitespace-nowrap transition"
+                  disabled={isStreaming}
+                  className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-gold-500/20 border border-white/10 text-gray-300 hover:text-gold-400 text-[10px] font-semibold whitespace-nowrap transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {action.label}
                 </button>
@@ -239,14 +436,16 @@ const ChatbotWidget = () => {
             >
               <input
                 type="text"
-                placeholder="Ask about products, orders..."
+                placeholder={isStreaming ? 'AI is responding...' : 'Ask about products, orders...'}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                className="flex-1 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:ring-1 focus:ring-gold-500"
+                disabled={isStreaming}
+                className="flex-1 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:ring-1 focus:ring-gold-500 disabled:opacity-50"
               />
               <button
                 type="submit"
-                className="p-2.5 rounded-xl bg-gradient-to-r from-gold-500 to-amber-600 text-black font-bold hover:from-gold-400 transition cursor-pointer"
+                disabled={isStreaming || !inputValue.trim()}
+                className="p-2.5 rounded-xl bg-gradient-to-r from-gold-500 to-amber-600 text-black font-bold hover:from-gold-400 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiSend className="w-4 h-4" />
               </button>

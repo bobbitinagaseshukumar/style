@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const ollamaService = require('./ollamaService');
 
 /**
  * Enterprise Intelligent AI Shopping Assistant Service
@@ -9,7 +10,7 @@ class ChatbotService {
   /**
    * Process Natural Language Query
    */
-  async processQuery({ query, user, sessionId }) {
+  async processQuery({ query, user, sessionId, history }) {
     const q = query.trim().toLowerCase();
 
     // 1. Check for Human Support Escalation Request
@@ -77,7 +78,32 @@ class ChatbotService {
       };
     }
 
-    // Default Fallback with DB Product Recommendations
+    // Default — Send to Ollama AI for intelligent response
+    // Falls back to DB product recommendations if Ollama is unavailable
+    const aiResult = await ollamaService.chat(query, history || []);
+
+    if (aiResult.success) {
+      // AI responded — combine with product suggestions for extra value
+      const suggestedProducts = await prisma.product.findMany({
+        where: { status: 'PUBLISHED', isVisible: true },
+        take: 2,
+        include: { images: true }
+      });
+
+      return {
+        reply: aiResult.response,
+        type: 'AI_RESPONSE',
+        products: suggestedProducts.length > 0 ? suggestedProducts : undefined,
+        aiPowered: true,
+        actions: [
+          { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+          { label: '👨‍💻 Human Support', action: 'ESCALATE' }
+        ]
+      };
+    }
+
+    // Ollama unavailable — fall back to original DB product recommendations
+    console.warn('[ChatbotService] Ollama unavailable, using keyword fallback. Error:', aiResult.error);
     const featuredProducts = await prisma.product.findMany({
       where: { status: 'PUBLISHED', isVisible: true },
       take: 3,
@@ -258,6 +284,110 @@ class ChatbotService {
       type: 'ESCALATION',
       ticketNo,
       actions: [{ label: 'Back to Store', action: 'STORE_HOME' }]
+    };
+  }
+
+  /**
+   * Process query with streaming Ollama response.
+   * Returns structured data for intent matches, or streams AI for free-form.
+   * @param {Object} params
+   * @param {Function} params.onChunk - SSE chunk callback: onChunk(text)
+   * @param {AbortSignal} [params.signal] - Optional abort signal
+   * @returns {Promise<{streamed: boolean, data?: Object, fullResponse?: string}>}
+   */
+  async processStreamQuery({ query, user, sessionId, history, onChunk, signal }) {
+    const q = query.trim().toLowerCase();
+
+    // All existing intent handlers return structured data (no streaming needed)
+    if (this.isEscalationQuery(q)) {
+      return { streamed: false, data: await this.escalateToSupport({ user, sessionId, query }) };
+    }
+    if (this.isOrderQuery(q)) {
+      return { streamed: false, data: await this.handleOrderSupport({ q, user }) };
+    }
+    if (this.isProductSearchQuery(q)) {
+      return { streamed: false, data: await this.handleProductSearch({ q }) };
+    }
+    if (q.includes('cart') || q.includes('basket')) {
+      return { streamed: false, data: this.handleCartHelp({ user }) };
+    }
+    if (q.includes('wishlist') || q.includes('saved')) {
+      return { streamed: false, data: this.handleWishlistHelp({ user }) };
+    }
+    if (q.includes('ship') || q.includes('deliver') || q.includes('courier') || q.includes('time')) {
+      return { streamed: false, data: {
+        reply: "📦 **Shipping & Delivery Information**:\n• Free Express Shipping on orders above ₹2,999.\n• Standard Delivery: 2-5 business days across India.\n• Cash on Delivery (COD) is available on all eligible postal codes.\n• Real-time SMS & Email tracking links sent upon dispatch.",
+        type: 'INFO',
+        actions: [{ label: 'Track My Order', action: 'TRACK_ORDER' }, { label: 'Store Policies', action: 'POLICIES' }]
+      }};
+    }
+    if (q.includes('return') || q.includes('refund') || q.includes('replace') || q.includes('exchange')) {
+      return { streamed: false, data: {
+        reply: "🔄 **Returns & Refund Policy**:\n• Easy 7-Day Hassle-Free Returns & Replacements.\n• Pickup arranged right from your doorstep.\n• Refunds processed back to original payment method or wallet within 48 hours of quality verification.",
+        type: 'INFO',
+        actions: [{ label: 'Return an Item', action: 'RETURN_ITEM' }, { label: 'Contact Support', action: 'ESCALATE' }]
+      }};
+    }
+    if (q.includes('pay') || q.includes('upi') || q.includes('cod') || q.includes('card') || q.includes('coupon') || q.includes('offer') || q.includes('discount')) {
+      return { streamed: false, data: {
+        reply: "💳 **Payment Methods & Active Offers**:\n• We accept UPI, GPay, PhonePe, Credit/Debit Cards, NetBanking & Cash on Delivery.\n• Use code **KVLR10** for extra 10% OFF on luxury collections.\n• Festive offers & flash sales updated daily!",
+        type: 'INFO',
+        actions: [{ label: 'View Offers & Coupons', action: 'OFFERS' }, { label: 'Find a Product', action: 'SEARCH_PRODUCT' }]
+      }};
+    }
+    if (q.includes('hi') || q.includes('hello') || q.includes('hey') || q.includes('greet')) {
+      return { streamed: false, data: {
+        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I am your AI Shopping Assistant. How can I help you today?`,
+        type: 'GREETING',
+        actions: [
+          { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
+          { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+          { label: '🔄 Return & Refund', action: 'RETURNS' },
+          { label: '🎟️ Offers & Coupons', action: 'OFFERS' },
+          { label: '👨‍💻 Human Support', action: 'ESCALATE' }
+        ]
+      }};
+    }
+
+    // Free-form query — stream from Ollama
+    const streamResult = await ollamaService.chatStream(
+      query,
+      history || [],
+      onChunk,
+      signal
+    );
+
+    if (streamResult.success) {
+      return { streamed: true, fullResponse: streamResult.fullResponse };
+    }
+
+    // Ollama unavailable — return structured fallback (not streamed)
+    console.warn('[ChatbotService] Ollama stream unavailable, using fallback. Error:', streamResult.error);
+    const featuredProducts = await prisma.product.findMany({
+      where: { status: 'PUBLISHED', isVisible: true },
+      take: 3,
+      include: { images: true }
+    });
+
+    return {
+      streamed: false,
+      data: {
+        reply: `I searched our catalog for "${query}". Here are some of our top recommended luxury items you might like:`,
+        type: 'PRODUCT_CARDS',
+        products: featuredProducts,
+        actions: [{ label: 'Talk to Human Agent', action: 'ESCALATE' }]
+      }
+    };
+  }
+
+  /**
+   * Get Ollama AI status for admin panel.
+   */
+  async getAIStatus() {
+    const available = await ollamaService.isAvailable();
+    return {
+      ...ollamaService.getStatus(),
+      available,
     };
   }
 }
