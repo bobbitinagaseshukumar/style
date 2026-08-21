@@ -23,8 +23,9 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
     reviewsCount,
     activeAnnouncements
   ] = await Promise.all([
-    // All Orders for Revenue calculation
+    // All Orders for Revenue calculation (exclude admin-deleted)
     prisma.order.findMany({
+      where: { deletedByAdmin: false },
       select: {
         id: true,
         totalAmount: true,
@@ -34,9 +35,10 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
       }
     }),
 
-    // Order status counts
+    // Order status counts (exclude admin-deleted)
     prisma.order.groupBy({
       by: ['orderStatus'],
+      where: { deletedByAdmin: false },
       _count: { id: true }
     }),
 
@@ -62,8 +64,9 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
       }
     }),
 
-    // Recent 10 Orders with customer & item details
+    // Recent 10 Orders with customer & item details (exclude admin-deleted)
     prisma.order.findMany({
+      where: { deletedByAdmin: false },
       take: 10,
       orderBy: { createdAt: 'desc' },
       include: {
@@ -92,11 +95,9 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
     })
   ]);
 
-  // Calculate Revenue Metrics (Only valid customer orders count towards revenue)
+  // Calculate Revenue Metrics — ONLY DELIVERED orders count towards revenue & total order count
   const validOrders = allOrders.filter(o =>
-    o.orderStatus !== 'CANCELLED' &&
-    o.orderStatus !== 'REFUNDED' &&
-    o.orderStatus !== 'REJECTED' &&
+    o.orderStatus === 'DELIVERED' &&
     (o.paymentStatus === 'PAID' || o.paymentStatus === 'COMPLETED' || o.paymentMethod === 'COD')
   );
 
@@ -122,7 +123,8 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
     statusMap[item.orderStatus] = item._count.id;
   });
 
-  const totalOrdersCount = allOrders.length;
+  // Total orders = DELIVERED only (revenue-generating orders)
+  const totalOrdersCount = statusMap['DELIVERED'] || 0;
   const pendingOrdersCount = statusMap['PENDING'] || 0;
   const confirmedOrdersCount = statusMap['CONFIRMED'] || 0;
   const packedOrdersCount = statusMap['PACKED'] || 0;

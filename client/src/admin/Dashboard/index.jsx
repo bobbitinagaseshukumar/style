@@ -155,7 +155,16 @@ const Dashboard = () => {
     try {
       setDeletingOrder(true);
       await api.delete(`/orders/${deleteOrderTarget.id}${hardDelete ? '?hardDelete=true' : ''}`);
-      toast.success(`Order #${deleteOrderTarget.id} removed from database`);
+      toast.success(
+        hardDelete
+          ? `Order #${deleteOrderTarget.id.substring(0, 8)} permanently deleted`
+          : `Order #${deleteOrderTarget.id.substring(0, 8)} hidden from dashboard`
+      );
+      // Immediately remove the order from local state for instant UI feedback
+      setData((prev) => ({
+        ...prev,
+        recentOrders: (prev.recentOrders || []).filter((o) => o.id !== deleteOrderTarget.id),
+      }));
       setDeleteOrderTarget(null);
       fetchStats(true);
     } catch (err) {
