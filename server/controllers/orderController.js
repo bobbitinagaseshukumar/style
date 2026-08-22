@@ -235,6 +235,8 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
         discount: order.discountAmount,
         shippingCharge: order.shippingFee,
         total: order.totalAmount,
+        paymentStatus: order.paymentStatus,
+        paymentTxnId: order.paymentTxnId,
         shippingAddress: order.address
           ? `${order.address.fullName || order.user?.fullName || ''}, ${order.address.street}, ${order.address.city}, ${order.address.state} - ${order.address.postalCode} (Phone: ${order.address.phone || 'N/A'})`
           : 'N/A',
