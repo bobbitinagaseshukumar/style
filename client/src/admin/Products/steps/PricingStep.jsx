@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { FiTrendingUp, FiDollarSign } from 'react-icons/fi';
 
-const NumInput = ({ label, value, onChange, prefix, suffix, hint, required }) => (
+const NumInput = ({ label, value, onChange, prefix, suffix, hint, required, disabled }) => (
   <div>
     <label className="block text-sm font-semibold text-gray-700 mb-1.5">
       {label} {required && <span className="text-red-400">*</span>}
@@ -12,12 +12,13 @@ const NumInput = ({ label, value, onChange, prefix, suffix, hint, required }) =>
         type="number"
         value={value}
         onChange={e => onChange(e.target.value)}
-        className={`w-full py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none ${prefix ? 'pl-8' : 'px-4'} ${suffix ? 'pr-10' : ''}`}
+        disabled={disabled}
+        className={`w-full py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none ${prefix ? 'pl-8' : 'px-4'} ${suffix ? 'pr-10' : ''} ${disabled ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`}
         placeholder="0"
       />
       {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{suffix}</span>}
     </div>
-    {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+    {hint && <p className={`text-xs mt-1 ${disabled ? 'text-amber-500 font-semibold' : 'text-gray-400'}`}>{hint}</p>}
   </div>
 );
 
@@ -160,7 +161,8 @@ const PricingStep = ({ form, onChange }) => {
             value={form.freeShipping ? 0 : (form.shippingFee || '')}
             onChange={handle('shippingFee')}
             prefix="₹"
-            hint={form.freeShipping ? 'Free shipping enabled — fee ignored' : 'Per-unit delivery charge'}
+            disabled={!!form.freeShipping}
+            hint={form.freeShipping ? '⚠️ Turn OFF "Free Shipping" toggle above to set a custom delivery fee' : 'Per-unit delivery charge — this amount is added at checkout'}
           />
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Shipping Class</label>
