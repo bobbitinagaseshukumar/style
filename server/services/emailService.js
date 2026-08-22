@@ -18,12 +18,18 @@ async function getStoreMetadata() {
     console.warn('[EMAIL SERVICE] StoreSettings query fallback:', e.message);
   }
 
-  const clientUrl = (env.CLIENT_URL && !env.CLIENT_URL.includes('localhost'))
-    ? env.CLIENT_URL.replace(/\/$/, '')
-    : 'https://styleverse.vercel.app';
+  let clientUrl = env.CLIENT_URL;
+  if (!clientUrl || clientUrl.includes('localhost')) {
+    if (process.env.VERCEL_URL) {
+      clientUrl = `https://${process.env.VERCEL_URL}`;
+    } else {
+      clientUrl = 'https://styleverse.vercel.app';
+    }
+  }
+  clientUrl = clientUrl.replace(/\/$/, '');
 
   return {
-    storeName: settings?.storeName || env.FROM_NAME || 'StyleVerse',
+    storeName: settings?.storeName || env.FROM_NAME || 'KVLR Styles',
     storeTagline: settings?.storeTagline || 'Enterprise Luxury Clothing & Jewellery Platform',
     primaryColor: settings?.primaryColor || '#D4AF37',
     clientUrl,
@@ -102,10 +108,13 @@ function wrapTemplate({
   const productGridHtml = products.length > 0 ? `
     <div style="margin-top: 24px;">
       ${products.map((p) => {
-        const rawImg = (p.images && p.images.length > 0)
-          ? (typeof p.images[0] === 'object' ? p.images[0].url : p.images[0])
-          : (p.image || p.imageUrl || '');
-        const prodImg = formatEmailImageUrl(rawImg, p.name);
+        const primaryImg = (p.images && p.images.length > 0)
+          ? (p.images.find(img => typeof img === 'object' && img.isPrimary) || p.images[0])
+          : null;
+        const rawImg = primaryImg
+          ? (typeof primaryImg === 'object' ? primaryImg.url : primaryImg)
+          : (p.image || p.imageUrl || p.coverImage || '');
+        const prodImg = formatEmailImageUrl(rawImg, p.name, primaryImg?.id, p.id);
         const pSlug = p.slug || p.id;
         const pUrl = `${clientUrl}/product/${pSlug}`;
 
@@ -762,7 +771,7 @@ class EmailService {
       // Filter customers who accept email notifications
       const emailRecipients = customers.filter(c => c.email && c.emailNotifications !== false);
       const productSlug = product.slug || product.id;
-      const productUrl = `${clientUrl}/products/${productSlug}`;
+      const productUrl = `${clientUrl}/product/${productSlug}`;
 
       const headline = `✨ Just Dropped: ${product.name}`;
       const description = `

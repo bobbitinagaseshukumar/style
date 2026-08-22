@@ -8,8 +8,8 @@ import { fetchStoreSettings } from './redux/settings/settingsSlice';
 import { fetchServerCart } from './redux/cart/cartSlice';
 import { fetchServerWishlist } from './redux/wishlist/wishlistSlice';
 
-// Session expires after 3 days of INACTIVITY (not 3 days since login)
-const SESSION_MAX_INACTIVE_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+// Session expires after 4 days of INACTIVITY (not 4 days since login)
+const SESSION_MAX_INACTIVE_MS = 4 * 24 * 60 * 60 * 1000; // 4 days
 const ACTIVITY_KEY = 'kvlr_last_activity';
 const ADMIN_ACTIVITY_KEY = 'kvlr_admin_last_activity';
 
@@ -22,13 +22,12 @@ const App = () => {
   const updateActivity = useCallback(() => {
     const now = Date.now().toString();
     localStorage.setItem(ACTIVITY_KEY, now);
-    // Also update admin activity if admin token exists
     if (localStorage.getItem('adminToken')) {
       localStorage.setItem(ADMIN_ACTIVITY_KEY, now);
     }
   }, []);
 
-  // Check if session has been inactive for more than 3 days
+  // Check if session has been inactive for more than 4 days
   const checkInactivityLogout = useCallback(() => {
     const isAdminPath = window.location.pathname.startsWith('/admin');
     const activityKey = isAdminPath ? ADMIN_ACTIVITY_KEY : ACTIVITY_KEY;
@@ -37,7 +36,6 @@ const App = () => {
     if (lastActivity) {
       const elapsed = Date.now() - parseInt(lastActivity, 10);
       if (elapsed > SESSION_MAX_INACTIVE_MS) {
-        // Inactive for more than 3 days — force logout
         console.info('[Session] Auto-logout: inactive for', Math.round(elapsed / 86400000), 'days');
         if (isAdminPath) {
           localStorage.removeItem('adminToken');
@@ -49,7 +47,6 @@ const App = () => {
         return true; // session expired
       }
     } else {
-      // First visit — set initial activity timestamp
       updateActivity();
     }
     return false; // session still valid
@@ -57,12 +54,13 @@ const App = () => {
 
   // Fetch user profile with retry on failure
   useEffect(() => {
-    if (!token) {
+    const activeToken = token || localStorage.getItem('token') || localStorage.getItem('adminToken');
+    if (!activeToken) {
       retryCount.current = 0;
       return;
     }
 
-    // Check 3-day inactivity first
+    // Check 4-day inactivity first
     if (checkInactivityLogout()) return;
 
     // Update activity timestamp (user is actively loading the app)

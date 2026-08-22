@@ -37,7 +37,9 @@ export const getMe = createAsyncThunk('auth/getMe', async (_, { rejectWithValue 
   }
 });
 
-const storedToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+const storedToken = typeof window !== 'undefined'
+  ? (localStorage.getItem('token') || localStorage.getItem('adminToken'))
+  : null;
 
 const authSlice = createSlice({
   name: 'auth',
@@ -54,11 +56,13 @@ const authSlice = createSlice({
       state.token = action.payload.token;
       state.isAuthenticated = true;
       if (action.payload.token) {
+        if (action.payload.user?.role === 'ADMIN' || action.payload.user?.role === 'SUPER_ADMIN') {
+          localStorage.setItem('adminToken', action.payload.token);
+        }
         localStorage.setItem('token', action.payload.token);
       }
       try {
         localStorage.removeItem('persist:auth');
-        // NOTE: Do NOT clear home page product cache on login — products are public data
       } catch (e) {}
     },
     logoutUser: (state) => {
@@ -67,13 +71,12 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       try {
         localStorage.removeItem('token');
+        localStorage.removeItem('adminToken');
         localStorage.removeItem('persist:auth');
         localStorage.removeItem('persist:cart');
         localStorage.removeItem('persist:wishlist');
         localStorage.removeItem('styleverse_cart');
         localStorage.removeItem('styleverse_wishlist');
-        // NOTE: Do NOT clear home page product cache on logout — products are public data
-        // NOTE: Do NOT sessionStorage.clear() — it destroys the home page SWR cache
       } catch (e) {}
     },
     clearError: (state) => {
@@ -96,6 +99,9 @@ const authSlice = createSlice({
         state.token = action.payload.data?.token;
         state.isAuthenticated = true;
         if (action.payload.data?.token) {
+          if (action.payload.data.user?.role === 'ADMIN' || action.payload.data.user?.role === 'SUPER_ADMIN') {
+            localStorage.setItem('adminToken', action.payload.data.token);
+          }
           localStorage.setItem('token', action.payload.data.token);
           localStorage.setItem('kvlr_last_activity', Date.now().toString());
         }
@@ -115,6 +121,9 @@ const authSlice = createSlice({
         state.token = action.payload.data?.token;
         state.isAuthenticated = true;
         if (action.payload.data?.token) {
+          if (action.payload.data.user?.role === 'ADMIN' || action.payload.data.user?.role === 'SUPER_ADMIN') {
+            localStorage.setItem('adminToken', action.payload.data.token);
+          }
           localStorage.setItem('token', action.payload.data.token);
           localStorage.setItem('kvlr_last_activity', Date.now().toString());
         }
@@ -129,25 +138,21 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
       })
       .addCase(getMe.rejected, (state, action) => {
-        // IMPORTANT: Do NOT clear the token on getMe failure!
-        // getMe can fail due to network issues, server restart, slow response etc.
-        // Only clear user data so the app can retry on next navigation.
-        // The token stays in localStorage — if it's truly expired, the server
-        // will return 401 and the interceptor will handle cleanup.
-        state.user = null;
-        state.isAuthenticated = false;
-        // Only remove token if the server explicitly said unauthorized (401)
-        const is401 = action.payload?.includes?.('Not authorized') || 
-                       action.payload?.includes?.('token') ||
-                       action.payload?.includes?.('expired') ||
-                       action.payload?.includes?.('session');
-        if (is401) {
+        const isExplicit401 = action.payload?.includes?.('Not authorized') || 
+                              action.payload?.includes?.('token') ||
+                              action.payload?.includes?.('expired') ||
+                              action.payload?.includes?.('session');
+        if (isExplicit401) {
+          state.user = null;
           state.token = null;
+          state.isAuthenticated = false;
           try {
             localStorage.removeItem('token');
+            localStorage.removeItem('adminToken');
             localStorage.removeItem('persist:auth');
           } catch (e) {}
         }
+        // If network error / backend wakeup delay, keep token & isAuthenticated active!
       });
   }
 });
