@@ -403,33 +403,15 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
     include: { images: true, category: true, subCategory: true }
   });
 
-  // NOTE: Auto email broadcast to all customers on product publish is DISABLED.
-  // Order confirmation emails are sent ONLY to the specific customer who placed the order.
-  // Admin can send promotional emails manually via the Campaign / Marketing section.
+  // Send new product notification to all customers (in-app + email)
   if (fullProduct && (fullProduct.status === 'PUBLISHED' || fullProduct.isVisible)) {
-    console.log(`[PRODUCT CONTROLLER] Product "${fullProduct.name}" published — creating in-app notifications only (email broadcast disabled).`);
+    console.log(`[PRODUCT CONTROLLER] Product "${fullProduct.name}" published — sending notifications + emails to all customers.`);
     setImmediate(async () => {
       try {
-        // Create in-app notifications for customers (NO emails sent)
-        const customers = await prisma.user.findMany({
-          where: { role: 'CUSTOMER', status: 'ACTIVE' },
-          select: { id: true },
-        });
-        if (customers.length > 0) {
-          const productSlug = fullProduct.slug || fullProduct.id;
-          await prisma.notification.createMany({
-            data: customers.map(c => ({
-              userId: c.id,
-              title: `✨ New Arrival: ${fullProduct.name}`,
-              message: `Check out our newly published item "${fullProduct.name}" for ₹${(fullProduct.discountPrice || fullProduct.price || 0).toLocaleString('en-IN')}!`,
-              type: 'NEW_PRODUCT',
-              link: `/product/${productSlug}`,
-            })),
-          });
-          console.log(`[PRODUCT CONTROLLER] Created ${customers.length} in-app notifications for "${fullProduct.name}" (no emails).`);
-        }
-      } catch (err) {
-        console.error('[PRODUCT CONTROLLER] In-app notification error:', err.message);
+        await emailService.sendNewProductNotificationToCustomers(fullProduct);
+        console.log(`[PRODUCT CONTROLLER] New product email broadcast completed for "${fullProduct.name}"`);
+      } catch (mailErr) {
+        console.error('[NEW PRODUCT NOTIFICATION ERROR]', mailErr.message);
       }
     });
   }
