@@ -178,13 +178,6 @@ const Home = () => {
     let isMounted = true;
 
     const fetchHomeData = async () => {
-      // Always set loading true if we have NO products yet
-      setProducts(prev => {
-        const hasAny = prev.allPublished?.length > 0 || prev.featured?.length > 0;
-        if (!hasAny) setIsLoading(true);
-        return prev;
-      });
-
       try {
         // Fast path: Fetch consolidated homepage bundle in 1 single optimized request
         let bundleSuccess = false;
@@ -243,17 +236,13 @@ const Home = () => {
               const trend = liveProds.filter(p => p.trending);
               const deals = liveProds.filter(p => p.todaysDeal || p.bestSeller);
 
-              setProducts(prev => {
-                const nextProds = {
-                  featured: feat.length > 0 ? feat : prev.featured || [],
-                  trending: trend.length > 0 ? trend : prev.trending || [],
-                  newArrivals: newArr.length > 0 ? newArr : prev.newArrivals || [],
-                  todaysDeals: deals.length > 0 ? deals : prev.todaysDeals || [],
-                  allPublished: liveProds
-                };
-                return nextProds;
+              setProducts({
+                featured: feat,
+                trending: trend,
+                newArrivals: newArr,
+                todaysDeals: deals,
+                allPublished: liveProds
               });
-              setIsLoading(false);
 
               // Persist using refs (avoids stale closure)
               writeCacheData({
@@ -269,18 +258,14 @@ const Home = () => {
                 trendingData: trendingDataRef.current,
                 dynamicSections: dynamicSectionsRef.current,
               });
-            } else {
-              // API returned empty — still stop loading
-              setIsLoading(false);
             }
-          } catch (directErr) {
-            setIsLoading(false);
-          }
+          } catch (directErr) {}
+          if (isMounted) setIsLoading(false);
         }
 
       } catch (err) {
         console.error('Home page data fetch error:', err);
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
