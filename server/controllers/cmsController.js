@@ -1739,6 +1739,7 @@ exports.getHomepageBundle = asyncHandler(async (req, res) => {
             bestSeller: true, todaysDeal: true, flashSale: true,
             showOnHomepage: true, isRecommended: true,
             isPremium: true, isVisible: true,
+            shippingFee: true, freeShipping: true,
             sizes: true, colors: true,
             createdAt: true, displayOrder: true,
             images: { orderBy: { displayOrder: 'asc' } },

@@ -67,6 +67,13 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
     }
   }
 
+  // STRICT: Online payment methods MUST have verified payment proof
+  // Only COD orders are allowed without razorpayPaymentId
+  const ONLINE_METHODS = ['RAZORPAY', 'UPI', 'CARD', 'NET_BANKING'];
+  if (ONLINE_METHODS.includes(paymentMethod) && !razorpayPaymentId) {
+    return next(new ApiError(400, 'Online payment orders require verified payment. Please complete payment first.'));
+  }
+
   if (!items || !Array.isArray(items) || items.length === 0) {
     return next(new ApiError(400, 'Order must contain at least one item'));
   }

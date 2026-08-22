@@ -197,6 +197,8 @@ const ProductCard = ({ product, index = 0 }) => {
       price: finalPrice,
       image: primaryImage,
       quantity: 1,
+      shippingFee: product.shippingFee || 0,
+      freeShipping: product.freeShipping || false,
     }));
     setAddedToCart(true);
     toast.success(`Added to cart`);

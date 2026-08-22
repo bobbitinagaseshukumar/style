@@ -104,6 +104,8 @@ const QuickViewModal = ({ isOpen, onClose, product }) => {
       size: selectedSize || (sizes[0] || ''),
       color: activeColorDisplay,
       quantity: 1,
+      shippingFee: product.shippingFee || 0,
+      freeShipping: product.freeShipping || false,
     }));
     toast.success(`"${product.name}" added to cart! 🛍️`);
     onClose();

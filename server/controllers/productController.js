@@ -218,6 +218,8 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
         sizes: true,
         colors: true,
         createdAt: true,
+        shippingFee: true,
+        freeShipping: true,
         images: { select: { id: true, url: true, isPrimary: true } },
         category: { select: { id: true, name: true, slug: true } },
         subCategory: { select: { id: true, name: true, slug: true } },
@@ -401,19 +403,35 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
     include: { images: true, category: true, subCategory: true }
   });
 
-  // Broadcast notification asynchronously without blocking response
+  // NOTE: Auto email broadcast to all customers on product publish is DISABLED.
+  // Order confirmation emails are sent ONLY to the specific customer who placed the order.
+  // Admin can send promotional emails manually via the Campaign / Marketing section.
   if (fullProduct && (fullProduct.status === 'PUBLISHED' || fullProduct.isVisible)) {
-    console.log(`[PRODUCT CONTROLLER] Product "${fullProduct.name}" is PUBLISHED/visible — triggering new product email broadcast...`);
+    console.log(`[PRODUCT CONTROLLER] Product "${fullProduct.name}" published — creating in-app notifications only (email broadcast disabled).`);
     setImmediate(async () => {
       try {
-        await emailService.sendNewProductNotificationToCustomers(fullProduct);
-        console.log(`[PRODUCT CONTROLLER] New product email broadcast completed for "${fullProduct.name}"`);
-      } catch (mailErr) {
-        console.error('[NEW PRODUCT NOTIFICATION ERROR - IGNORED]', mailErr.message, mailErr.stack);
+        // Create in-app notifications for customers (NO emails sent)
+        const customers = await prisma.user.findMany({
+          where: { role: 'CUSTOMER', status: 'ACTIVE' },
+          select: { id: true },
+        });
+        if (customers.length > 0) {
+          const productSlug = fullProduct.slug || fullProduct.id;
+          await prisma.notification.createMany({
+            data: customers.map(c => ({
+              userId: c.id,
+              title: `✨ New Arrival: ${fullProduct.name}`,
+              message: `Check out our newly published item "${fullProduct.name}" for ₹${(fullProduct.discountPrice || fullProduct.price || 0).toLocaleString('en-IN')}!`,
+              type: 'NEW_PRODUCT',
+              link: `/product/${productSlug}`,
+            })),
+          });
+          console.log(`[PRODUCT CONTROLLER] Created ${customers.length} in-app notifications for "${fullProduct.name}" (no emails).`);
+        }
+      } catch (err) {
+        console.error('[PRODUCT CONTROLLER] In-app notification error:', err.message);
       }
     });
-  } else {
-    console.log(`[PRODUCT CONTROLLER] Product "${fullProduct?.name}" is NOT published/visible — skipping email broadcast.`);
   }
 
   try { invalidateHomepageBundleCache(); } catch (e) {}
