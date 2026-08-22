@@ -493,6 +493,23 @@ export default function ProductDetails() {
     navigate('/checkout?buyNow=true');
   };
 
+  const [notifiedMe, setNotifiedMe] = useState(false);
+  const handleNotifyMe = async () => {
+    if (!product) return;
+    if (!user) {
+      toast.info('Please sign in to get stock alerts');
+      navigate('/login');
+      return;
+    }
+    try {
+      const res = await api.post(`/products/${product.id}/notify-me`);
+      setNotifiedMe(true);
+      toast.success(res.data?.message || 'You will be notified when this product is back in stock!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to subscribe. Please try again.');
+    }
+  };
+
   const handleWishlist = () => {
     if (!product) return;
     if (!user) {
@@ -762,9 +779,14 @@ export default function ProductDetails() {
                 {/* Primary CTA Buttons */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {currentStock === 0 ? (
-                    <div className="col-span-full py-4 rounded-2xl bg-gray-100 text-gray-500 font-black text-sm flex items-center justify-center gap-2">
-                      Out of Stock
-                    </div>
+                    <button onClick={handleNotifyMe} disabled={notifiedMe}
+                      className={`col-span-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition ${
+                        notifiedMe
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-gradient-to-r from-orange-500 via-red-500 to-orange-500 text-white hover:shadow-lg hover:-translate-y-[1px]'
+                      }`}>
+                      {notifiedMe ? '✅ Subscribed — We\'ll email you!' : '🔔 Notify Me When Available'}
+                    </button>
                   ) : (
                     <>
                       <button onClick={handleAddToCart}
@@ -1067,9 +1089,12 @@ export default function ProductDetails() {
               </div>
               <div className="flex gap-2 flex-shrink-0">
                 {currentStock === 0 ? (
-                  <span className="px-4 py-2.5 rounded-xl bg-gray-100 text-gray-500 text-xs font-black whitespace-nowrap">
-                    Out of Stock
-                  </span>
+                  <button onClick={handleNotifyMe} disabled={notifiedMe}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-black whitespace-nowrap transition ${
+                      notifiedMe ? 'bg-emerald-500 text-white' : 'bg-orange-500 text-white hover:bg-orange-600'
+                    }`}>
+                    {notifiedMe ? '✅ Subscribed' : '🔔 Notify Me'}
+                  </button>
                 ) : (
                   <>
                     <button onClick={handleAddToCart}

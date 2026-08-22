@@ -603,3 +603,101 @@ exports.resetAllStocks = asyncHandler(async (req, res) => {
     message: 'All product stocks reset to 0 successfully!'
   });
 });
+
+// ==================== SUBSCRIBE: NOTIFY ME WHEN BACK IN STOCK ====================
+exports.subscribeBackInStock = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const email = req.user?.email;
+
+  if (!email) {
+    return next(new ApiError(400, 'Please log in to subscribe for stock alerts'));
+  }
+
+  // Check product exists
+  const product = await prisma.product.findUnique({ where: { id }, select: { id: true, name: true, stock: true } });
+  if (!product) return next(new ApiError(404, 'Product not found'));
+
+  if (product.stock > 0) {
+    return res.status(200).json({ success: true, message: 'This product is already in stock!' });
+  }
+
+  // Check if already subscribed
+  const existing = await prisma.backInStockSubscription.findFirst({
+    where: { productId: id, email, isNotified: false }
+  });
+  if (existing) {
+    return res.status(200).json({ success: true, message: 'You are already subscribed for this product.' });
+  }
+
+  await prisma.backInStockSubscription.create({
+    data: { productId: id, email }
+  });
+
+  res.status(201).json({
+    success: true,
+    message: `We'll notify you at ${email} when "${product.name}" is back in stock!`
+  });
+});
+
+// ==================== ADMIN: RESTOCK PRODUCT + NOTIFY SUBSCRIBERS ====================
+exports.restockProduct = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { stock } = req.body;
+
+  if (!stock || isNaN(stock) || parseInt(stock) <= 0) {
+    return next(new ApiError(400, 'Please provide a valid stock quantity'));
+  }
+
+  const newStock = parseInt(stock);
+
+  // Get current product
+  const product = await prisma.product.findUnique({
+    where: { id },
+    include: { images: true }
+  });
+  if (!product) return next(new ApiError(404, 'Product not found'));
+
+  const wasOutOfStock = product.stock <= 0;
+
+  // Update stock
+  const updatedProduct = await prisma.product.update({
+    where: { id },
+    data: { stock: newStock },
+    include: { images: true }
+  });
+
+  // If product was out of stock and now restocked, notify subscribers
+  let notifiedCount = 0;
+  if (wasOutOfStock && newStock > 0) {
+    const subscribers = await prisma.backInStockSubscription.findMany({
+      where: { productId: id, isNotified: false }
+    });
+
+    if (subscribers.length > 0) {
+      // Send emails asynchronously
+      setImmediate(async () => {
+        for (const sub of subscribers) {
+          try {
+            await emailService.sendBackInStockEmail(sub.email, updatedProduct);
+            await prisma.backInStockSubscription.update({
+              where: { id: sub.id },
+              data: { isNotified: true }
+            });
+          } catch (err) {
+            console.error(`[RESTOCK] Failed to notify ${sub.email}:`, err.message);
+          }
+        }
+        console.log(`[RESTOCK] Notified ${subscribers.length} subscribers for "${updatedProduct.name}"`);
+      });
+      notifiedCount = subscribers.length;
+    }
+  }
+
+  try { invalidateHomepageBundleCache(); } catch (e) {}
+
+  res.status(200).json({
+    success: true,
+    message: `Stock updated to ${newStock} for "${updatedProduct.name}"${notifiedCount > 0 ? `. Sending back-in-stock email to ${notifiedCount} subscribers.` : '.'}`,
+    data: updatedProduct
+  });
+});

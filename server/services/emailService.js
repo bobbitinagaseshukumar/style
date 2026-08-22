@@ -858,6 +858,43 @@ class EmailService {
 
     return { success: true, count, htmlContent };
   }
+
+  // ==================== 11. BACK IN STOCK NOTIFICATION ====================
+  async sendBackInStockEmail(email, product) {
+    const { storeName, storeTagline, primaryColor, clientUrl } = await getStoreMetadata();
+    const productSlug = product.slug || product.id;
+    const productUrl = `${clientUrl}/product/${productSlug}`;
+    const productImg = product.images?.[0]?.url || '';
+
+    const description = `
+      <p style="margin-bottom: 12px; font-size: 15px; color: #FFFFFF;">Great news! An item you wanted is <strong style="color: ${primaryColor || '#D4AF37'};">back in stock</strong>!</p>
+      <div style="background: #161616; border-radius: 12px; padding: 18px; margin-bottom: 20px; border: 1px solid rgba(212,175,55,0.25);">
+        ${productImg ? `<img src="${formatEmailImageUrl(productImg, product.name)}" alt="${product.name}" style="width: 100%; max-width: 300px; border-radius: 10px; margin-bottom: 12px; display: block;" />` : ''}
+        <h3 style="color: #FFFFFF; font-size: 16px; margin: 0 0 6px 0;">${product.name}</h3>
+        <p style="color: ${primaryColor || '#D4AF37'}; font-size: 18px; font-weight: 800; margin: 0;">₹${(product.discountPrice || product.price || 0).toLocaleString('en-IN')}</p>
+        <p style="color: #10B981; font-size: 13px; margin-top: 6px;">✅ In Stock — ${product.stock || 0} units available</p>
+      </div>
+      <p style="color: #AAAAAA; font-size: 12px;">Hurry! Stock is limited and may sell out quickly.</p>
+    `;
+
+    const htmlContent = wrapTemplate({
+      headline: `🔔 Back in Stock: ${product.name}`,
+      description,
+      buttonText: `Shop Now →`,
+      buttonUrl: productUrl,
+      storeName,
+      storeTagline,
+      primaryColor,
+      clientUrl,
+    });
+
+    return sendEmailViaBrevo({
+      to: email,
+      subject: `🔔 Back in Stock: ${product.name} — ${storeName}`,
+      htmlContent,
+      senderName: storeName,
+    });
+  }
 }
 
 const emailServiceInstance = new EmailService();
@@ -876,4 +913,5 @@ module.exports.sendOrderDeliveredEmail = emailServiceInstance.sendOrderDelivered
 module.exports.sendOrderCancelledEmail = emailServiceInstance.sendOrderCancelledEmail.bind(emailServiceInstance);
 module.exports.sendNewProductNotificationToCustomers = emailServiceInstance.sendNewProductNotificationToCustomers.bind(emailServiceInstance);
 module.exports.sendCampaign = emailServiceInstance.sendCampaign.bind(emailServiceInstance);
+module.exports.sendBackInStockEmail = emailServiceInstance.sendBackInStockEmail.bind(emailServiceInstance);
 

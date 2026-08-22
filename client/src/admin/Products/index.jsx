@@ -68,6 +68,11 @@ const AdminProducts = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Restock modal
+  const [restockTarget, setRestockTarget] = useState(null);
+  const [restockQty, setRestockQty] = useState('');
+  const [restocking, setRestocking] = useState(false);
+
   // Preview modal
   const [previewProduct, setPreviewProduct] = useState(null);
   const [previewImageIdx, setPreviewImageIdx] = useState(0);
@@ -202,6 +207,22 @@ const AdminProducts = () => {
       setSelected(prev => { const n = new Set(prev); n.delete(deleteTarget.id); return n; });
     } catch (err) { toast.error(err.response?.data?.message || 'Delete failed'); }
     finally { setDeleting(false); }
+  };
+
+  const handleRestock = async () => {
+    if (!restockTarget || !restockQty || parseInt(restockQty) <= 0) {
+      toast.error('Enter a valid stock quantity');
+      return;
+    }
+    try {
+      setRestocking(true);
+      const res = await api.post(`/products/${restockTarget.id}/restock`, { stock: parseInt(restockQty) });
+      toast.success(res.data?.message || 'Product restocked!');
+      setProducts(prev => prev.map(p => p.id === restockTarget.id ? { ...p, stock: parseInt(restockQty) } : p));
+      setRestockTarget(null);
+      setRestockQty('');
+    } catch (err) { toast.error(err.response?.data?.message || 'Restock failed'); }
+    finally { setRestocking(false); }
   };
 
   /* ─── BULK ACTIONS ──────────────────────────────────────── */
@@ -452,6 +473,7 @@ const AdminProducts = () => {
                     {/* Actions */}
                     <div className="flex items-center gap-1 pt-1 border-t border-gray-100">
                       <button onClick={() => { setEditingProduct(product); setWizardOpen(true); }} className="flex-1 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-[10px] font-bold hover:bg-blue-100 transition cursor-pointer flex items-center justify-center gap-1"><FiEdit size={11} /> Edit</button>
+                      {product.stock === 0 && <button onClick={() => { setRestockTarget(product); setRestockQty(''); }} className="flex-1 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-[10px] font-bold hover:bg-emerald-100 transition cursor-pointer flex items-center justify-center gap-1"><FiPackage size={11} /> Restock</button>}
                       <button onClick={() => handleDuplicate(product)} className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition cursor-pointer" title="Duplicate"><FiCopy size={12} /></button>
                       <button onClick={() => handleToggleFlag(product, 'showOnHomepage')} className={`p-1.5 rounded-lg transition cursor-pointer ${product.showOnHomepage ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-400'}`} title="Home Page"><FiHome size={12} /></button>
                       <button onClick={() => setDeleteTarget(product)} className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition cursor-pointer" title="Delete"><FiTrash2 size={12} /></button>
@@ -788,6 +810,51 @@ const AdminProducts = () => {
                   📦 Soft Delete (Hide Only)
                 </button>
                 <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="w-full py-2 rounded-xl text-gray-500 text-xs font-semibold hover:bg-gray-100 transition mt-1 cursor-pointer">
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══════ RESTOCK MODAL ═════════════════════════════════ */}
+      <AnimatePresence>
+        {restockTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-gray-100">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center shrink-0">
+                  <FiPackage className="text-emerald-600 w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">Restock Product</h3>
+                  <p className="text-xs text-gray-500">Set new stock for "{restockTarget.name}"</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-emerald-700 mb-3 bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+                📧 Customers who clicked "Notify Me" will automatically receive a <strong>back-in-stock email</strong> when you restock.
+              </p>
+
+              <input
+                type="number"
+                value={restockQty}
+                onChange={e => setRestockQty(e.target.value)}
+                placeholder="Enter new stock quantity"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-400 focus:outline-none mb-4"
+                min="1"
+                autoFocus
+              />
+
+              <div className="flex flex-col gap-2">
+                <button onClick={handleRestock} disabled={restocking || !restockQty}
+                  className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition shadow-sm cursor-pointer disabled:opacity-50">
+                  {restocking ? 'Restocking...' : `📦 Restock & Notify Subscribers`}
+                </button>
+                <button onClick={() => { setRestockTarget(null); setRestockQty(''); }} disabled={restocking}
+                  className="w-full py-2 rounded-xl text-gray-500 text-xs font-semibold hover:bg-gray-100 transition cursor-pointer">
                   Cancel
                 </button>
               </div>

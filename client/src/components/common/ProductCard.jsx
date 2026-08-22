@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiHeart, FiShoppingBag, FiStar, FiEye,
-  FiCheck, FiTruck
+  FiCheck, FiTruck, FiBell
 } from 'react-icons/fi';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart } from '../../redux/cart/cartSlice';
 import { addToWishlist, removeFromWishlist } from '../../redux/wishlist/wishlistSlice';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { toast } from 'react-toastify';
+import api from '../../config/api';
 import QuickViewModal from './QuickViewModal';
 import StarRating from '../reviews/StarRating';
 import { formatImageUrl } from '../../utils/formatImageUrl';
@@ -86,6 +87,7 @@ const ProductCard = ({ product, index = 0 }) => {
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [addedToCart, setAddedToCart] = useState(false);
   const [buyingNow, setBuyingNow] = useState(false);
+  const [notifiedMe, setNotifiedMe] = useState(false);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
   const cardRef = useRef(null);
@@ -228,6 +230,23 @@ const ProductCard = ({ product, index = 0 }) => {
       setBuyingNow(false);
       navigate('/checkout?buyNow=true');
     }, 400);
+  };
+
+  const handleNotifyMe = async (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!user) {
+      toast.info('Please sign in to get stock alerts');
+      navigate('/login');
+      return;
+    }
+    try {
+      const res = await api.post(`/products/${product._id || product.id}/notify-me`);
+      setNotifiedMe(true);
+      toast.success(res.data?.message || 'You will be notified when this product is back in stock!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to subscribe. Please try again.');
+    }
   };
 
   const handleColorClick = (e, color, idx) => {
@@ -413,66 +432,93 @@ const ProductCard = ({ product, index = 0 }) => {
           {/* ── Action Buttons ────────────────────────────────── */}
           <div className="flex items-center gap-2 pt-3 mt-2 border-t border-gray-100/80">
 
-            {/* Add to Cart — Glass Button */}
-            <motion.button
-              onClick={handleAddToCart}
-              whileTap={{ scale: 0.9 }}
-              disabled={isOutOfStock}
-              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center border transition-all duration-300 ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''} ${
-                addedToCart
-                  ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/25'
-                  : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 shadow-sm'
-              }`}
-              title={addedToCart ? 'Added!' : 'Add to Cart'}
-              aria-label={addedToCart ? 'Added to cart' : 'Add to cart'}
-            >
-              <AnimatePresence mode="wait">
-                {addedToCart ? (
-                  <motion.div
-                    key="check"
-                    initial={{ scale: 0, rotate: -90 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    exit={{ scale: 0 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-                  >
-                    <FiCheck className="w-5 h-5" strokeWidth={3} />
-                  </motion.div>
+            {isOutOfStock ? (
+              /* ── Out of Stock: Notify Me Button ── */
+              <motion.button
+                onClick={handleNotifyMe}
+                whileTap={{ scale: 0.95 }}
+                disabled={notifiedMe}
+                className={`flex-1 py-2.5 sm:py-3 px-4 rounded-xl font-semibold text-[11px] sm:text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 ${
+                  notifiedMe
+                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                    : 'bg-gradient-to-r from-orange-500 via-red-500 to-orange-500 text-white shadow-md hover:shadow-lg hover:-translate-y-[1px]'
+                }`}
+              >
+                {notifiedMe ? (
+                  <>
+                    <FiCheck className="w-4 h-4" />
+                    <span>Subscribed</span>
+                  </>
                 ) : (
-                  <motion.div
-                    key="bag"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                  >
-                    <FiShoppingBag className="w-[18px] h-[18px]" />
-                  </motion.div>
+                  <>
+                    <FiBell className="w-3.5 h-3.5" />
+                    <span>Notify Me</span>
+                  </>
                 )}
-              </AnimatePresence>
-            </motion.button>
+              </motion.button>
+            ) : (
+              /* ── In Stock: Add to Cart + Buy Now ── */
+              <>
+                {/* Add to Cart — Glass Button */}
+                <motion.button
+                  onClick={handleAddToCart}
+                  whileTap={{ scale: 0.9 }}
+                  className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center border transition-all duration-300 ${
+                    addedToCart
+                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/25'
+                      : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 shadow-sm'
+                  }`}
+                  title={addedToCart ? 'Added!' : 'Add to Cart'}
+                  aria-label={addedToCart ? 'Added to cart' : 'Add to cart'}
+                >
+                  <AnimatePresence mode="wait">
+                    {addedToCart ? (
+                      <motion.div
+                        key="check"
+                        initial={{ scale: 0, rotate: -90 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        exit={{ scale: 0 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                      >
+                        <FiCheck className="w-5 h-5" strokeWidth={3} />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="bag"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        exit={{ scale: 0 }}
+                      >
+                        <FiShoppingBag className="w-[18px] h-[18px]" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.button>
 
-            {/* Buy Now — Luxury Gold Button with shine */}
-            <motion.button
-              onClick={handleBuyNow}
-              whileTap={{ scale: 0.95 }}
-              disabled={isOutOfStock}
-              className={`sv-buy-btn relative flex-1 py-2.5 sm:py-3 px-4 rounded-xl font-semibold text-[11px] sm:text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 overflow-hidden ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''} ${
-                buyingNow
-                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
-                  : 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-gray-900 shadow-md shadow-amber-500/15 hover:shadow-lg hover:shadow-amber-500/25 hover:-translate-y-[1px]'
-              }`}
-            >
-              {buyingNow ? (
-                <>
-                  <FiCheck className="w-4 h-4" />
-                  <span>Added</span>
-                </>
-              ) : (
-                <>
-                  <FiShoppingBag className="w-3.5 h-3.5" />
-                  <span>Buy Now</span>
-                </>
-              )}
-            </motion.button>
+                {/* Buy Now — Luxury Gold Button with shine */}
+                <motion.button
+                  onClick={handleBuyNow}
+                  whileTap={{ scale: 0.95 }}
+                  className={`sv-buy-btn relative flex-1 py-2.5 sm:py-3 px-4 rounded-xl font-semibold text-[11px] sm:text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 overflow-hidden ${
+                    buyingNow
+                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                      : 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-gray-900 shadow-md shadow-amber-500/15 hover:shadow-lg hover:shadow-amber-500/25 hover:-translate-y-[1px]'
+                  }`}
+                >
+                  {buyingNow ? (
+                    <>
+                      <FiCheck className="w-4 h-4" />
+                      <span>Added</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiShoppingBag className="w-3.5 h-3.5" />
+                      <span>Buy Now</span>
+                    </>
+                  )}
+                </motion.button>
+              </>
+            )}
           </div>
         </div>
       </div>
