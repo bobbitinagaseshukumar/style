@@ -547,7 +547,14 @@ exports.adminUpdateOrderStatus = asyncHandler(async (req, res, next) => {
   if (packingDate !== undefined) updateData.packingDate = packingDate;
   if (shippingDate !== undefined) updateData.shippingDate = shippingDate;
   if (internalNotes !== undefined) updateData.notes = internalNotes;
-  if (orderStatus === 'DELIVERED') updateData.deliveredAt = new Date();
+  if (orderStatus === 'DELIVERED') {
+    updateData.deliveredAt = new Date();
+    // Auto-mark COD orders as PAID when delivered (cash collected)
+    const existingOrder = await prisma.order.findUnique({ where: { id }, select: { paymentMethod: true, paymentStatus: true } });
+    if (existingOrder && existingOrder.paymentMethod === 'COD' && existingOrder.paymentStatus !== 'PAID') {
+      updateData.paymentStatus = 'PAID';
+    }
+  }
 
   if (cancellationAllowed === true && cancellationDuration !== undefined) {
     updateData.cancellationAllowed = true;
