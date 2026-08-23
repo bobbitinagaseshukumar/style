@@ -398,13 +398,15 @@ const Login = ({ initialMode }) => {
 
       const policyCheck = validatePasswordPolicy(form.password, parsedPasswordPolicy);
       if (!policyCheck.isValid) {
-        return setError(`Password requirement not met: ${policyCheck.errors.join(', ')}`);
+        const msg = `Password requirement not met: ${policyCheck.errors.join(', ')}`;
+        toast.error(msg);
+        return setError(msg);
       }
-      if (form.password !== form.confirmPassword) return setError('Passwords do not match');
-      if (!form.acceptTerms) return setError('Please accept the terms & conditions');
+      if (form.password !== form.confirmPassword) { toast.error('Passwords do not match'); return setError('Passwords do not match'); }
+      if (!form.acceptTerms) { toast.error('Please accept the terms & conditions'); return setError('Please accept the terms & conditions'); }
     } else {
-      if (!form.email.trim()) return setError('Email address is required');
-      if (!form.password) return setError('Password is required');
+      if (!form.email.trim()) { toast.error('Email address is required'); return setError('Email address is required'); }
+      if (!form.password) { toast.error('Password is required'); return setError('Password is required'); }
     }
 
     setLoading(true);
@@ -465,6 +467,7 @@ const Login = ({ initialMode }) => {
         navigate(targetPath, { replace: true });
       } else {
         setError(res.data?.message || 'Authentication failed');
+        toast.error(res.data?.message || 'Authentication failed');
       }
     } catch (err) {
       const errMsg = err.response?.data?.message || 'Server connection error. Please try again.';
@@ -481,6 +484,7 @@ const Login = ({ initialMode }) => {
         toast.info(`✨ Welcome to ${storeName}! Please complete your details below to create your account.`, { autoClose: 7000 });
       } else {
         setError(errMsg);
+        toast.error(errMsg);
       }
     } finally {
       setLoading(false);
@@ -915,29 +919,39 @@ const Login = ({ initialMode }) => {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block font-bold text-gray-300 mb-1">Password</label>
-                      <input
-                        type="password"
-                        name="password"
-                        autoComplete="new-password"
-                        required
-                        value={form.password}
-                        onChange={handleChange}
-                        placeholder="••••••••"
-                        className={`w-full px-3 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 text-xs ${error && isRegister && form.password.length < 6 ? 'border-red-500' : ''}`}
-                      />
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          name="password"
+                          autoComplete="new-password"
+                          required
+                          value={form.password}
+                          onChange={handleChange}
+                          placeholder="••••••••"
+                          className={`w-full px-3 pr-9 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 text-xs ${error && isRegister && form.password.length < 6 ? 'border-red-500' : ''}`}
+                        />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white z-10 transition-colors">
+                          {showPassword ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label className="block font-bold text-gray-300 mb-1">Confirm</label>
-                      <input
-                        type="password"
-                        name="confirmPassword"
-                        autoComplete="new-password"
-                        required
-                        value={form.confirmPassword}
-                        onChange={handleChange}
-                        placeholder="••••••••"
-                        className={`w-full px-3 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 text-xs ${error && isRegister && form.password !== form.confirmPassword ? 'border-red-500' : ''}`}
-                      />
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          name="confirmPassword"
+                          autoComplete="new-password"
+                          required
+                          value={form.confirmPassword}
+                          onChange={handleChange}
+                          placeholder="••••••••"
+                          className={`w-full px-3 pr-9 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 input-glow transition-all duration-300 text-xs ${error && isRegister && form.password !== form.confirmPassword ? 'border-red-500' : ''}`}
+                        />
+                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white z-10 transition-colors">
+                          {showConfirmPassword ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 

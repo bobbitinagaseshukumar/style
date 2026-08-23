@@ -157,14 +157,22 @@ exports.verifyOTP = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, result.message));
   }
 
+  // Fetch existing user to check previous verification state
+  const existingUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+  const wasVerified = existingUser?.isVerified;
+
   // Update user as verified
   const user = await prisma.user.update({
     where: { id: targetUserId },
     data: { isVerified: true, lastLoginAt: new Date() },
   });
 
-  // Send Welcome Email asynchronously
-  sendWelcomeEmail(user.email, user.fullName);
+  // Send Welcome Email asynchronously on first verification
+  if (!wasVerified) {
+    sendWelcomeEmail(user.email, user.fullName).catch(err => {
+      console.error('[WELCOME EMAIL FAILED]', err.message);
+    });
+  }
 
   // Generate JWT token
   const token = generateToken(user.id, user.role, user.tokenVersion || 0);

@@ -477,7 +477,9 @@ exports.updateProduct = asyncHandler(async (req, res, next) => {
   if (updateData.colors && typeof updateData.colors !== 'string') updateData.colors = JSON.stringify(updateData.colors);
   if (updateData.colorGalleries && typeof updateData.colorGalleries !== 'string') updateData.colorGalleries = JSON.stringify(updateData.colorGalleries);
   if (updateData.colorSizeInventory && typeof updateData.colorSizeInventory !== 'string') updateData.colorSizeInventory = JSON.stringify(updateData.colorSizeInventory);
-  if (updateData.tags && typeof updateData.tags !== 'string') updateData.tags = JSON.stringify(updateData.tags);
+  // Check if product was out of stock prior to update
+  const existingProduct = await prisma.product.findUnique({ where: { id }, select: { stock: true } });
+  const wasOutOfStock = existingProduct && (existingProduct.stock <= 0 || !existingProduct.stock);
 
   const product = await prisma.product.update({
     where: { id },
@@ -504,6 +506,29 @@ exports.updateProduct = asyncHandler(async (req, res, next) => {
     where: { id },
     include: { images: true, category: true, subCategory: true }
   });
+
+  // Notify back-in-stock subscribers if stock was 0 and is now restocked (>0)
+  if (wasOutOfStock && updatedFullProduct && updatedFullProduct.stock > 0) {
+    const subscribers = await prisma.backInStockSubscription.findMany({
+      where: { productId: id, isNotified: false }
+    });
+    if (subscribers.length > 0) {
+      setImmediate(async () => {
+        for (const sub of subscribers) {
+          try {
+            await emailService.sendBackInStockEmail(sub.email, updatedFullProduct);
+            await prisma.backInStockSubscription.update({
+              where: { id: sub.id },
+              data: { isNotified: true }
+            });
+          } catch (err) {
+            console.error(`[PRODUCT UPDATE RESTOCK] Failed to notify ${sub.email}:`, err.message);
+          }
+        }
+        console.log(`[PRODUCT UPDATE RESTOCK] Notified ${subscribers.length} subscribers for "${updatedFullProduct.name}"`);
+      });
+    }
+  }
 
   // Broadcast notification to all customers if status changed to PUBLISHED
   if (updatedFullProduct && (updatedFullProduct.status === 'PUBLISHED' || updatedFullProduct.isVisible)) {
