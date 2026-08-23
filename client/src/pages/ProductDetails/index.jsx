@@ -1,7 +1,7 @@
 import React, {
   useState, useEffect, useRef, useCallback
 } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -322,6 +322,7 @@ const MiniProductCard = ({ product }) => {
 export default function ProductDetails() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const wishlistItems = useSelector(s => s.wishlist?.items || []);
   const user = useSelector(s => s.auth?.user);
@@ -357,6 +358,17 @@ export default function ProductDetails() {
   
   // For external review modal
   const [reviewOrderData, setReviewOrderData] = useState(null);
+
+  // Auto-trigger review from email link (?review=true)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('review') === 'true' && product && user && !showReviewForm) {
+      setActiveTab('reviews');
+      // Auto-trigger review after a brief delay for tab to render
+      const timer = setTimeout(() => handleWriteReviewClick(), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [product, user, location.search]);
 
   /* ── Derived Variant State ── */
   const selectedColor = colorVariants[selectedColorIdx] || {};

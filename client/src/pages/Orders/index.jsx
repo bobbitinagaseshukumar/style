@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiShoppingBag, FiTruck, FiCheckCircle, FiClock, FiXCircle, FiPrinter, FiRotateCcw } from 'react-icons/fi';
+import { FiShoppingBag, FiTruck, FiCheckCircle, FiClock, FiXCircle, FiPrinter, FiRotateCcw, FiStar } from 'react-icons/fi';
 import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDate } from '../../utils/formatDate';
 import Modal from '../../components/common/Modal';
+import WriteReviewModal from '../../components/reviews/WriteReviewModal';
 import { toast } from 'react-toastify';
 
 const CancellationTimer = ({ order, onCancel }) => {
@@ -104,6 +105,30 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [reviewTarget, setReviewTarget] = useState(null);
+  const [reviewedItems, setReviewedItems] = useState(new Set());
+
+  // Check which items have already been reviewed by this customer
+  useEffect(() => {
+    const checkReviewed = async () => {
+      const deliveredOrders = orders.filter(o => o.orderStatus === 'DELIVERED');
+      if (deliveredOrders.length === 0) return;
+      const reviewed = new Set();
+      for (const order of deliveredOrders) {
+        for (const item of (order.items || [])) {
+          const productId = item.productId || item.product?.id;
+          if (!productId) continue;
+          try {
+            const { data } = await api.get(`/reviews/product/${productId}`);
+            const myReviews = (data?.data?.reviews || []).filter(r => r.orderId === order.id);
+            if (myReviews.length > 0) reviewed.add(`${order.id}_${productId}`);
+          } catch (e) {}
+        }
+      }
+      if (reviewed.size > 0) setReviewedItems(reviewed);
+    };
+    if (orders.length > 0) checkReviewed();
+  }, [orders]);
 
   const fetchOrders = async () => {
     try {
@@ -375,6 +400,23 @@ const Orders = () => {
                               {item.color && <span>Color: {item.color}</span>}
                               <span>Qty: {item.quantity}</span>
                             </div>
+                            {order.orderStatus === 'DELIVERED' && (() => {
+                              const productId = item.productId || item.product?.id;
+                              const key = `${order.id}_${productId}`;
+                              const alreadyReviewed = reviewedItems.has(key);
+                              return alreadyReviewed ? (
+                                <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold text-emerald-600">
+                                  <FiCheckCircle className="w-3 h-3" /> Review Submitted
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => setReviewTarget({ order, item })}
+                                  className="mt-1.5 inline-flex items-center gap-1 px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold rounded-lg transition cursor-pointer"
+                                >
+                                  <FiStar className="w-3 h-3" /> Write a Review
+                                </button>
+                              );
+                            })()}
                           </div>
                           <span className="font-bold text-xs text-charcoal-900">{formatCurrency(item.price * item.quantity)}</span>
                         </div>
@@ -462,6 +504,20 @@ const Orders = () => {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Write Review Modal */}
+      {reviewTarget && (
+        <WriteReviewModal
+          order={reviewTarget.order}
+          item={reviewTarget.item}
+          onClose={() => setReviewTarget(null)}
+          onReviewSubmitted={() => {
+            const productId = reviewTarget.item.productId || reviewTarget.item.product?.id;
+            setReviewedItems(prev => new Set([...prev, `${reviewTarget.order.id}_${productId}`]));
+            setReviewTarget(null);
+          }}
+        />
       )}
     </div>
   );

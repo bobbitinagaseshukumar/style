@@ -607,7 +607,7 @@ exports.adminUpdateOrderStatus = asyncHandler(async (req, res, next) => {
     notifMessage = `Your package for order #${order.orderNumber} is out for delivery today. Please ensure someone is available to receive it.`;
   } else if (targetStatus === 'DELIVERED') {
     notifTitle = `🎉 Order Delivered (#${order.orderNumber})`;
-    notifMessage = `Your order #${order.orderNumber} has been successfully delivered! We hope you love your purchase.`;
+    notifMessage = `Your order #${order.orderNumber} has been successfully delivered! ⭐ Please share your experience by writing a review.`;
   } else if (targetStatus === 'CANCELLED') {
     notifTitle = `❌ Order Cancelled (#${order.orderNumber})`;
     notifMessage = `Your order #${order.orderNumber} has been cancelled.${cancelReason ? ' Reason: ' + cancelReason : ''}`;
@@ -636,6 +636,8 @@ exports.adminUpdateOrderStatus = asyncHandler(async (req, res, next) => {
       color: i.color,
       size: i.size,
       image: i.product?.images?.[0]?.url,
+      slug: i.product?.slug,
+      productId: i.productId,
     })),
     total: order.totalAmount,
     courierName: order.courierName,

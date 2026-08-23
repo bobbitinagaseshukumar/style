@@ -660,17 +660,42 @@ class EmailService {
   // ==================== 7. ORDER DELIVERED EMAIL ====================
   async sendOrderDeliveredEmail(email, fullName, orderData) {
     const { storeName, storeTagline, primaryColor, clientUrl } = await getStoreMetadata();
+    const goldAccent = primaryColor || '#D4AF37';
+
+    // Build per-item review links
+    const itemReviewLinks = (orderData.items || []).map((item) => {
+      const pSlug = item.slug || item.productId || item.id;
+      return `
+        <div style="background: #181818; border: 1px solid rgba(212,175,55,0.3); border-radius: 12px; padding: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 14px;">
+          ${item.image ? `<img src="${formatEmailImageUrl(item.image, item.name)}" alt="${item.name || 'Product'}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);" />` : ''}
+          <div style="flex: 1;">
+            <p style="color: #ffffff; font-weight: 700; font-size: 14px; margin: 0 0 6px 0;">${item.name || 'Product Item'}</p>
+            <a href="${clientUrl}/product/${pSlug}?review=true" target="_blank" style="background: linear-gradient(135deg, ${goldAccent} 0%, #B89327 100%); color: #000; font-weight: 800; font-size: 11px; padding: 6px 16px; border-radius: 6px; text-decoration: none; display: inline-block; text-transform: uppercase; letter-spacing: 0.5px;">⭐ Write a Review</a>
+          </div>
+        </div>
+      `;
+    }).join('');
 
     const description = `
       <p style="margin-bottom: 12px;">Hello <strong>${fullName}</strong>,</p>
       <p style="margin-bottom: 20px;">Your order <strong>#${orderData.orderNumber}</strong> from <strong>${storeName}</strong> has been successfully delivered! We hope you love your new purchase.</p>
+      
+      <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); padding: 16px; border-radius: 12px; margin: 20px 0;">
+        <p style="color: #10B981; font-weight: 800; font-size: 14px; margin: 0 0 6px 0;">🎁 ORDER DELIVERED SUCCESSFULLY!</p>
+        <p style="color: #cccccc; font-size: 13px; margin: 0;">All items from order #${orderData.orderNumber} have been safely delivered.</p>
+      </div>
+
+      <div style="margin: 24px 0;">
+        <p style="color: ${goldAccent}; font-weight: 800; font-size: 14px; margin: 0 0 14px 0; text-transform: uppercase; letter-spacing: 1px;">⭐ Share Your Experience</p>
+        <p style="color: #aaaaaa; font-size: 13px; margin: 0 0 16px 0;">Your honest review helps other shoppers and means a lot to us!</p>
+        ${itemReviewLinks}
+      </div>
     `;
 
     const htmlContent = wrapTemplate({
       headline: `🎁 Order Delivered! (#${orderData.orderNumber})`,
       description,
-      products: orderData.items || [],
-      buttonText: 'Leave a Product Review →',
+      buttonText: 'View My Orders & Review →',
       buttonUrl: `${clientUrl}/orders`,
       storeName,
       storeTagline,
@@ -680,7 +705,7 @@ class EmailService {
 
     return sendEmailViaBrevo({
       to: email,
-      subject: `Order Delivered #${orderData.orderNumber} - ${storeName}`,
+      subject: `Order Delivered #${orderData.orderNumber} — Share Your Review! ⭐ - ${storeName}`,
       htmlContent,
       senderName: storeName,
     });
