@@ -93,6 +93,10 @@ const protect = asyncHandler(async (req, res, next) => {
         next();
     } catch (error) {
         if (error.statusCode) return next(error);
+        // Distinguish expired vs corrupted tokens
+        if (error.name === 'TokenExpiredError') {
+            return next(new ApiError(401, 'Your session has expired or was terminated. Please log in again.'));
+        }
         return next(new ApiError(401, 'Not authorized, token failed'));
     }
 });

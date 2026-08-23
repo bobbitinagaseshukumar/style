@@ -138,11 +138,14 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
       })
       .addCase(getMe.rejected, (state, action) => {
-        const isExplicit401 = action.payload?.includes?.('Not authorized') || 
-                              action.payload?.includes?.('token') ||
-                              action.payload?.includes?.('expired') ||
-                              action.payload?.includes?.('session');
-        if (isExplicit401) {
+        // CRITICAL: NEVER clear session on transient/network errors
+        // Only clear if server EXPLICITLY says session is permanently dead
+        const msg = (action.payload || '').toLowerCase();
+        const isSessionPermanentlyDead = msg.includes('session has expired') ||
+                                         msg.includes('no token') ||
+                                         msg.includes('please log in') ||
+                                         msg.includes('user belonging to this token no longer exists');
+        if (isSessionPermanentlyDead) {
           state.user = null;
           state.token = null;
           state.isAuthenticated = false;
@@ -152,7 +155,7 @@ const authSlice = createSlice({
             localStorage.removeItem('persist:auth');
           } catch (e) {}
         }
-        // If network error / backend wakeup delay, keep token & isAuthenticated active!
+        // On 'not authorized', 'token failed', network errors, timeouts → keep session alive!
       });
   }
 });
