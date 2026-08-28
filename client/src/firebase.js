@@ -49,10 +49,11 @@ const safeSignIn = (provider) => async () => {
         `[Firebase Auth] Domain "${currentDomain}" is not authorized.\n` +
         `Add it at: https://console.firebase.google.com/project/styleverse2-64e1c/authentication/settings`
       );
-      throw new Error(
-        `This domain (${currentDomain}) is not authorized for Google sign-in. ` +
-        `Please add it to Firebase Console > Authentication > Settings > Authorized domains.`
+      const customErr = new Error(
+        `Domain "${currentDomain}" is not authorized for Google sign-in.`
       );
+      customErr.code = 'auth/unauthorized-domain';
+      throw customErr;
     }
     throw error;
   }
