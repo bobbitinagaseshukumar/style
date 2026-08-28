@@ -164,7 +164,6 @@ const Navbar = () => {
   };
   const keepMega = () => clearTimeout(megaMenuTimeout.current);
 
-  const storeName = storeSettings?.storeName || headerSettings?.storeName || 'StyleVerse';
   const announcementText = headerSettings?.announcementText;
   const announcementEnabled = Boolean(headerSettings?.announcementEnabled && announcementText && announcementText.trim() && showAnnouncement);
 
