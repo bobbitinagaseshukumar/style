@@ -7,7 +7,7 @@ const getBaseURL = () => {
   }
   // Production fallback to live Render backend
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return 'https://style-q21b.onrender.com/api/v1';
+    return 'https://style-backup.onrender.com/api/v1';
   }
   return '/api/v1';
 };

@@ -45,7 +45,7 @@ export const formatImageUrl = (url, fallbackName = 'Product', options = {}) => {
   // 6. Handle relative server paths (/uploads/...)
   let backendBase = import.meta.env.VITE_API_URL || '';
   if (!backendBase && typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    backendBase = 'https://style-q21b.onrender.com';
+    backendBase = 'https://style-backup.onrender.com';
   }
   if (!backendBase) {
     backendBase = 'http://localhost:5000';

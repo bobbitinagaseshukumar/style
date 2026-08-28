@@ -138,7 +138,7 @@ const App = () => {
 
     // Pre-warm live backend instance in background
     try {
-      fetch('https://style-q21b.onrender.com/api/v1/health', { mode: 'no-cors' }).catch(() => {});
+      fetch('https://style-backup.onrender.com/api/v1/health', { mode: 'no-cors' }).catch(() => {});
     } catch (e) {}
 
     return () => {

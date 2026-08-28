@@ -45,7 +45,7 @@ exports.renderImage = asyncHandler(async (req, res) => {
     return res.redirect(clean);
   }
 
-  const serverBase = process.env.RENDER_EXTERNAL_URL || 'https://style-q21b.onrender.com';
+  const serverBase = process.env.RENDER_EXTERNAL_URL || 'https://style-backup.onrender.com';
   const cleanPath = clean.startsWith('/') ? clean : `/${clean}`;
   return res.redirect(`${serverBase}${cleanPath}`);
 });

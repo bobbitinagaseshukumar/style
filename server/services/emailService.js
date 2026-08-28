@@ -38,7 +38,7 @@ async function getStoreMetadata() {
 
 // Helper: Ensure full absolute HTTPS image URLs for email clients with smart fallbacks
 function formatEmailImageUrl(url, productName = '', imgId = '', productId = '') {
-  const serverBase = (process.env.RENDER_EXTERNAL_URL || 'https://style-q21b.onrender.com').replace(/\/$/, '');
+  const serverBase = (process.env.RENDER_EXTERNAL_URL || 'https://style-backup.onrender.com').replace(/\/$/, '');
 
   if (imgId) {
     return `${serverBase}/api/v1/products/render-image?imgId=${imgId}`;

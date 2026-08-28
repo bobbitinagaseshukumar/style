@@ -10,6 +10,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { store, persistor } from './redux/store';
 import App from './App';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import './config/firebase'; // Initialize Firebase on app startup
 import './styles/index.css';
 
 const InitialLoader = () => (
