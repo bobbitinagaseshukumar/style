@@ -38,10 +38,30 @@ appleProvider.addScope('name');
 export const facebookProvider = new FacebookAuthProvider();
 export const githubProvider = new GithubAuthProvider();
 
-export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
-export const signInWithApple = () => signInWithPopup(auth, appleProvider);
-export const signInWithFacebook = () => signInWithPopup(auth, facebookProvider);
-export const signInWithGithub = () => signInWithPopup(auth, githubProvider);
+// Wrap signInWithPopup to catch unauthorized-domain errors gracefully
+const safeSignIn = (provider) => async () => {
+  try {
+    return await signInWithPopup(auth, provider);
+  } catch (error) {
+    if (error?.code === 'auth/unauthorized-domain') {
+      const currentDomain = window.location.hostname;
+      console.error(
+        `[Firebase Auth] Domain "${currentDomain}" is not authorized.\n` +
+        `Add it at: https://console.firebase.google.com/project/styleverse2-64e1c/authentication/settings`
+      );
+      throw new Error(
+        `This domain (${currentDomain}) is not authorized for Google sign-in. ` +
+        `Please add it to Firebase Console > Authentication > Settings > Authorized domains.`
+      );
+    }
+    throw error;
+  }
+};
+
+export const signInWithGoogle = safeSignIn(googleProvider);
+export const signInWithApple = safeSignIn(appleProvider);
+export const signInWithFacebook = safeSignIn(facebookProvider);
+export const signInWithGithub = safeSignIn(githubProvider);
 
 export const logoutFirebase = () => signOut(auth);
 
