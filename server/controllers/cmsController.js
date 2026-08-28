@@ -1596,7 +1596,7 @@ exports.deleteHeaderMenu = asyncHandler(async (req, res) => {
 
 // ==================== Mobile Navigation Management ====================
 exports.getMobileNavItems = asyncHandler(async (req, res) => {
-    const items = await prisma.mobileNavItem.findMany({
+    let items = await prisma.mobileNavItem.findMany({
         orderBy: { sortOrder: 'asc' }
     });
     if (items.length === 0) {
@@ -1610,10 +1610,18 @@ exports.getMobileNavItems = asyncHandler(async (req, res) => {
             { label: 'Profile', path: '/profile', icon: 'FiUser', activeIcon: 'FiUser', badgeType: 'NONE', sortOrder: 6, isActive: true }
         ];
         await prisma.mobileNavItem.createMany({ data: defaultItems });
-        const seeded = await prisma.mobileNavItem.findMany({ orderBy: { sortOrder: 'asc' } });
-        return res.status(200).json({ success: true, data: seeded });
+        items = await prisma.mobileNavItem.findMany({ orderBy: { sortOrder: 'asc' } });
     }
-    res.status(200).json({ success: true, data: items });
+
+    // Deduplicate items by path to prevent duplicate navigation items
+    const seen = new Set();
+    const uniqueItems = items.filter(item => {
+        if (seen.has(item.path)) return false;
+        seen.add(item.path);
+        return true;
+    });
+
+    res.status(200).json({ success: true, data: uniqueItems });
 });
 
 exports.createMobileNavItem = asyncHandler(async (req, res) => {

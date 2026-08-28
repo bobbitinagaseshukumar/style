@@ -34,8 +34,13 @@ const MobileBottomNav = () => {
       try {
         const response = await api.get('/cms/mobile-nav');
         if (response.data?.success && Array.isArray(response.data.data)) {
+          const seen = new Set();
           const activeOnly = response.data.data
-            .filter(item => item.isActive !== false)
+            .filter(item => {
+              if (item.isActive === false || seen.has(item.path)) return false;
+              seen.add(item.path);
+              return true;
+            })
             .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
           setNavItems(activeOnly);
         }
