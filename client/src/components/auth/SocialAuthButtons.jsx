@@ -23,7 +23,7 @@ const SocialAuthButtons = ({ mode = 'login', onSuccess }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { authSettings: reduxAuthSettings } = useSelector((state) => state.auth || {});
+  const { authSettings: reduxAuthSettings } = useSelector((state) => state.settings || {});
   const [socialSettings, setSocialSettings] = useState({
     google: true,
     apple: true,

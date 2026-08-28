@@ -17,7 +17,7 @@ const env = {
   SMTP_USER: process.env.SMTP_USER,
   SMTP_PASS: process.env.SMTP_PASS,
   BREVO_API_KEY: process.env.BREVO_API_KEY,
-  FROM_EMAIL: process.env.FROM_EMAIL || 'nagaseshukumarbobbiti@gmail.com',
+  FROM_EMAIL: process.env.FROM_EMAIL || 'styleverseshope@gmail.com',
   FROM_NAME: process.env.FROM_NAME || 'KVLR Styles',
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,

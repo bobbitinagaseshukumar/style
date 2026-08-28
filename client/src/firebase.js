@@ -10,13 +10,13 @@ import {
 } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDxSYJ0C1PUxWLvagPoQVOHjo0-Ft7QOLw",
-  authDomain: "styleverse-c3847.firebaseapp.com",
-  projectId: "styleverse-c3847",
-  storageBucket: "styleverse-c3847.firebasestorage.app",
-  messagingSenderId: "166711176761",
-  appId: "1:166711176761:web:b387da73aec5c70fcee7e8",
-  measurementId: "G-KKQPYGR316"
+  apiKey: "AIzaSyCeaApv_MzbLI0K2jWZA5e_YxW_Qs6pM6A",
+  authDomain: "styleverse2-64e1c.firebaseapp.com",
+  projectId: "styleverse2-64e1c",
+  storageBucket: "styleverse2-64e1c.firebasestorage.app",
+  messagingSenderId: "971678561546",
+  appId: "1:971678561546:web:c9af7068068ebcc55476f3",
+  measurementId: "G-MKDLFP71ZN"
 };
 
 const app = initializeApp(firebaseConfig);

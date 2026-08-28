@@ -80,6 +80,7 @@ app.use(cors({
 app.use(morgan('dev'));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(cookieParser());
 const path = require('path');
 
 // Serve uploaded product images statically with 30-day browser caching

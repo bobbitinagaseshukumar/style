@@ -23,7 +23,7 @@ async function getStoreMetadata() {
     if (process.env.VERCEL_URL) {
       clientUrl = `https://${process.env.VERCEL_URL}`;
     } else {
-      clientUrl = 'https://styleverse.vercel.app';
+      clientUrl = 'http://localhost:3000';
     }
   }
   clientUrl = clientUrl.replace(/\/$/, '');
@@ -97,10 +97,10 @@ function wrapTemplate({
   buttonText,
   buttonUrl,
   unsubscribeUrl,
-  storeName = 'StyleVerse',
+  storeName = 'KVLR Styles',
   storeTagline = 'Enterprise Luxury Clothing & Jewellery Platform',
   primaryColor = '#D4AF37',
-  clientUrl = 'https://styleverse.vercel.app'
+  clientUrl = 'http://localhost:3000'
 }) {
   const goldAccent = primaryColor || '#D4AF37';
   const darkBg = '#0D0D0D';

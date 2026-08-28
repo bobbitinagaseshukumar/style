@@ -52,20 +52,20 @@ async function main() {
   console.log('✅ 2 Announcements seeded');
 
   // 3. Super Admin
-  const hashedPassword = await bcrypt.hash('seshu@2409', 12);
+  const hashedPassword = await bcrypt.hash('styleverse@2409', 12);
   await prisma.user.upsert({
-    where: { email: 'nagaseshukumarbobbiti@gmail.com' },
+    where: { email: 'styleverseshope@gmail.com' },
     update: { role: 'SUPER_ADMIN', isVerified: true },
     create: {
-      fullName: 'Naga Seshu Kumar Bobbiti',
-      email: 'nagaseshukumarbobbiti@gmail.com',
+      fullName: 'KVLR Styles Admin',
+      email: 'styleverseshope@gmail.com',
       password: hashedPassword,
       role: 'SUPER_ADMIN',
       isVerified: true,
       status: 'ACTIVE',
     },
   });
-  console.log('✅ Super Admin seeded (nagaseshukumarbobbiti@gmail.com)');
+  console.log('✅ Super Admin seeded (styleverseshope@gmail.com)');
 
   // 4. Categories
   const categories = [
