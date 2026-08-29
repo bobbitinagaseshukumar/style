@@ -576,7 +576,7 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
   console.log(`[GOOGLE AUTH] Checking database for: ${verifiedEmail} (UID: ${verifiedUid})`);
 
   // Check if user already exists by firebaseUid, googleId, or email
-  const user = await prisma.user.findFirst({
+  let user = await prisma.user.findFirst({
     where: {
       OR: [
         { firebaseUid: verifiedUid },
