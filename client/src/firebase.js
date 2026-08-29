@@ -10,13 +10,13 @@ import {
 } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCeaApv_MzbLI0K2jWZA5e_YxW_Qs6pM6A",
-  authDomain: "styleverse2-64e1c.firebaseapp.com",
-  projectId: "styleverse2-64e1c",
-  storageBucket: "styleverse2-64e1c.firebasestorage.app",
-  messagingSenderId: "971678561546",
-  appId: "1:971678561546:web:c9af7068068ebcc55476f3",
-  measurementId: "G-MKDLFP71ZN"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCeaApv_MzbLI0K2jWZA5e_YxW_Qs6pM6A",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "styleverse2-64e1c.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "styleverse2-64e1c",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "styleverse2-64e1c.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "971678561546",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:971678561546:web:c9af7068068ebcc55476f3",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-MKDLFP71ZN"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -50,7 +50,7 @@ const safeSignIn = (provider) => async () => {
         `Add it at: https://console.firebase.google.com/project/styleverse2-64e1c/authentication/settings`
       );
       const customErr = new Error(
-        `Domain "${currentDomain}" is not authorized for Google sign-in.`
+        `Domain "${currentDomain}" is not authorized for Google sign-in. Please add "${currentDomain}" in Firebase Console Authorized Domains.`
       );
       customErr.code = 'auth/unauthorized-domain';
       throw customErr;
