@@ -1733,8 +1733,8 @@ exports.invalidateHomepageBundleCache = () => {
 exports.getHomepageBundle = asyncHandler(async (req, res) => {
     const now = Date.now();
     if (homepageBundleCache && (now - homepageBundleCacheTime < BUNDLE_CACHE_TTL_MS)) {
-        // Serve from memory cache with HTTP cache headers
-        res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
+        // Serve from memory cache with fresh headers
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
         return res.status(200).json({ success: true, cached: true, data: homepageBundleCache });
     }
 

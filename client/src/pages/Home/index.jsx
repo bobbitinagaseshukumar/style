@@ -182,7 +182,7 @@ const Home = () => {
         // Fast path: Fetch consolidated homepage bundle in 1 single optimized request
         let bundleSuccess = false;
         try {
-          const bundleRes = await api.get('/cms/homepage-bundle');
+          const bundleRes = await api.get(`/cms/homepage-bundle?_t=${Date.now()}`);
           if (bundleRes.data?.success && bundleRes.data?.data) {
             const bundle = bundleRes.data.data;
             if (!isMounted) return;
