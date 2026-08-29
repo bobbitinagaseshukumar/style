@@ -587,18 +587,31 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
   });
 
   if (!user) {
-    // ACCOUNT NOT FOUND — Do NOT auto-create
-    console.log(`[GOOGLE AUTH] No website account found for: ${verifiedEmail}`);
-    return res.status(200).json({
-      success: false,
-      status: 'ACCOUNT_NOT_FOUND',
-      message: 'Your Google account is verified, but you don\'t have a website account yet. Please complete your details to create your account.',
-      googleProfile: {
-        uid: verifiedUid,
-        email: verifiedEmail,
-        name: verifiedName,
-        photo: verifiedPhoto,
+    // ACCOUNT NOT FOUND — Auto-provision new customer account seamlessly
+    console.log(`[GOOGLE AUTH] Auto-creating customer account for: ${verifiedEmail}`);
+    let customerId = null;
+    try { customerId = await generateCustomerId(); } catch (e) {}
+
+    const displayName = verifiedName || verifiedEmail.split('@')[0] || 'Valued Customer';
+    user = await prisma.user.create({
+      data: {
+        fullName: displayName,
+        email: verifiedEmail.toLowerCase(),
+        firebaseUid: verifiedUid,
+        googleId: verifiedUid,
+        authProvider: 'GOOGLE',
+        avatar: verifiedPhoto || null,
+        profileImage: verifiedPhoto || null,
+        isVerified: true,
+        role: 'CUSTOMER',
+        customerId,
+        lastLoginAt: new Date(),
       },
+    });
+
+    // Send Welcome Email asynchronously
+    sendWelcomeEmail(user.email, user.fullName).catch(err => {
+      console.error('[GOOGLE WELCOME EMAIL FAILED]', err.message);
     });
   }
 
