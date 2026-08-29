@@ -593,10 +593,13 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
     try { customerId = await generateCustomerId(); } catch (e) {}
 
     const displayName = verifiedName || verifiedEmail.split('@')[0] || 'Valued Customer';
+    // Google users don't use password auth, but Prisma schema requires the field
+    const randomPassword = await bcrypt.hash(`google_${verifiedUid}_${Date.now()}`, 12);
     user = await prisma.user.create({
       data: {
         fullName: displayName,
         email: verifiedEmail.toLowerCase(),
+        password: randomPassword,
         firebaseUid: verifiedUid,
         googleId: verifiedUid,
         authProvider: 'GOOGLE',
