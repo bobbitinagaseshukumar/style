@@ -3,8 +3,8 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function createSuperAdmin() {
-  const email = 'nagaseshukumarbobbiti@gmail.com';
-  const plainPassword = 'seshu@2409';
+  const email = 'styleverseshope@gmail.com';
+  const plainPassword = 'styleverse@2409';
 
   console.log(`👑 Creating Super Admin account for ${email}...`);
   const hashedPassword = await bcrypt.hash(plainPassword, 12);
@@ -12,14 +12,14 @@ async function createSuperAdmin() {
   const user = await prisma.user.upsert({
     where: { email: email.toLowerCase() },
     update: {
-      fullName: 'Naga Seshu Kumar Bobbiti',
+      fullName: 'KVLR Styles Admin',
       password: hashedPassword,
       role: 'SUPER_ADMIN',
       isVerified: true,
       status: 'ACTIVE',
     },
     create: {
-      fullName: 'Naga Seshu Kumar Bobbiti',
+      fullName: 'KVLR Styles Admin',
       email: email.toLowerCase(),
       phone: '+91 98765 43210',
       password: hashedPassword,

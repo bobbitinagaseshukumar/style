@@ -43,6 +43,7 @@ const Navbar = () => {
   // Dynamic Header Navigation & Settings
   const [navItems, setNavItems] = useState(DEFAULT_NAV_ITEMS);
   const [headerSettings, setHeaderSettings] = useState(null);
+  const [storeName, setStoreName] = useState('KVLR Styles');
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -163,7 +164,6 @@ const Navbar = () => {
   };
   const keepMega = () => clearTimeout(megaMenuTimeout.current);
 
-  const storeName = storeSettings?.storeName || headerSettings?.storeName || 'StyleVerse';
   const announcementText = headerSettings?.announcementText;
   const announcementEnabled = Boolean(headerSettings?.announcementEnabled && announcementText && announcementText.trim() && showAnnouncement);
 

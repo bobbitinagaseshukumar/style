@@ -52,20 +52,20 @@ async function main() {
   console.log('✅ 2 Announcements seeded');
 
   // 3. Super Admin
-  const hashedPassword = await bcrypt.hash('seshu@2409', 12);
+  const hashedPassword = await bcrypt.hash('styleverse@2409', 12);
   await prisma.user.upsert({
-    where: { email: 'nagaseshukumarbobbiti@gmail.com' },
+    where: { email: 'styleverseshope@gmail.com' },
     update: { role: 'SUPER_ADMIN', isVerified: true },
     create: {
-      fullName: 'Naga Seshu Kumar Bobbiti',
-      email: 'nagaseshukumarbobbiti@gmail.com',
+      fullName: 'KVLR Styles Admin',
+      email: 'styleverseshope@gmail.com',
       password: hashedPassword,
       role: 'SUPER_ADMIN',
       isVerified: true,
       status: 'ACTIVE',
     },
   });
-  console.log('✅ Super Admin seeded (nagaseshukumarbobbiti@gmail.com)');
+  console.log('✅ Super Admin seeded (styleverseshope@gmail.com)');
 
   // 4. Categories
   const categories = [
@@ -254,10 +254,12 @@ async function main() {
   const flashSaleEndTime = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
   await prisma.flashSale.create({
     data: {
-      title: 'MIDNIGHT FLASH SALE ⚡',
+      name: 'MIDNIGHT FLASH SALE ⚡',
       description: 'Huge discounts on selected Sarees & Jewellery! Limited stock remaining.',
-      endTime: flashSaleEndTime,
-      discountPercent: 40,
+      endDate: flashSaleEndTime,
+      discountType: 'PERCENTAGE',
+      discountValue: 40,
+      status: 'PUBLISHED',
       isActive: true,
     },
   });
@@ -269,8 +271,8 @@ async function main() {
       title: 'Wedding Season Collection',
       subtitle: 'Exclusive Sarees, Lehengas & Kundan Jewellery',
       imageUrl: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=1200&h=500&fit=crop',
-      linkUrl: '/categories/womens-sarees',
-      type: 'HERO_SLIDER',
+      buttonLink: '/categories/womens-sarees',
+      position: 'HOMEPAGE_HERO',
       sortOrder: 1,
       isActive: true,
     },
@@ -278,8 +280,8 @@ async function main() {
       title: 'Royal Jewellery Showcase',
       subtitle: 'Pure gold plated & kundan masterpieces',
       imageUrl: 'https://images.unsplash.com/photo-1515562141589-67f0d93e5bb6?w=1200&h=500&fit=crop',
-      linkUrl: '/categories/jewellery',
-      type: 'HERO_SLIDER',
+      buttonLink: '/categories/jewellery',
+      position: 'HOMEPAGE_HERO',
       sortOrder: 2,
       isActive: true,
     },
@@ -287,8 +289,8 @@ async function main() {
       title: 'Summer Kurti Specials',
       subtitle: 'Breathable handcrafted cotton kurtis starting ₹899',
       imageUrl: 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=1200&h=500&fit=crop',
-      linkUrl: '/categories/womens-kurtis',
-      type: 'HERO_SLIDER',
+      buttonLink: '/categories/womens-kurtis',
+      position: 'HOMEPAGE_HERO',
       sortOrder: 3,
       isActive: true,
     },

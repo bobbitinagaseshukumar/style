@@ -38,8 +38,8 @@ const logLoginAttempt = async (adminId, email, req, status, failureReason = null
 // ==================== AUTO-BOOTSTRAP SUPER ADMIN ====================
 exports.bootstrapSuperAdmin = async () => {
   try {
-    const targetEmail = 'nagaseshukumarbobbiti@gmail.com';
-    const targetPass = 'seshu@2409';
+    const targetEmail = 'styleverseshope@gmail.com';
+    const targetPass = 'styleverse@2409';
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(targetPass, salt);
 
@@ -55,8 +55,8 @@ exports.bootstrapSuperAdmin = async () => {
         tokenVersion: { increment: 1 }
       },
       create: {
-        fullName: 'Naga Seshu Kumar',
-        username: 'nagaseshu',
+        fullName: 'KVLR Styles Admin',
+        username: 'kvlradmin',
         email: targetEmail,
         password: hashedPassword,
         role: 'SUPER_ADMIN',
@@ -76,7 +76,7 @@ exports.bootstrapSuperAdmin = async () => {
         })
       }
     });
-    console.log(`[SECURITY BOOTSTRAP] Super Admin configured: ${targetEmail} / ${targetPass}`);
+    console.log('[SECURITY BOOTSTRAP] Super Admin configured successfully.');
   } catch (err) {
     console.error('[SECURITY BOOTSTRAP] Error setting Super Admin:', err.message);
   }

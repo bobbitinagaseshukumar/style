@@ -33,7 +33,7 @@ const startKeepAliveEngine = () => {
       console.log(`[KEEP-ALIVE] DB pool touch successful at ${new Date().toISOString()}`);
 
       // 2. Self-ping Render web service to prevent idle spin-down
-      const backendUrl = process.env.RENDER_EXTERNAL_URL || 'https://style-q21b.onrender.com';
+      const backendUrl = process.env.RENDER_EXTERNAL_URL || 'https://style-backup.onrender.com';
       if (backendUrl && !backendUrl.includes('localhost')) {
         const https = require('https');
         https.get(`${backendUrl}/api/v1/health`, (res) => {

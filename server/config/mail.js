@@ -3,32 +3,64 @@ const nodemailer = require('nodemailer');
 const env = require('./env');
 
 // Nodemailer SMTP Transporter (Fallback)
-const transporter = nodemailer.createTransport({
-  host: env.SMTP_HOST,
-  port: env.SMTP_PORT,
-  secure: env.SMTP_PORT === 465,
-  auth: {
-    user: env.SMTP_USER,
-    pass: env.SMTP_PASS,
-  },
-});
+let transporter;
+try {
+  // Only create SMTP transporter if real credentials are configured
+  const hasSmtpCreds = env.SMTP_USER && env.SMTP_PASS && 
+                       env.SMTP_USER !== 'demo@gmail.com' && env.SMTP_PASS !== 'demo';
+  if (hasSmtpCreds) {
+    transporter = nodemailer.createTransport({
+      host: env.SMTP_HOST,
+      port: env.SMTP_PORT,
+      secure: env.SMTP_PORT === 465,
+      auth: {
+        user: env.SMTP_USER,
+        pass: env.SMTP_PASS,
+      },
+    });
+    console.log('[MAIL CONFIG] SMTP transporter ready (fallback)');
+  } else {
+    transporter = null;
+    console.log('[MAIL CONFIG] SMTP credentials not configured — Brevo API will be primary');
+  }
+} catch (err) {
+  transporter = null;
+  console.warn('[MAIL CONFIG] Failed to create SMTP transporter:', err.message);
+}
+
+/**
+ * Send email via SMTP fallback
+ */
+const sendViaSMTP = async ({ to, subject, htmlContent, senderName, senderEmail }) => {
+  if (!transporter) {
+    throw new Error('SMTP transporter not configured. Set SMTP_USER and SMTP_PASS in .env');
+  }
+  const result = await transporter.sendMail({
+    from: `"${senderName || env.FROM_NAME}" <${senderEmail || env.FROM_EMAIL}>`,
+    to,
+    subject,
+    html: htmlContent,
+  });
+  console.log(`[SMTP MAIL SUCCESS] Sent to ${to}`);
+  return result;
+};
 
 /**
  * Direct Brevo REST API v3 Email Delivery
  * Uses HTTPS API endpoint: https://api.brevo.com/v3/smtp/email
  * Fast, reliable, and bypasses SMTP port blocks.
+ * 
+ * IMPORTANT: The sender email MUST be verified in Brevo dashboard.
+ * Go to: https://app.brevo.com/senders/list to verify styleverseshope@gmail.com
  */
 const sendEmailViaBrevo = async ({ to, subject, htmlContent, senderName, senderEmail }) => {
   const apiKey = env.BREVO_API_KEY;
+  const fromEmail = senderEmail || env.FROM_EMAIL || 'styleverseshope@gmail.com';
+  const fromName = senderName || env.FROM_NAME || 'KVLR Styles';
 
   if (!apiKey) {
-    console.warn('[BREVO MAIL] ⚠️ BREVO_API_KEY not configured in environment. Falling back to SMTP. Set BREVO_API_KEY in your .env file for reliable email delivery.');
-    return transporter.sendMail({
-      from: `"${senderName || env.FROM_NAME}" <${senderEmail || env.FROM_EMAIL}>`,
-      to,
-      subject,
-      html: htmlContent,
-    });
+    console.warn('[BREVO MAIL] ⚠️ BREVO_API_KEY not configured. Attempting SMTP fallback...');
+    return sendViaSMTP({ to, subject, htmlContent, senderName: fromName, senderEmail: fromEmail });
   }
 
   // Format recipient list
@@ -38,13 +70,15 @@ const sendEmailViaBrevo = async ({ to, subject, htmlContent, senderName, senderE
 
   const payload = JSON.stringify({
     sender: {
-      name: senderName || env.FROM_NAME || 'KVLR Styles',
-      email: senderEmail || env.FROM_EMAIL || 'nagaseshukumarbobbiti@gmail.com',
+      name: fromName,
+      email: fromEmail,
     },
     to: recipientList,
     subject: subject,
     htmlContent: htmlContent,
   });
+
+  console.log(`[BREVO MAIL] Sending to ${recipientList.map(r => r.email).join(', ')} | From: ${fromName} <${fromEmail}>`);
 
   return new Promise((resolve, reject) => {
     const req = https.request(
@@ -70,14 +104,35 @@ const sendEmailViaBrevo = async ({ to, subject, htmlContent, senderName, senderE
               resolve({ success: true, response: responseBody });
             }
           } else {
-            console.error(`[BREVO MAIL ERROR] HTTP ${res.statusCode}: ${responseBody}`);
+            // Parse the Brevo error for clear logging
+            let errorDetail = responseBody;
+            try {
+              const errParsed = JSON.parse(responseBody);
+              errorDetail = errParsed.message || errParsed.code || responseBody;
+            } catch {}
+
+            console.error(`[BREVO MAIL ERROR] HTTP ${res.statusCode}: ${errorDetail}`);
+
+            // Common Brevo errors with helpful messages
+            if (res.statusCode === 401) {
+              console.error('[BREVO MAIL] ❌ Invalid API key. Check BREVO_API_KEY in .env');
+            } else if (errorDetail.includes('sender') || errorDetail.includes('not found') || errorDetail.includes('not allowed')) {
+              console.error(`[BREVO MAIL] ❌ Sender email "${fromEmail}" is not verified in Brevo.`);
+              console.error('[BREVO MAIL] 👉 Go to https://app.brevo.com/senders/list to add and verify this sender.');
+            }
+
             // Attempt SMTP fallback
-            transporter.sendMail({
-              from: `"${senderName || env.FROM_NAME}" <${senderEmail || env.FROM_EMAIL}>`,
-              to,
-              subject,
-              html: htmlContent,
-            }).then(resolve).catch(() => reject(new Error(`Brevo API Error ${res.statusCode}: ${responseBody}`)));
+            if (transporter) {
+              console.log('[BREVO MAIL] Attempting SMTP fallback...');
+              sendViaSMTP({ to, subject, htmlContent, senderName: fromName, senderEmail: fromEmail })
+                .then(resolve)
+                .catch((smtpErr) => {
+                  console.error('[SMTP FALLBACK FAILED]', smtpErr.message);
+                  reject(new Error(`Brevo API Error ${res.statusCode}: ${errorDetail}. SMTP fallback also failed: ${smtpErr.message}`));
+                });
+            } else {
+              reject(new Error(`Brevo API Error ${res.statusCode}: ${errorDetail}. No SMTP fallback configured.`));
+            }
           }
         });
       }
@@ -86,12 +141,17 @@ const sendEmailViaBrevo = async ({ to, subject, htmlContent, senderName, senderE
     req.on('error', (err) => {
       console.error('[BREVO MAIL REQUEST FAILED]', err.message);
       // Attempt SMTP fallback
-      transporter.sendMail({
-        from: `"${senderName || env.FROM_NAME}" <${senderEmail || env.FROM_EMAIL}>`,
-        to,
-        subject,
-        html: htmlContent,
-      }).then(resolve).catch(reject);
+      if (transporter) {
+        console.log('[BREVO MAIL] Attempting SMTP fallback...');
+        sendViaSMTP({ to, subject, htmlContent, senderName: fromName, senderEmail: fromEmail })
+          .then(resolve)
+          .catch((smtpErr) => {
+            console.error('[SMTP FALLBACK FAILED]', smtpErr.message);
+            reject(new Error(`Brevo request failed: ${err.message}. SMTP fallback also failed: ${smtpErr.message}`));
+          });
+      } else {
+        reject(new Error(`Brevo request failed: ${err.message}. No SMTP fallback configured.`));
+      }
     });
 
     req.write(payload);

@@ -817,10 +817,10 @@ exports.deleteCustomer = asyncHandler(async (req, res, next) => {
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return next(new ApiError(404, 'Customer not found'));
 
-  // Protect ONLY the primary Super Admin account (nagaseshukumarbobbiti@gmail.com) and current logged-in user self
-  const primarySuperAdminEmail = 'nagaseshukumarbobbiti@gmail.com';
+  // Protect ONLY the primary Super Admin account and current logged-in user self
+  const primarySuperAdminEmail = 'styleverseshope@gmail.com';
   if (user.email?.toLowerCase() === primarySuperAdminEmail) {
-    return next(new ApiError(403, 'System Protected: Primary Super Admin account (nagaseshukumarbobbiti@gmail.com) cannot be deleted.'));
+    return next(new ApiError(403, 'System Protected: Primary Super Admin account cannot be deleted.'));
   }
   if (req.user?.id === id) {
     return next(new ApiError(400, 'You cannot delete your own logged-in account.'));

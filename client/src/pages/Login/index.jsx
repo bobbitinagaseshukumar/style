@@ -1119,7 +1119,7 @@ const Login = ({ initialMode }) => {
           email={deviceLimitData?.email}
           onSessionTerminated={() => {
             setDeviceLimitData(null);
-            handleLogin();
+            toast.info('Session terminated. Please try logging in again.');
           }}
         />
       </div>

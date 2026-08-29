@@ -23,7 +23,7 @@ async function getStoreMetadata() {
     if (process.env.VERCEL_URL) {
       clientUrl = `https://${process.env.VERCEL_URL}`;
     } else {
-      clientUrl = 'https://styleverse.vercel.app';
+      clientUrl = 'http://localhost:3000';
     }
   }
   clientUrl = clientUrl.replace(/\/$/, '');
@@ -38,7 +38,7 @@ async function getStoreMetadata() {
 
 // Helper: Ensure full absolute HTTPS image URLs for email clients with smart fallbacks
 function formatEmailImageUrl(url, productName = '', imgId = '', productId = '') {
-  const serverBase = (process.env.RENDER_EXTERNAL_URL || 'https://style-q21b.onrender.com').replace(/\/$/, '');
+  const serverBase = (process.env.RENDER_EXTERNAL_URL || 'https://style-backup.onrender.com').replace(/\/$/, '');
 
   if (imgId) {
     return `${serverBase}/api/v1/products/render-image?imgId=${imgId}`;
@@ -97,10 +97,10 @@ function wrapTemplate({
   buttonText,
   buttonUrl,
   unsubscribeUrl,
-  storeName = 'StyleVerse',
+  storeName = 'KVLR Styles',
   storeTagline = 'Enterprise Luxury Clothing & Jewellery Platform',
   primaryColor = '#D4AF37',
-  clientUrl = 'https://styleverse.vercel.app'
+  clientUrl = 'http://localhost:3000'
 }) {
   const goldAccent = primaryColor || '#D4AF37';
   const darkBg = '#0D0D0D';

@@ -23,7 +23,7 @@ const SocialAuthButtons = ({ mode = 'login', onSuccess }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { authSettings: reduxAuthSettings } = useSelector((state) => state.auth || {});
+  const { authSettings: reduxAuthSettings } = useSelector((state) => state.settings || {});
   const [socialSettings, setSocialSettings] = useState({
     google: true,
     apple: true,
@@ -122,11 +122,26 @@ const SocialAuthButtons = ({ mode = 'login', onSuccess }) => {
       }
 
       if (code === 'auth/popup-blocked' || msg.includes('popup-blocked')) {
-        toast.warn(`${providerName.charAt(0).toUpperCase() + providerName.slice(1)} popup was blocked by browser. Please allow popups.`);
+        toast.warn(
+          `${providerName.charAt(0).toUpperCase() + providerName.slice(1)} popup was blocked by browser. Please allow popups.`,
+          { toastId: 'social-auth-popup-blocked' }
+        );
         return;
       }
 
-      toast.error(error.response?.data?.message || msg || `${providerName} sign-in failed. Please try again.`);
+      if (code === 'auth/unauthorized-domain' || msg.includes('unauthorized-domain')) {
+        const hostname = window.location.hostname;
+        toast.error(
+          `Domain "${hostname}" is not authorized for Google Login. Please use https://style-backup.vercel.app or add "${hostname}" in Firebase Console > Authentication > Settings > Authorized domains.`,
+          { toastId: 'social-auth-unauthorized-domain', autoClose: 6000 }
+        );
+        return;
+      }
+
+      toast.error(
+        error.response?.data?.message || msg || `${providerName} sign-in failed. Please try again.`,
+        { toastId: 'social-auth-generic-error' }
+      );
     } finally {
       setLoadingProvider(null);
     }
