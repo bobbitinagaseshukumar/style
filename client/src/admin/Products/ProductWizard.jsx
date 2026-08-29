@@ -300,8 +300,9 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
         freeShipping: !!form.freeShipping,
       };
 
-      if (editProduct) {
-        await api.put(`/products/${editProduct.id}`, payload);
+      const targetId = editProduct?.id || editProduct?._id;
+      if (targetId) {
+        await api.put(`/products/${targetId}`, payload);
         toast.success('Product updated successfully!');
       } else {
         await api.post('/products', payload);

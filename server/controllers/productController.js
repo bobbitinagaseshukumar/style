@@ -425,14 +425,23 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
   });
 });
 
-const sanitizeUpdateData = (data, extraKeysToRemove = []) => {
-  const clean = { ...data };
-  const keysToRemove = [
-    'id', 'createdAt', 'updatedAt', '_count', 'category', 'subCategory',
-    'brand', 'images', 'reviews', 'items', 'user', 'products', 'subcategories',
-    ...extraKeysToRemove
+const sanitizeUpdateData = (data) => {
+  const allowedKeys = [
+    'name', 'slug', 'sku', 'barcode', 'price', 'discountPercent', 'discountPrice',
+    'gstPercent', 'stock', 'categoryId', 'subCategoryId', 'brandId', 'sizes',
+    'colors', 'material', 'occasion', 'gender', 'weight', 'shippingFee',
+    'freeShipping', 'shortDesc', 'description', 'specifications', 'careInstruction',
+    'tags', 'featured', 'trending', 'todaysDeal', 'flashSale', 'newArrival',
+    'bestSeller', 'isRecommended', 'isPremium', 'isFestival', 'showOnHomepage',
+    'status', 'displayOrder', 'isVisible', 'videoUrl', 'threeSixtyImages',
+    'colorGalleries', 'colorSizeInventory'
   ];
-  keysToRemove.forEach(k => delete clean[k]);
+  const clean = {};
+  for (const key of allowedKeys) {
+    if (data[key] !== undefined) {
+      clean[key] = data[key];
+    }
+  }
   return clean;
 };
 

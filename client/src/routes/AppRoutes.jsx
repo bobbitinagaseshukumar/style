@@ -163,13 +163,13 @@ const AppRoutes = () => {
         <Route path="/auth" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Auth Layout Routes (OTP, Verify Email, Forgot, Reset) */}
+        {/* Auth Layout Routes (OTP, Verify Email) */}
         <Route element={<AuthLayout />}>
           <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
 
         {/* Dedicated Admin Login, Forgot Password & 2FA OTP Pages */}
